@@ -1,0 +1,6 @@
+{
+  "name": "@launchpad/config",
+  "version": "0.0.1",
+  "private": true,
+  "main": "tailwind-preset.js"
+}
