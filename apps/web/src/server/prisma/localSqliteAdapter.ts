@@ -21,17 +21,30 @@ export class LocalSqliteAdapter extends PrismaLibSql {
     const decodedPath = decodeURIComponent(path);
     if (decodedPath === ":memory:" || decodedPath.startsWith(":memory:?")) return client;
 
+    let observations = 0;
+    const observe = (stage: string, operation: string, error: unknown, attempt?: number) => {
+      if (process.env.LOCAL_SQLITE_DIAGNOSTICS !== "true" || observations++ >= 100) return;
+      const value = error as { code?: unknown; rawCode?: unknown } | null;
+      const known = ["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT", "SQLITE_LOCKED", "SQLITE_ERROR", "SQLITE_IOERR", "SQLITE_MISUSE", "SQLITE_READONLY", "CLIENT_CLOSED", "TRANSACTION_CLOSED"];
+      const code = typeof value?.code === "string" && known.includes(value.code) ? value.code : "UNCLASSIFIED";
+      const raw = typeof value?.rawCode === "number" ? value.rawCode :
+        typeof value?.rawCode === "string" && /^\d{1,5}$/.test(value.rawCode) ? Number(value.rawCode) : undefined;
+      const role = ["web", "worker", "fixture"].includes(process.env.LOCAL_SQLITE_ROLE ?? "") ? process.env.LOCAL_SQLITE_ROLE : "unknown";
+      console.error(JSON.stringify({ event: "LOCAL_SQLITE_ERROR", role, stage, operation, code,
+        sqliteCode: Number.isSafeInteger(raw) && raw! >= 0 && raw! <= 65535 ? raw : undefined, attempt }));
+    };
     let failed = false, initializationError: unknown;
     const ready = client.execute("PRAGMA busy_timeout=100")
       .then(() => undefined).catch(error => {
-        failed = true; initializationError = error; client.close();
+        observe("initialize", "execute", error); failed = true; initializationError = error; client.close();
       });
-    const prepare = async () => {
+    const prepare = async (operation: string) => {
       await ready;
       if (failed) throw initializationError;
       // libSQL transfers this physical connection to a transaction and opens
       // another on next use. The timeout must be configured on each one.
-      await client.execute("PRAGMA busy_timeout=100");
+      try { await client.execute("PRAGMA busy_timeout=100"); }
+      catch (error) { observe("prepare", operation, error); throw error; }
     };
     const operations = new Set(["execute", "batch", "migrate", "executeMultiple", "sync"]);
     return new Proxy(client, {
@@ -40,12 +53,22 @@ export class LocalSqliteAdapter extends PrismaLibSql {
         if (typeof value !== "function") return value;
         if (key === "transaction") return async (mode?: TransactionMode) => {
           for (let attempt = 0; ; attempt++) {
-            await prepare();
+            await prepare("transaction");
             try {
               // Acquire write intent before Prisma can run any callback or
               // fence SELECT. Never retry a callback, statement or commit.
-              return await target.transaction(mode === "deferred" ? "write" : mode);
+              const transaction = await target.transaction(mode === "deferred" ? "write" : mode);
+              return new Proxy(transaction, { get(tx, method) {
+                const fn = Reflect.get(tx, method, tx);
+                if (typeof fn !== "function") return fn;
+                if (["execute", "batch", "executeMultiple", "commit", "rollback"].includes(String(method))) return async (...args: unknown[]) => {
+                  try { return await Reflect.apply(fn, tx, args); }
+                  catch (error) { observe("transaction", String(method), error); throw error; }
+                };
+                return fn.bind(tx);
+              } });
             } catch (error) {
+              observe("begin", "transaction", error, attempt + 1);
               if (!busyBeforeBegin(error)) throw error;
               // A rejected native BEGIN can leave a prepared statement on
               // its connection. No transaction was returned: discard that
@@ -57,7 +80,9 @@ export class LocalSqliteAdapter extends PrismaLibSql {
           }
         };
         if (operations.has(String(key))) return async (...args: unknown[]) => {
-          await prepare(); return Reflect.apply(value, target, args);
+          await prepare(String(key));
+          try { return await Reflect.apply(value, target, args); }
+          catch (error) { observe("operation", String(key), error); throw error; }
         };
         if (key === "reconnect") return async (...args: unknown[]) => {
           await ready;

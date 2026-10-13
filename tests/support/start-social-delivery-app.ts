@@ -48,16 +48,16 @@ async function main() {
       BASE_URL: parsed.origin, APP_ORIGIN: parsed.origin, INTERNAL_BASE_URL: parsed.origin,
       CONNECTION_MODE: "mock", ADS_MODE: "mock", SOCIAL_PUBLISHING_ENABLED: "true",
       SOCIAL_APPROVED_PROVIDERS: JSON.stringify(fixture.config.approvedProviders),
-      X_API_OWNER_BUDGETS: JSON.stringify(fixture.xOwnerPolicies), PORT: parsed.port, NODE_ENV: "production" };
+      LOCAL_SQLITE_DIAGNOSTICS: "true", X_API_OWNER_BUDGETS: JSON.stringify(fixture.xOwnerPolicies), PORT: parsed.port, NODE_ENV: "production" };
     controller.signal.throwIfAborted();
     const build = spawn("npm", ["--workspace", "@launchpad/web", "run", "build"], { env, stdio: "inherit" }); processes.push(build);
     if (await new Promise<number | null>((resolve, reject) => { build.once("exit", resolve); build.once("error", reject); }) !== 0)
       throw new Error("Isolated delivery app build failed.");
     controller.signal.throwIfAborted();
-    const server = spawn(process.execPath, ["server.js"], { cwd: join(process.cwd(), "apps/web"), env, stdio: "inherit" }); processes.push(server);
+    const server = spawn(process.execPath, ["server.js"], { cwd: join(process.cwd(), "apps/web"), env: { ...env, LOCAL_SQLITE_ROLE: "web" }, stdio: "inherit" }); processes.push(server);
     server.once("exit", code => { if (!cleaning) { process.exitCode = code ?? 1; void cleanup(); } });
     server.once("error", () => { process.exitCode = 1; void cleanup(); });
-    const worker = spawn(process.execPath, ["--import", "tsx", "apps/web/scripts/social-worker.ts", "run"], { env, stdio: "inherit" }); processes.push(worker);
+    const worker = spawn(process.execPath, ["--import", "tsx", "apps/web/scripts/social-worker.ts", "run"], { env: { ...env, LOCAL_SQLITE_ROLE: "worker" }, stdio: "inherit" }); processes.push(worker);
     worker.once("exit", code => { if (!cleaning) { process.exitCode = code ?? 1; void cleanup(); } });
     worker.once("error", () => { process.exitCode = 1; void cleanup(); });
   } catch (error) { await cleanup(); throw error; }
