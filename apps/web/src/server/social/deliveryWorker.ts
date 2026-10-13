@@ -4,10 +4,11 @@ import { digest } from "../auth/customerAuth";
 import { credentialContext } from "../connections/customerConnections";
 import { CredentialVault } from "../security/credentialVault";
 import { fail, SecurityError } from "../security/errors";
-import { SocialProviderFailure, SocialProviderRegistry, type SocialMediaResolver, type SocialProgress,
+import { SocialProviderFailure, SocialProviderRegistry, type SocialCredentialRenewal, type SocialMediaResolver, type SocialProgress,
   type SocialProviderContext, type SocialPublished, type SocialWorkerConfig } from "./types";
 import { aggregateSocialPostStatus } from "./aggregate";
 import { ownedDestination, verifyFormat, verifyMedia } from "./validation";
+import { publicMedia } from "./mediaStore";
 
 const work = ["QUEUED", "RETRY_WAIT"] as const;
 const safeCodes = new Set(["PROVIDER_DISABLED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "MEDIA_UNAVAILABLE", "UNSUPPORTED_CONTENT", "CONNECTION_MODE_MISMATCH", "STALE_CREDENTIALS", "STALE_REVISION", "REVIEW_REQUIRED", "INVALID_PROVIDER_OPTIONS", "LEASE_LOST", "NOT_FOUND", "CREDENTIAL_UNAVAILABLE"]);
@@ -24,7 +25,8 @@ export class SocialDeliveryWorker {
   private readonly maximum: number;
   constructor(private readonly db: PrismaClient, private readonly vault: CredentialVault,
     private readonly registry: SocialProviderRegistry, config: SocialWorkerConfig,
-    private readonly mediaResolver?: SocialMediaResolver, private readonly now = () => new Date()) {
+    private readonly mediaResolver?: SocialMediaResolver, private readonly now = () => new Date(),
+    private readonly renewCredentials?: SocialCredentialRenewal) {
     if (!["mock", "live"].includes(config.mode)) fail("PROVIDER_DISABLED", 503, "Configure an explicit social provider mode.");
     this.config = Object.freeze({ ...config, approvedProviders: Object.freeze([...config.approvedProviders]) });
     this.leaseMs = Math.min(900_000, Math.max(1000, config.leaseMs ?? 120_000));
@@ -68,7 +70,7 @@ export class SocialDeliveryWorker {
       return { id: delivery.id, token, hash, attempt };
     });
   }
-  private async verified(tx: Prisma.TransactionClient, lease: Lease, reconciliation = false, credentialVersion?: number) {
+  private async verified(tx: Prisma.TransactionClient, lease: Lease, reconciliation = false, credentialVersion?: number, allowExpiredForRenewal = false) {
     const delivery = await tx.socialDelivery.findUnique({ where: { id: lease.id }, include: {
       post: true, revision: { include: { media: { include: { media: true } } } }, variant: true,
       destination: { include: { authorization: true } }, progress: true,
@@ -83,7 +85,7 @@ export class SocialDeliveryWorker {
     if (!this.config.writesEnabled || !this.config.approvedProviders.includes(`${delivery.destination.authorization.provider}:${delivery.destination.kind}`) ||
       !registration?.modes.includes(this.config.mode)) fail("PROVIDER_DISABLED", 503, "This social provider is not enabled for publishing.");
     const destination = await ownedDestination(tx, delivery.post.ownerId, delivery.destinationId, this.config.mode, this.now(),
-      [...new Set([...(delivery.requiredScopes as string[]), ...registration.requiredScopes])]);
+      [...new Set([...(delivery.requiredScopes as string[]), ...registration.requiredScopes])], allowExpiredForRenewal);
     const grant = destination.authorization;
     if (grant.id !== delivery.authorizationId || grant.generation !== delivery.authorizationGeneration ||
       delivery.connectionMode !== this.config.mode.toUpperCase() || (credentialVersion !== undefined && grant.credentialVersion !== credentialVersion))
@@ -99,6 +101,53 @@ export class SocialDeliveryWorker {
         format: delivery.variant.format as never, providerOptions: delivery.variant.providerOptions as Record<string, unknown> }, media);
     }
     return { delivery, destination, grant, registration, media, minimumValidUntil };
+  }
+  private async ensureCredentials(lease: Lease, reconciliation: boolean) {
+    const snapshot = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, undefined, true));
+    const old = snapshot.grant;
+    if (!old.expiresAt || old.expiresAt.getTime() > this.now().getTime() + 60_000) return;
+    if (!snapshot.registration.renewableCredentials || !this.renewCredentials || !old.refreshCiphertext)
+      fail("RECONNECT_REQUIRED", 409, "Renew publishing access before this delivery can continue.");
+    const verifyCurrent = async () => { await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, old.credentialVersion, true)); };
+    const adoptCurrent = async () => {
+      const current = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, undefined, true));
+      return current.grant.credentialVersion !== old.credentialVersion && current.grant.expiresAt !== null &&
+        current.grant.expiresAt.getTime() > this.now().getTime() + 60_000;
+    };
+    let renewed;
+    try {
+      renewed = await this.renewCredentials({ provider: old.provider, providerUserId: old.providerUserId,
+        refreshToken: this.vault.decrypt(old.refreshCiphertext, credentialContext(old.userId, old.id, "refresh")),
+        scopes: old.scopes as string[], verifyCurrent });
+    } catch (error) {
+      // Concurrent renewals may adopt a winner only after the complete lease,
+      // owner, scope, mode and authorization-generation fences still pass.
+      if (await adoptCurrent()) return;
+      if (error instanceof SecurityError && error.status === 429)
+        throw new SocialProviderFailure("RATE_LIMIT", true);
+      // Google offline credentials are reusable. This does not authorize retry
+      // of an ambiguous rotating-token exchange for another platform.
+      if (old.provider === "GOOGLE" && error instanceof SecurityError && error.status >= 500 &&
+        "retryable" in error && error.retryable === true && !("outcomeUnknown" in error && error.outcomeUnknown === true))
+        throw new SocialProviderFailure("TRANSIENT", true);
+      throw error;
+    }
+    const scopes = renewed.scopes;
+    if (renewed.providerUserId !== old.providerUserId || typeof renewed.accessToken !== "string" || !renewed.accessToken || renewed.accessToken.length > 32768 ||
+      !renewed.expiresAt || !Number.isFinite(renewed.expiresAt.getTime()) || renewed.expiresAt <= this.now() || !Array.isArray(scopes) ||
+      !snapshot.registration.requiredScopes.every((scope) => scopes.includes(scope)) ||
+      (renewed.refreshToken !== undefined && (!renewed.refreshToken || renewed.refreshToken.length > 32768)))
+      fail("RECONNECT_REQUIRED", 409, "The provider could not verify renewed publishing access.");
+    try { await this.db.$transaction(async (tx) => {
+      await this.verified(tx, lease, reconciliation, old.credentialVersion, true);
+      const changed = await tx.providerAuthorization.updateMany({ where: { id: old.id, userId: old.userId,
+        credentialVersion: old.credentialVersion, generation: old.generation, capability: "SOCIAL", connectionMode: old.connectionMode, status: "CONNECTED" },
+        data: { accessCiphertext: this.vault.encrypt(renewed.accessToken, credentialContext(old.userId, old.id, "access")),
+          ...(renewed.refreshToken ? { refreshCiphertext: this.vault.encrypt(renewed.refreshToken, credentialContext(old.userId, old.id, "refresh")) } : {}),
+          expiresAt: renewed.expiresAt, scopes, credentialVersion: { increment: 1 } } });
+      if (!changed.count) fail("STALE_CREDENTIALS", 409, "The publishing authorization changed during renewal.");
+      await tx.connectionAuditEvent.create({ data: { authorizationId: old.id, action: "SOCIAL_CREDENTIALS_RENEWED" } });
+    }); } catch (error) { if (await adoptCurrent()) return; throw error; }
   }
   private progressContext(id: string) { return `social-progress-v1:${id}`; }
   private decode(id: string, encryptedState?: string) {
@@ -121,7 +170,7 @@ export class SocialDeliveryWorker {
     });
   }
   private published(platform: string, value: SocialPublished) {
-    if (!value || typeof value.externalId !== "string" || !/^[A-Za-z0-9_:.-]{1,256}$/.test(value.externalId))
+    if (!value || typeof value.externalId !== "string" || !/^[A-Za-z0-9_:~.-]{1,256}$/.test(value.externalId))
       fail("INVALID_PROVIDER_RESPONSE", 502, "The provider did not return a valid publication identity.");
     if (value.publishUrl !== undefined) {
       let url: URL; try { url = new URL(value.publishUrl); } catch { fail("INVALID_PROVIDER_RESPONSE", 502, "The provider did not return a public publication link."); }
@@ -131,7 +180,7 @@ export class SocialDeliveryWorker {
     }
     return { externalId: value.externalId, publishUrl: value.publishUrl };
   }
-  private async finish(lease: Lease, status: "SUCCEEDED" | "QUEUED" | "UNCERTAIN", result?: SocialPublished, reconciliation = false) {
+  private async finish(lease: Lease, status: "SUCCEEDED" | "FAILED" | "QUEUED" | "UNCERTAIN", result?: SocialPublished, reconciliation = false) {
     return this.db.$transaction(async (tx) => {
       const delivery = await tx.socialDelivery.findUnique({ where: { id: lease.id }, include: { post: true, destination: { include: { authorization: true } } } });
       if (!delivery || delivery.leaseTokenHash !== lease.hash) fail("LEASE_LOST", 409, "The delivery lease is no longer current.");
@@ -139,12 +188,12 @@ export class SocialDeliveryWorker {
       const outcome = status === "QUEUED" && obsolete ? (delivery.cancellationRequested ? "CANCELLED" : "SUPERSEDED") : status;
       const publication = result ? this.published(delivery.destination.authorization.provider, result) : undefined;
       await tx.socialDelivery.update({ where: { id: lease.id }, data: {
-        status: outcome, phase: status === "SUCCEEDED" ? "COMPLETE" : status === "QUEUED" ? "PREPARE" : "PUBLISH",
+        status: outcome, phase: status === "SUCCEEDED" || status === "FAILED" ? "COMPLETE" : status === "QUEUED" ? "PREPARE" : "PUBLISH",
         ...(publication ? publication : {}), leaseTokenHash: null, leaseUntil: null,
         ...(status === "QUEUED" ? { publishStartedAt: null, nextAttemptAt: this.now() } : {}),
         nextAttemptAt: status === "UNCERTAIN" ? new Date(this.now().getTime() + Math.min(3600_000, 1000 * 2 ** Math.min(lease.attempt, 12))) : null,
-        errorCode: status === "UNCERTAIN" ? "PUBLISH_OUTCOME_UNKNOWN" : obsolete && status === "SUCCEEDED" ? "PUBLISHED_AFTER_CANCELLATION" : null,
-        completedAt: status === "SUCCEEDED" || outcome === "CANCELLED" || outcome === "SUPERSEDED" ? this.now() : null,
+        errorCode: status === "FAILED" ? "PROVIDER_PROCESSING_FAILED" : status === "UNCERTAIN" ? "PUBLISH_OUTCOME_UNKNOWN" : obsolete && status === "SUCCEEDED" ? "PUBLISHED_AFTER_CANCELLATION" : null,
+        completedAt: status === "SUCCEEDED" || status === "FAILED" || outcome === "CANCELLED" || outcome === "SUPERSEDED" ? this.now() : null,
       } });
       await tx.socialDeliveryAttempt.updateMany({ where: { deliveryId: lease.id, number: lease.attempt, leaseHash: lease.hash, status: "RUNNING" },
         data: { status: outcome, endedAt: this.now() } });
@@ -179,6 +228,7 @@ export class SocialDeliveryWorker {
     let publishCalls = 0;
     let definitivePublishFailure: SocialProviderFailure | undefined;
     try {
+      await this.ensureCredentials(lease, reconciliation);
       const initial = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation));
       const provider = this.registry.create(initial.destination.authorization.provider, initial.destination.kind);
       const context: SocialProviderContext = {
@@ -189,6 +239,7 @@ export class SocialDeliveryWorker {
         rpc: async (phase, invoke) => {
           if ((phase === "PUBLISH" && stage !== "PUBLISH") || (phase === "PUBLISH" && publishCalls++ > 0))
             fail("INVALID_PROVIDER_PROTOCOL", 502, "The provider attempted an unsupported publication transition.");
+          await this.ensureCredentials(lease, reconciliation);
           const snapshot = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation));
           const urls = snapshot.media.length && !reconciliation ? await this.mediaResolver?.({ ownerId: snapshot.delivery.post.ownerId,
             deliveryId: lease.id, revisionId: snapshot.delivery.revisionId, media: snapshot.media, minimumValidUntil: snapshot.minimumValidUntil }) : [];
@@ -202,14 +253,15 @@ export class SocialDeliveryWorker {
               leaseUntil: new Date(this.now().getTime() + this.leaseMs),
             } });
           });
-          try { return await invoke({ mode: this.config.mode, accessToken: this.vault.decrypt(snapshot.grant.accessCiphertext!,
+          try { return await invoke({ mode: this.config.mode, authorizationId: snapshot.grant.id, providerUserId: snapshot.grant.providerUserId,
+            authorizationGeneration: snapshot.grant.generation, accessToken: this.vault.decrypt(snapshot.grant.accessCiphertext!,
             credentialContext(snapshot.grant.userId, snapshot.grant.id, "access")),
             refreshToken: snapshot.grant.refreshCiphertext ? this.vault.decrypt(snapshot.grant.refreshCiphertext,
               credentialContext(snapshot.grant.userId, snapshot.grant.id, "refresh")) : undefined,
             verifyCurrent: async () => { await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, snapshot.grant.credentialVersion)); },
             destination: { externalId: snapshot.destination.externalId, kind: snapshot.destination.kind, metadata: snapshot.destination.metadata },
             media: snapshot.media.map((m) => ({ id: m.id, url: urls?.find((u) => u.id === m.id)?.url ?? "", mime: m.mime,
-              bytes: m.bytes, width: m.width, height: m.height, durationMs: m.durationMs })),
+              bytes: m.bytes, width: m.width, height: m.height, durationMs: m.durationMs, metadata: publicMedia(m).metadata })),
           }); } catch (error) {
             // Only a definitive failure from the submission RPC itself proves
             // it was rejected. A later poll/checkpoint failure cannot erase an
@@ -224,6 +276,7 @@ export class SocialDeliveryWorker {
       if (reconciliation) {
         const status = await provider.status(context, progress);
         if (status.status === "PUBLISHED") return await this.finish(lease, "SUCCEEDED", status.result, true);
+        if (status.status === "FAILED") return await this.finish(lease, "FAILED", status.result, true);
         return await this.finish(lease, status.status === "NOT_PUBLISHED" ? "QUEUED" : "UNCERTAIN", undefined, true);
       }
       await provider.validate(context);

@@ -24,7 +24,7 @@ async function main() {
   const tokenKey = randomBytes(32).toString("base64");
   const connections = new CustomerConnections(db, auth, new CredentialVault({ test: tokenKey }, "test"));
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other", "connections", "social"])
+    for (const prefix of ["e2e", "other", "connections", "social", "youtube"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",
@@ -57,8 +57,15 @@ async function main() {
     await rm(directory, { recursive: true, force: true });
     throw error;
   }
-  const cleanup = async () => {
+  let youtube: Awaited<ReturnType<typeof startMockoon>>;
+  try { youtube = await startMockoon("tests/mockoon/youtube.json"); }
+  catch (error) {
     await Promise.all([google.stop(), meta.stop()]);
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+  const cleanup = async () => {
+    await Promise.all([google.stop(), meta.stop(), youtube.stop()]);
     await rm(directory, { recursive: true, force: true });
   };
   const env = {
@@ -71,6 +78,7 @@ async function main() {
     CONNECTION_MODE: "mock",
     GOOGLE_ADS_MOCKOON_URL: google.origin,
     META_ADS_MOCKOON_URL: meta.origin,
+    YOUTUBE_MOCKOON_URL: youtube.origin,
     SOCIAL_PUBLISHING_ENABLED: "false",
     SOCIAL_APPROVED_PROVIDERS: "[]",
     SOCIAL_MEDIA_DIRECTORY: join(directory, "media"),

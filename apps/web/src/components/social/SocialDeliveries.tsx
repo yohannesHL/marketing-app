@@ -44,7 +44,7 @@ export function SocialDeliveries({
     canCancel =
       rows.length > 0 &&
       rows.every(
-        (d) => !["SUCCEEDED", "CANCELLED", "SUPERSEDED"].includes(d.status),
+        (d) => !["SUCCEEDED", "CANCELLED", "SUPERSEDED"].includes(d.status) && d.errorCode !== "PROVIDER_PROCESSING_FAILED",
       ),
     canReschedule =
       rows.length > 0 &&
@@ -59,6 +59,7 @@ export function SocialDeliveries({
         (d) =>
           ["FAILED", "BLOCKED", "RETRY_WAIT"].includes(d.status) &&
           d.phase !== "PUBLISH" &&
+          d.errorCode !== "PROVIDER_PROCESSING_FAILED" &&
           !d.cancellationRequested &&
           d.revisionId === post.revision.id,
       );
@@ -111,6 +112,7 @@ export function SocialDeliveries({
                   checked={selected.includes(d.id)}
                   disabled={
                     busy ||
+                    d.errorCode === "PROVIDER_PROCESSING_FAILED" ||
                     ["SUCCEEDED", "CANCELLED", "SUPERSEDED"].includes(d.status)
                   }
                   onChange={(e) => {
@@ -190,8 +192,7 @@ export function SocialDeliveries({
                 ) : null}
                 {d.errorCode && d.status !== "UNCERTAIN" ? (
                   <Typography variant="caption">
-                    Delivery needs attention. Check access, media availability,
-                    and provider readiness before retrying.
+                    {d.errorCode === "PROVIDER_PROCESSING_FAILED" ? "The provider confirmed processing failed. Its receipt is retained and this delivery cannot be sent again. Review the content before creating another post." : "Delivery needs attention. Check access, media availability, and provider readiness before retrying."}
                   </Typography>
                 ) : null}
               </Stack>

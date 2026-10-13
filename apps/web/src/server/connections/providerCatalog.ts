@@ -1,7 +1,8 @@
 import { privateJson, securityResponse } from "../security/errors";
 
 /** Configuration readiness is separate from provider approval or advertising readiness. */
-export function providerCatalog(env: NodeJS.ProcessEnv, configure: Record<"GOOGLE" | "META", () => unknown>) {
+export function providerCatalog(env: NodeJS.ProcessEnv, configure: Record<"GOOGLE" | "META", () => unknown>,
+  configureSocial: Partial<Record<"YOUTUBE" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "LINKEDIN" | "X", () => unknown>> = {}) {
   const mode = env.CONNECTION_MODE === "mock" || env.CONNECTION_MODE === "live"
     ? env.CONNECTION_MODE : "disabled";
   const paid = (["GOOGLE", "META"] as const).map((provider) => {
@@ -20,7 +21,11 @@ export function providerCatalog(env: NodeJS.ProcessEnv, configure: Record<"GOOGL
     { provider: "TIKTOK", label: "TikTok", enabled: false },
     { provider: "LINKEDIN", label: "LinkedIn", enabled: false },
     { provider: "X", label: "X", enabled: false },
-  ] };
+  ].map((platform) => {
+    const configure = configureSocial[platform.provider as keyof typeof configureSocial];
+    if (mode !== "disabled" && configure) { try { configure(); return { ...platform, enabled: true }; } catch {} }
+    return platform;
+  }) };
 }
 
 export async function handleProviderCatalog(request: Request) {
@@ -29,6 +34,7 @@ export async function handleProviderCatalog(request: Request) {
     await customerAuth().requireSession(request);
     const { googleConnectionService } = await import("./googleRuntime");
     const { metaConnectionService } = await import("./metaRuntime");
-    return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }));
+    const { youtubeConnectionService } = await import("./youtubeRuntime");
+    return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }, { YOUTUBE: youtubeConnectionService }));
   } catch (error) { return securityResponse(error); }
 }

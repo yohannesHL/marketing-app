@@ -22,3 +22,14 @@ test("catalog isolates partial provider configuration and strips configuration e
   assert.ok(result.paid.every((entry) => !entry.liveWritesEnabled));
   assert.equal(JSON.stringify(result).includes("private-oauth-token"), false);
 });
+
+
+test("social configuration enables only installed connection flows without claiming publication approval", () => {
+  const result = providerCatalog({ CONNECTION_MODE: "mock" }, { GOOGLE: () => ({}), META: () => ({}) }, {
+    YOUTUBE: () => ({}), FACEBOOK: () => { throw new Error("secret-provider-configuration"); },
+  });
+  assert.equal(result.social.find((p) => p.provider === "YOUTUBE")?.enabled, true);
+  assert.ok(result.social.filter((p) => p.provider !== "YOUTUBE").every((p) => !p.enabled));
+  assert.ok(result.paid.every((p) => !p.liveWritesEnabled));
+  assert.doesNotMatch(JSON.stringify(result), /secret-provider-configuration/);
+});

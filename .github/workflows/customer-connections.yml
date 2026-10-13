@@ -97,6 +97,7 @@ jobs:
           tests/e2e/ads-proxy.spec.ts
           tests/e2e/campaign-wizard.spec.ts
           tests/e2e/social-publishing.spec.ts
+          tests/e2e/youtube-connections.spec.ts
           --project=${{ matrix.browser }}
       - name: Retain fixture browser evidence
         if: ${{ !cancelled() }}
