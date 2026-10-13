@@ -85,4 +85,4 @@ Local cancellation is not provider cleanup. Use only the known owned receipt, cu
 
 ## Release decision
 
-Issue #17 still needs the consolidated exact-release QA result. Every live owner checkbox and the setup guide's platform approval/access/quota/billing/publication table remains open. A permitted live pilot needs its own exact content/destination approval and recorded outcome/cleanup; it is not authorized by this engineering packet. Keep issue #18 open until those external gates and release evidence are accepted. Mockoon results never authorize automatic live publication.
+The consolidated issue #17 QA result is recorded above; the documentation handoff still requires its own exact-head checks and release evidence. Every live owner checkbox and the setup guide's platform approval/access/quota/billing/publication table remains open. A permitted live pilot needs its own exact content/destination approval and recorded outcome/cleanup; it is not authorized by this engineering packet. Keep issue #18 open until those external gates and release evidence are accepted. Mockoon results never authorize automatic live publication.
