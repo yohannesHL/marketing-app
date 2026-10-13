@@ -1,0 +1,134 @@
+<testsuites id="" name="" tests="27" failures="0" skipped="0" errors="0" time="37.373518999999995">
+<testsuite name="ads-proxy.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="chromium" tests="2" failures="0" skipped="0" time="1.446" errors="0">
+<testcase name="ads proxy › persists execution logs for createCampaign and records downstream mock calls" classname="ads-proxy.spec.ts" time="0.301">
+</testcase>
+<testcase name="ads proxy › launching from the wizard triggers the unified ads proxy and shows the execution result" classname="ads-proxy.spec.ts" time="1.145">
+</testcase>
+</testsuite>
+<testsuite name="campaign-wizard.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="chromium" tests="4" failures="0" skipped="0" time="9.044" errors="0">
+<testcase name="campaign creation wizard › Given a marketer completes the guided workflow when launching a campaign then strategy guidance, estimates, editable creative, and launch confirmation are shown" classname="campaign-wizard.spec.ts" time="3.111">
+</testcase>
+<testcase name="campaign creation wizard › Given validation-sensitive wizard steps when required data is incomplete or changed then progression is gated and prior entries remain intact" classname="campaign-wizard.spec.ts" time="1.451">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|campaign-wizard-campaign-c-83fc1-prior-entries-remain-intact-chromium/attachments/invalid-audience-upload-bbfb04ecda9d965711d71bbd4a759c96da6d9485.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="campaign creation wizard › Given creative generation fails when the marketer requests AI assistance then the error is explicit and earlier campaign data is preserved" classname="campaign-wizard.spec.ts" time="1.913">
+</testcase>
+<testcase name="campaign creation wizard › Given launch submission fails once when the marketer is ready to publish then the review state stays visible and retry succeeds safely" classname="campaign-wizard.spec.ts" time="2.569">
+</testcase>
+</testsuite>
+<testsuite name="customer-connections.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="chromium" tests="1" failures="0" skipped="0" time="4.475" errors="0">
+<testcase name="customer signs in with a keyboard and manages isolated advertising permissions on mobile" classname="customer-connections.spec.ts" time="4.475">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-chromium/attachments/mobile-connections-google-9c594c6441e2e6b442ad28611a845db85bddcc7a.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-chromium/attachments/mobile-google-access-path-ac6a9070e0a0aecfd2b748e4eb289a4a125762df.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-chromium/attachments/desktop-connections-0458645af76b02136756ed1e553deb92dfe7f924.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-chromium/attachments/selected-account-readiness-d25a433cdc4e0cd4391c46fef7bdf0f40b44920b.png]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="customer-security.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="chromium" tests="1" failures="0" skipped="0" time="0.486" errors="0">
+<testcase name="customer sessions protect connections and mock execution ownership in the running app" classname="customer-security.spec.ts" time="0.486">
+</testcase>
+</testsuite>
+<testsuite name="home.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="chromium" tests="1" failures="0" skipped="0" time="0.727" errors="0">
+<testcase name="marketing home page › Given the default marketing workspace when the landing page loads then the official homepage guides users to the campaign wizard" classname="home.spec.ts" time="0.727">
+</testcase>
+</testsuite>
+<testsuite name="ads-proxy.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="firefox" tests="2" failures="0" skipped="0" time="3.276" errors="0">
+<testcase name="ads proxy › persists execution logs for createCampaign and records downstream mock calls" classname="ads-proxy.spec.ts" time="0.862">
+</testcase>
+<testcase name="ads proxy › launching from the wizard triggers the unified ads proxy and shows the execution result" classname="ads-proxy.spec.ts" time="2.414">
+</testcase>
+</testsuite>
+<testsuite name="campaign-wizard.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="firefox" tests="4" failures="0" skipped="0" time="14.725" errors="0">
+<testcase name="campaign creation wizard › Given a marketer completes the guided workflow when launching a campaign then strategy guidance, estimates, editable creative, and launch confirmation are shown" classname="campaign-wizard.spec.ts" time="4.606">
+</testcase>
+<testcase name="campaign creation wizard › Given validation-sensitive wizard steps when required data is incomplete or changed then progression is gated and prior entries remain intact" classname="campaign-wizard.spec.ts" time="2.238">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|campaign-wizard-campaign-c-83fc1-prior-entries-remain-intact-firefox/attachments/invalid-audience-upload-21799fe27b9f42eb99c2bd6bbdae96cae7db53e7.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="campaign creation wizard › Given creative generation fails when the marketer requests AI assistance then the error is explicit and earlier campaign data is preserved" classname="campaign-wizard.spec.ts" time="3.59">
+</testcase>
+<testcase name="campaign creation wizard › Given launch submission fails once when the marketer is ready to publish then the review state stays visible and retry succeeds safely" classname="campaign-wizard.spec.ts" time="4.291">
+</testcase>
+</testsuite>
+<testsuite name="customer-connections.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="firefox" tests="1" failures="0" skipped="0" time="6.027" errors="0">
+<testcase name="customer signs in with a keyboard and manages isolated advertising permissions on mobile" classname="customer-connections.spec.ts" time="6.027">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-firefox/attachments/mobile-connections-google-1dff49661c6c582418cebe76bfd490369b6aa3d9.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-firefox/attachments/mobile-google-access-path-a54747628585192f09e87ca05586adb0ff9935c6.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-firefox/attachments/desktop-connections-8864dc2b527ec5fa4056d9f64f1c7f19ec7bf0d4.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-firefox/attachments/selected-account-readiness-2559fd180eb874556d83e0fa45ff9595008338d2.png]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="customer-security.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="firefox" tests="1" failures="0" skipped="0" time="0.477" errors="0">
+<testcase name="customer sessions protect connections and mock execution ownership in the running app" classname="customer-security.spec.ts" time="0.477">
+</testcase>
+</testsuite>
+<testsuite name="home.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="firefox" tests="1" failures="0" skipped="0" time="0.95" errors="0">
+<testcase name="marketing home page › Given the default marketing workspace when the landing page loads then the official homepage guides users to the campaign wizard" classname="home.spec.ts" time="0.95">
+</testcase>
+</testsuite>
+<testsuite name="ads-proxy.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="webkit" tests="2" failures="0" skipped="0" time="2.254" errors="0">
+<testcase name="ads proxy › persists execution logs for createCampaign and records downstream mock calls" classname="ads-proxy.spec.ts" time="0.341">
+</testcase>
+<testcase name="ads proxy › launching from the wizard triggers the unified ads proxy and shows the execution result" classname="ads-proxy.spec.ts" time="1.913">
+</testcase>
+</testsuite>
+<testsuite name="campaign-wizard.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="webkit" tests="4" failures="0" skipped="0" time="11.641" errors="0">
+<testcase name="campaign creation wizard › Given a marketer completes the guided workflow when launching a campaign then strategy guidance, estimates, editable creative, and launch confirmation are shown" classname="campaign-wizard.spec.ts" time="3.716">
+</testcase>
+<testcase name="campaign creation wizard › Given validation-sensitive wizard steps when required data is incomplete or changed then progression is gated and prior entries remain intact" classname="campaign-wizard.spec.ts" time="1.769">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|campaign-wizard-campaign-c-83fc1-prior-entries-remain-intact-webkit/attachments/invalid-audience-upload-1768aada8cecaf83931001363107230276affac3.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="campaign creation wizard › Given creative generation fails when the marketer requests AI assistance then the error is explicit and earlier campaign data is preserved" classname="campaign-wizard.spec.ts" time="2.762">
+</testcase>
+<testcase name="campaign creation wizard › Given launch submission fails once when the marketer is ready to publish then the review state stays visible and retry succeeds safely" classname="campaign-wizard.spec.ts" time="3.394">
+</testcase>
+</testsuite>
+<testsuite name="customer-connections.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="webkit" tests="1" failures="0" skipped="0" time="5.218" errors="0">
+<testcase name="customer signs in with a keyboard and manages isolated advertising permissions on mobile" classname="customer-connections.spec.ts" time="5.218">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-webkit/attachments/mobile-connections-google-61f806bc09e308d77d86a213101e6bec5d0ba24c.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-webkit/attachments/mobile-google-access-path-6bb8a8aa4c03cc8cfe3ac8ba312985b97738835d.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-webkit/attachments/desktop-connections-f36cbe4fbae7fded3d1bf3e75f4f5e2ded7defd8.png]]
+
+[[ATTACHMENT|customer-connections-custo-5a1f2-ising-permissions-on-mobile-webkit/attachments/selected-account-readiness-549203884001bbe59e685f6bf5669ede547860ba.png]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="customer-security.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="webkit" tests="1" failures="0" skipped="0" time="0.454" errors="0">
+<testcase name="customer sessions protect connections and mock execution ownership in the running app" classname="customer-security.spec.ts" time="0.454">
+</testcase>
+</testsuite>
+<testsuite name="home.spec.ts" timestamp="2026-10-13T02:51:14.620Z" hostname="webkit" tests="1" failures="0" skipped="0" time="0.922" errors="0">
+<testcase name="marketing home page › Given the default marketing workspace when the landing page loads then the official homepage guides users to the campaign wizard" classname="home.spec.ts" time="0.922">
+</testcase>
+</testsuite>
+</testsuites>

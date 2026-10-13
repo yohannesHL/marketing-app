@@ -5,7 +5,7 @@ import {
   type PlatformEstimateResponse,
   type SupportedPlatform,
 } from "@launchpad/core";
-import { Grid, SelectableCard, Stack, Typography } from "@launchpad/ui";
+import { Alert, Card, Grid, SelectableCard, Stack, Typography } from "@launchpad/ui";
 
 type PlatformInfo = {
   icon: string;
@@ -72,6 +72,7 @@ export function PlatformSelectionStep({
               icon={<span className="text-2xl">{info.icon}</span>}
               title={info.name}
               selected={isSelected}
+              aria-pressed={isSelected}
               meta={
                 <span className="flex gap-3 text-base-content/60">
                   <span>Reach: {info.reach}</span>
@@ -83,6 +84,32 @@ export function PlatformSelectionStep({
           );
         })}
       </Grid>
+      {selectedPlatforms.length > 0 && (
+        <Card data-testid="platform-estimates" aria-busy={isLoading}>
+          <Stack gap={3}>
+            <Typography className="font-semibold">Estimated traffic</Typography>
+            {isLoading ? (
+              <Typography role="status" tone="muted">Calculating platform estimates…</Typography>
+            ) : error ? (
+              <Alert title="Platform estimates unavailable" tone="danger">
+                {error} Update your platform selection to request new estimates.
+              </Alert>
+            ) : estimate ? (
+              <>
+                <Typography tone="muted" className="text-sm">{estimate.summary}</Typography>
+                <Grid minItemWidth="14rem">
+                  {estimate.platforms.map((platform) => (
+                    <div key={platform.platform}>
+                      <Typography className="font-semibold">{platform.platform}: {platform.estimatedTraffic.toLocaleString()} visits</Typography>
+                      <Typography tone="muted" className="text-sm">{platform.rationale}</Typography>
+                    </div>
+                  ))}
+                </Grid>
+              </>
+            ) : null}
+          </Stack>
+        </Card>
+      )}
     </Stack>
   );
 }

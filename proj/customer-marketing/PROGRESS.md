@@ -7,8 +7,8 @@ Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 reviewed i
 | [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Merged; 14 security regressions pass; fresh migrations/build pass | [#19](https://github.com/yohannesHL/marketing-app/pull/19) |
 | [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented and independently reviewed; 37 tests and build pass | [#20](https://github.com/yohannesHL/marketing-app/pull/20) |
 | [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Implemented and reviewed; 60 exact-snapshot tests/build pass | [#21](https://github.com/yohannesHL/marketing-app/pull/21) |
-| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Implemented; 82 provider/security tests, build and three-browser journey pass; awaiting review | Pending |
-| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Six read-only pilot CLI regressions and CI/rollback guide prepared; live checks remain unavailable | — |
+| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Implemented; 82 provider/security tests, build and three-browser journey pass; awaiting independent review | [#22](https://github.com/yohannesHL/marketing-app/pull/22) |
+| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Implemented; 88 backend tests and 27 app-browser cases pass; live checks remain unavailable | Pending |
 | [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Planned | — |
 | [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Planned | — |
 | [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | Planned | — |
@@ -42,3 +42,10 @@ Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 reviewed i
 - Concurrent same-provider accounts retain distinct bearer/account contexts; provider failures yield sanitized per-account outcomes.
 - All 88 current backend tests pass (82 in #6; six pilot CLI tests reserved for #7); production build and fresh Prisma CLI migration deploy pass. Browser connect/select/read/reconnect/disconnect journeys pass in Chromium, Firefox and WebKit.
 - Live campaign/asset writes remain disabled. The legacy advertising wizard is explicitly labeled a demo, and live mode cannot reach simulated create success.
+
+## Controlled rollout QA
+
+- All 27 active app journeys pass across Chromium, Firefox and WebKit; no skipped scenario is counted as passing evidence.
+- The read-only pilot CLI was exercised against the actual temporary application and both Mockoon providers: two explicit selected accounts read successfully, mode mock, writes disabled.
+- CI uses pinned official action revisions, fresh Prisma migrations, security tests and the same five app spec files across three browsers.
+- Pilot live reads, write-probe idempotency, paused creation/cleanup and platform reviews remain explicitly unperformed. Connection-only readiness is the delivered scope.

@@ -1,0 +1,22 @@
+{
+  "mode": "mock",
+  "writesEnabled": false,
+  "success": true,
+  "partial": false,
+  "outcomes": [
+    {
+      "destinationId": "cmv6300ux0004hqsbfhlhqpmv",
+      "provider": "GOOGLE",
+      "success": true,
+      "canRead": true,
+      "canWrite": "DISABLED"
+    },
+    {
+      "destinationId": "cmv6301zw000phqsbywoa1smq",
+      "provider": "META",
+      "success": true,
+      "canRead": true,
+      "canWrite": "DISABLED"
+    }
+  ]
+}

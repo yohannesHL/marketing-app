@@ -19,3 +19,5 @@
 - Security integration tests: `npm run test:security`
 
 Customer account settings and environment behavior: [connection settings](docs/customer-connection-settings.md).
+
+Controlled connection-only rollout, read-only pilot checks and rollback: [operator guide](docs/paid-ads-rollout.md).

@@ -5,7 +5,7 @@ import {
   type CampaignGoal,
   type GoalStrategyResponse,
 } from "@launchpad/core";
-import { Grid, Input, SelectableCard, Stack, Typography } from "@launchpad/ui";
+import { Alert, Card, Grid, Input, SelectableCard, Stack, Typography } from "@launchpad/ui";
 
 import type { GoalSelection } from "./state";
 
@@ -74,12 +74,35 @@ export function CampaignGoalStep({
               title={campaignGoal}
               description={goalDescriptions[campaignGoal]}
               selected={goal === campaignGoal}
+              aria-pressed={goal === campaignGoal}
               recommendation={goalRecommendations[campaignGoal]}
               onSelect={() => onGoalChange(campaignGoal)}
             />
           ))}
         </Grid>
       </div>
+      {goal && (
+        <Card data-testid="goal-guidance" aria-busy={isLoading}>
+          <Stack gap={3}>
+            <Typography className="font-semibold">Strategy guidance</Typography>
+            {isLoading ? (
+              <Typography role="status" tone="muted">Loading guidance for {goal}…</Typography>
+            ) : error ? (
+              <Alert title="Strategy guidance unavailable" tone="danger">
+                {error} Choose another goal to request new guidance.
+              </Alert>
+            ) : goalStrategy ? (
+              <>
+                <Typography>{goalStrategy.goal}: {goalStrategy.headline}</Typography>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-base-content/70">
+                  {goalStrategy.guidance.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+                <Typography tone="muted">Recommended objective: {goalStrategy.recommendedObjective}</Typography>
+              </>
+            ) : null}
+          </Stack>
+        </Card>
+      )}
     </Stack>
   );
 }

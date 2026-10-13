@@ -1,11 +1,13 @@
 import type { FactoryTracker } from "../types";
 
 export type CampaignWizardSeed = {
+  campaignName: string;
   goal: "Product Launch" | "Brand Awareness" | "Lead Generation" | "Traffic";
   location: string;
-  ageRange: string;
-  gender: "Any" | "Women" | "Men" | "Non-binary";
-  interests: string;
+  minAge: string;
+  maxAge: string;
+  gender: "All" | "Women" | "Men" | "Non-binary";
+  interests: string[];
   industry: string;
   jobTitles: string;
   dailyBudget: string;
@@ -27,10 +29,12 @@ export function createCampaignWizardSeed(
 ): CampaignWizardSeed {
   const seed: CampaignWizardSeed = {
     goal: "Product Launch",
+    campaignName: "Guided product launch",
     location: "United States",
-    ageRange: "25-34",
-    gender: "Any",
-    interests: "Product marketing, lifecycle campaigns, growth strategy",
+    minAge: "25",
+    maxAge: "34",
+    gender: "All",
+    interests: ["Technology", "SaaS", "Marketing"],
     industry: "Software",
     jobTitles: "Marketing Director, Growth Manager, Demand Generation Lead",
     dailyBudget: "250",
@@ -39,7 +43,7 @@ export function createCampaignWizardSeed(
     editedHeadline: "Launch faster with a campaign plan your team can trust",
     editedDescription: "Shape audience targeting, budgets, and channel mix before you go live.",
     editedAdCopy: "Turn your next release into a measurable launch with clear strategy guidance and confident creative.",
-    selectedPlatforms: ["Google", "Meta", "LinkedIn"],
+    selectedPlatforms: ["Google", "Meta", "TikTok"],
     customAudienceFileName: "launch-audience.csv",
     customAudienceContents: "email\nalex@example.com\nmorgan@example.com\n",
     invalidAudienceFileName: "launch-audience.pdf",

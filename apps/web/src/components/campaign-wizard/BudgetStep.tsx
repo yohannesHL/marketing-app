@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Grid, Input, Stack, Typography } from "@launchpad/ui";
+import { Alert, Card, Grid, Input, Stack, Typography } from "@launchpad/ui";
 
 import type { BudgetRecommendationResponse } from "@launchpad/core";
 
@@ -74,7 +74,7 @@ export function BudgetStep({
         />
       </Grid>
 
-      <Card className="bg-base-200/50" data-testid="budget-insights">
+      <Card className="bg-base-200/50" data-testid="budget-insights" aria-busy={isLoading}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -102,7 +102,13 @@ export function BudgetStep({
             </div>
           </div>
 
-          {insight && (
+          {isLoading ? (
+            <Typography role="status" tone="muted">Calculating budget recommendations…</Typography>
+          ) : error ? (
+            <Alert title="Budget recommendations unavailable" tone="danger">
+              {error} Update your budget to request new recommendations.
+            </Alert>
+          ) : insight ? (
             <div className="border-t border-base-300 pt-4">
               <Grid minItemWidth="10rem">
                 <div>
@@ -123,7 +129,7 @@ export function BudgetStep({
                 </div>
               </Grid>
             </div>
-          )}
+          ) : null}
         </div>
       </Card>
     </Stack>
