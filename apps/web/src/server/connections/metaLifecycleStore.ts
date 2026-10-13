@@ -74,8 +74,11 @@ export class MetaLifecycleStore {
     } });
     if (grants.length)
       await tx.oAuthAttempt.updateMany({ where: { consumedAt: null, createdAt: { lte: identity.occurredAt },
-        OR: grants.map((g) => ({ userId: g.userId, provider: g.provider, capability: g.capability })),
-      }, data: { consumedAt: identity.now, verifierCiphertext: null } });
+        reconnectAuthorizationId: { in: ids },
+      }, data: { consumedAt: identity.now, verifierCiphertext: null, exchangeClaimHash: null } });
+    // Unbound consent has no verified provider subject yet. The subject/mode
+    // fence checked at completion prevents revoked consent from returning,
+    // while other identities' pending attempts remain usable.
     await tx.connectionDestination.updateMany({ where: { authorizationId: { in: ids } }, data: { selected: false } });
     await tx.connectionOperation.updateMany({ where: {
       destination: { authorizationId: { in: ids } }, status: { in: ["PENDING", "RUNNING"] },

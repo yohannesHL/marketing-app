@@ -56,4 +56,40 @@ test("second-resolution revocation fences an earlier pending callback with fract
   await assert.rejects(connections.completeAuthorization(owner, attempt.state, oauth, grant), { code: "PROVIDER_REVOKED" });
 });
 
+test("provider removal cancels only reconnects to its subject and mode, preserving independent pending consent", async () => {
+  const owner = await principal("independent-pending-consent");
+  const grants = [
+    { ...grant, providerUserId: "4101", externalGrantId: "4101" },
+    { ...grant, providerUserId: "4202", externalGrantId: "4202" },
+    { ...grant, providerUserId: "4303", externalGrantId: "4303", connectionMode: "LIVE" as const },
+  ];
+  const pending = [];
+  for (const verified of grants) {
+    const start = await connections.beginOAuth(owner, oauth);
+    const connection = await connections.completeAuthorization(owner, start.state, oauth, verified);
+    const reconnect = await connections.beginOAuth(owner, { ...oauth, reconnectAuthorizationId: connection.id });
+    pending.push({ connection, reconnect, verified });
+  }
+  const freshRevoked = await connections.beginOAuth(owner, oauth);
+  const freshIndependent = await connections.beginOAuth(owner, oauth);
+  await lifecycle.deauthorize("4101", { eventId: digest("targeted-pending-removal"),
+    issuedAt: Math.floor(clock.getTime() / 1000) });
+  await assert.rejects(connections.getOAuthExchangeContext(owner, pending[0].reconnect.state, oauth),
+    { code: "INVALID_OAUTH_STATE" });
+  for (const independent of pending.slice(1)) {
+    assert.equal((await connections.get(owner, independent.connection.id)).status, "CONNECTED");
+    const claim = await connections.claimOAuthExchange(owner, independent.reconnect.state, oauth);
+    const completed = await connections.completeAuthorization(owner, independent.reconnect.state, oauth,
+      independent.verified, claim.exchangeClaimToken);
+    assert.equal(completed.id, independent.connection.id);
+    assert.equal(completed.status, "CONNECTED");
+  }
+  // An unbound attempt has no verified subject yet; the completion fence checks
+  // the eventual subject without invalidating unrelated new consent.
+  await assert.rejects(connections.completeAuthorization(owner, freshRevoked.state, oauth, grants[0]),
+    { code: "PROVIDER_REVOKED" });
+  assert.equal((await connections.completeAuthorization(owner, freshIndependent.state, oauth,
+    { ...grant, providerUserId: "4404", externalGrantId: "4404" })).status, "CONNECTED");
+});
+
 after(async () => { await db?.$disconnect(); if (directory) await rm(directory, { recursive: true, force: true }); });
