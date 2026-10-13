@@ -100,8 +100,9 @@ Run `npm --workspace @launchpad/web run security:prune` periodically to delete e
 ## Key rotation
 
 1. Add a new random key while retaining old keys; update the active ID.
-2. During maintenance, run `npm --workspace @launchpad/web run security:rotate-keys`. It transactionally reencrypts current grant credentials, unexpired/stored PKCE verifiers and migrated legacy token columns; credential versions advance so stale refreshes are rejected.
-3. Verify provider connections and database restore procedures before retiring an old key. Preserve old keys for retained backups that still require them.
+2. Before rewriting ciphertext, reload/restart every web and worker instance with the combined old-and-new keyring and the new active ID. Stop affected continuous workers and use a maintenance window so no process retains an obsolete keyring.
+3. During maintenance, run `npm --workspace @launchpad/web run security:rotate-keys`. It transactionally reencrypts current grant credentials, unexpired/stored PKCE verifiers and migrated legacy token columns; credential versions advance so stale refreshes are rejected.
+4. Verify provider connections and database restore procedures, and confirm rotation reports no unavailable records, before retiring an old key. Preserve old keys for retained backups that still require them.
 
 Losing required keys prevents decryption; reconnecting may restore provider access, but does not recover historical encrypted data. Keep key material in the agreed secret store.
 
@@ -116,4 +117,4 @@ No provider network request is part of issue #3, so Mockoon is not required here
 
 ## Runtime baseline
 
-The foundation uses Next.js 15.5.27 with its matching ESLint configuration. Next 14 is outside the supported security line; the upgrade includes asynchronous dynamic-route parameters and is verified with the application build and browser tests. See [Next.js security release](https://nextjs.org/blog/august-2026-security-release) and [Next 15 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-15). The application uses the libSQL Prisma adapter; the unused native `sqlite3` package has been removed.
+The foundation uses Next.js 15.5.27 with its matching ESLint configuration. Next 14 is outside the supported security line; the upgrade includes asynchronous dynamic-route parameters and is verified with the application build and browser tests. See [Next.js security release](https://nextjs.org/blog/august-2026-security-release) and [Next 15 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-15). The application retains the libSQL Prisma mapping. Persistent local files use explicitly owned built-in SQLite connections on Node 24.16.0 or a later Node 24 release to release failed and finished transactions; remote and in-memory clients retain libSQL handling. See [storage operations](social-delivery.md). The unused native `sqlite3` package has been removed.
