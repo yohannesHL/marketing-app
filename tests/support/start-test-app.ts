@@ -1,3 +1,4 @@
+import { applyConnectionMigrations } from "./test-database";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -13,15 +14,7 @@ async function main() {
   const url = `file:${join(directory, "test.db")}`;
   const origin = process.env.BASE_URL ?? "http://127.0.0.1:3000";
   const client = createClient({ url });
-  await client.executeMultiple(
-    await readFile("tests/fixtures/legacy-account-schema.sql", "utf8"),
-  );
-  await client.executeMultiple(
-    await readFile(
-      "apps/web/prisma/migrations/20261013000000_customer_connections/migration.sql",
-      "utf8",
-    ),
-  );
+  await applyConnectionMigrations(client);
   client.close();
   const db = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
   const auth = new CustomerAuth(db, { origin });

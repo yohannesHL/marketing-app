@@ -1,3 +1,4 @@
+import { applyConnectionMigrations } from "../support/test-database";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -28,15 +29,7 @@ before(async () => {
   directory = await mkdtemp(join(tmpdir(), "launchpad-security-"));
   const url = `file:${join(directory, "test.db")}`;
   const client = createClient({ url });
-  await client.executeMultiple(
-    await readFile("tests/fixtures/legacy-account-schema.sql", "utf8"),
-  );
-  await client.executeMultiple(
-    await readFile(
-      "apps/web/prisma/migrations/20261013000000_customer_connections/migration.sql",
-      "utf8",
-    ),
-  );
+  await applyConnectionMigrations(client);
   client.close();
   db = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
   auth = new CustomerAuth(

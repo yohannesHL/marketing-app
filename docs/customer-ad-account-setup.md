@@ -2,7 +2,7 @@
 
 This guide covers the business setup Yohannes needs to complete and the engineering work required before customers can connect Google Ads and Meta ad accounts to LaunchPad. Customers keep ownership and billing of their ad accounts. Connecting an account must not start advertising or spend money.
 
-Status: implementation planned; the current campaign launch flow uses simulated accounts. Callback paths and configuration names below are proposed contracts for the implementation, not endpoints that work today. Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
+Status: the shared security foundation is implemented, and Google connection endpoints are implemented with Mockoon validation. Meta connection integration, the connection UI and live campaign execution are tracked separately. The current campaign launch flow uses simulated accounts. Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
 
 ## What you can set up now
 
@@ -57,27 +57,29 @@ Source: [Meta's official Marketing API collection and permissions guidance](http
 - Read-only campaign/report checks and a narrowly scoped paused-campaign test. Full creative publishing, automated optimization, conversion tracking, and other platforms are separate work.
 - A reviewer demonstration, pilot instructions, documented rollback, and sanitized validation evidence.
 
-## Proposed configuration contract
+## Configuration contract
 
-Engineering must confirm these names and paths in the implementation and keep this table synchronized with the example environment file. Replace `APP_ORIGIN` with each agreed HTTPS app origin; it is not a literal hostname.
+Google names and its callback below are implemented. Meta settings remain planned until #5. Keep this table synchronized with the example environment file. Replace `APP_ORIGIN` with each agreed HTTPS app origin; it is not a literal hostname.
 
 | Setting | Value or responsibility |
 | --- | --- |
 | `APP_ORIGIN` | Engineering configures the selected app origin for each environment |
-| `GOOGLE_ADS_CLIENT_ID` | You create the web OAuth client; engineering installs its ID |
-| `GOOGLE_ADS_CLIENT_SECRET` | You place the client secret in the agreed secret store |
-| `GOOGLE_ADS_REDIRECT_URI` | Proposed: `APP_ORIGIN/api/connections/google/callback` |
+| `GOOGLE_CLIENT_ID` | You create the web OAuth client; engineering installs its ID |
+| `GOOGLE_CLIENT_SECRET` | You place the client secret in the agreed secret store |
+| Google callback (derived) | `APP_ORIGIN/api/connections/google/callback`; register this exact URL |
 | `META_APP_ID` | You create the Meta application; engineering installs its ID |
 | `META_APP_SECRET` | You place the app secret in the agreed secret store |
 | `META_LOGIN_CONFIG_ID` | Only if required by the chosen Meta business login flow |
 | `META_REDIRECT_URI` | Proposed: `APP_ORIGIN/api/connections/meta/callback` |
 | `CONNECTION_TOKEN_KEYS` | Implemented foundation: server keyring JSON mapping IDs to base64 32-byte keys |
 | `CONNECTION_ACTIVE_KEY_ID` | Implemented foundation: ID of the key used for new credential encryption |
-| `ADS_MODE` | Proposed values: `mock` or `live`; server-controlled, never chosen by a request |
+| `CONNECTION_MODE` | `mock` or `live` for provider OAuth/discovery; no fallback |
+| `GOOGLE_ADS_MOCKOON_URL` | Loopback Mockoon origin, used only in explicit mock mode |
+| `ADS_MODE` | Existing campaign execution: mock; live execution remains gated for #6/#7 |
 
 Engineering also provides exact Meta data deletion and deauthorization callback URLs before you register them. Separate test and production credentials wherever supported. No secret setting may use a browser-exposed `NEXT_PUBLIC_` variable.
 
-The shared session/credential foundation is documented in [Customer sessions and secure connections](customer-connection-foundation.md). That guide supplies the implemented configuration and migration commands; provider-specific callbacks above remain proposed until their integration issues are completed.
+The shared session/credential foundation is documented in [Customer sessions and secure connections](customer-connection-foundation.md). That guide supplies the implemented configuration and migration commands; [Google connection setup](google-ads-connection.md) documents implemented endpoints, manager selection and local Mockoon commands. Meta paths remain planned until its integration issue is completed.
 
 ## What each pilot customer needs
 
