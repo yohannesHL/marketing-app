@@ -84,13 +84,6 @@ export async function handleAdsRoute(action: string, request: Request) {
     const auth = customerAuth();
     const principal = await auth.requireSession(request);
     if (request.method !== "GET") auth.assertOrigin(request);
-    if (process.env.ADS_MODE !== "mock") {
-      fail(
-        "LIVE_ADS_UNAVAILABLE",
-        503,
-        "Live advertising will be enabled after provider integration validation.",
-      );
-    }
     if (request.method === "GET" && action === "executions") {
       const url = new URL(request.url);
       const executionId = url.searchParams.get("id");
@@ -115,6 +108,11 @@ export async function handleAdsRoute(action: string, request: Request) {
       }
 
       return privateJson(redact(execution));
+    }
+
+    if (process.env.ADS_MODE !== "mock" || process.env.CONNECTION_MODE === "live") {
+      fail("LIVE_ADS_UNAVAILABLE", 503,
+        "Live advertising will be enabled after provider integration validation.");
     }
 
     if (request.method !== "POST") {

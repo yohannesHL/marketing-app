@@ -1635,6 +1635,296 @@
       "responseMode": null,
       "streamingMode": null,
       "streamingInterval": 0
+    },
+    {
+      "uuid": "efd6ad89-aac3-488a-bbea-402e64dc7e73",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_111/campaigns",
+      "responses": [
+        {
+          "uuid": "0103cb44-39d6-4a49-bdf4-5b3a18acb4ae",
+          "body": "{\"data\":[{\"id\":\"9001\",\"account_id\":\"111\",\"name\":\"Account 111 paused campaign\",\"status\":\"PAUSED\",\"effective_status\":\"PAUSED\",\"objective\":\"OUTCOME_TRAFFIC\",\"special_ad_categories\":[]}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "084bc889-c492-4f17-8a7a-c9c8e40d59d1",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_222/campaigns",
+      "responses": [
+        {
+          "uuid": "7e0c6155-8a73-4e85-b579-d2e81bfe9b8f",
+          "body": "{\"data\":[{\"id\":\"9002\",\"account_id\":\"222\",\"name\":\"Account 222 paused campaign\",\"status\":\"PAUSED\",\"effective_status\":\"PAUSED\",\"objective\":\"OUTCOME_TRAFFIC\",\"special_ad_categories\":[]}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "63591d5a-aa04-4fb8-a587-d865adcf6b3d",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_444",
+      "responses": [
+        {
+          "uuid": "08653b49-2a73-41f3-bb1e-d4ffbd2fa0da",
+          "body": "{\"id\": \"act_444\", \"account_id\": \"444\", \"name\": \"Isolated 444\", \"currency\": \"USD\", \"timezone_name\": \"UTC\", \"account_status\": 1, \"user_tasks\": [\"ADVERTISE\"]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "Authorization",
+              "value": "Bearer routing-token-a",
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "80752455-af45-487d-b357-433f42c7b902",
+          "body": "{\"error\": {\"code\": 200, \"message\": \"raw fixture credential denial\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "e69d3818-8a51-41ee-9b15-b38dbe216d76",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_444/campaigns",
+      "responses": [
+        {
+          "uuid": "a5ae5971-6b4d-4956-a376-ccedd9efd909",
+          "body": "{\"data\": [{\"id\": \"9444\", \"account_id\": \"444\", \"name\": \"Isolated campaign 444\", \"status\": \"PAUSED\", \"effective_status\": \"PAUSED\", \"objective\": \"OUTCOME_TRAFFIC\", \"special_ad_categories\": []}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "Authorization",
+              "value": "Bearer routing-token-a",
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1bb0b648-c0cd-4992-9f38-05bd93369bed",
+          "body": "{\"error\": {\"code\": 200, \"message\": \"raw fixture credential denial\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "a9afcbb8-ce86-4a76-9bf0-53bb64f18b83",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_555",
+      "responses": [
+        {
+          "uuid": "1c649385-6c58-46d6-bbec-b2d260dc09dc",
+          "body": "{\"id\": \"act_555\", \"account_id\": \"555\", \"name\": \"Isolated 555\", \"currency\": \"USD\", \"timezone_name\": \"UTC\", \"account_status\": 1, \"user_tasks\": [\"ADVERTISE\"]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "Authorization",
+              "value": "Bearer routing-token-b",
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "60f1f447-283b-409e-9693-23379bc6d4be",
+          "body": "{\"error\": {\"code\": 200, \"message\": \"raw fixture credential denial\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "9d47095a-d78b-420d-ac68-faf72045dca7",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/act_555/campaigns",
+      "responses": [
+        {
+          "uuid": "2b7fc2b2-1b31-4479-bba7-4cac1fa4648d",
+          "body": "{\"data\": [{\"id\": \"9555\", \"account_id\": \"555\", \"name\": \"Isolated campaign 555\", \"status\": \"PAUSED\", \"effective_status\": \"PAUSED\", \"objective\": \"OUTCOME_TRAFFIC\", \"special_ad_categories\": []}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "Authorization",
+              "value": "Bearer routing-token-b",
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8bd9f970-5fe7-4b98-ab7d-33cb1954d488",
+          "body": "{\"error\": {\"code\": 200, \"message\": \"raw fixture credential denial\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
     }
   ],
   "rootChildren": [
@@ -1685,6 +1975,14 @@
     {
       "type": "route",
       "uuid": "a73a0534-3e9e-479e-aa21-d2f6dc33fd67"
+    },
+    {
+      "type": "route",
+      "uuid": "efd6ad89-aac3-488a-bbea-402e64dc7e73"
+    },
+    {
+      "type": "route",
+      "uuid": "084bc889-c492-4f17-8a7a-c9c8e40d59d1"
     }
   ],
   "proxyMode": false,

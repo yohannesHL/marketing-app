@@ -327,9 +327,29 @@ test("manager selection is reverified and retained through queued operation cont
     assert.deepEqual(credentials.selectedContext, { loginCustomerId: "200" });
     assert.equal(credentials.connectionMode, "MOCK");
   });
-  // The fixture intentionally gives root 200 a report-role denial. Never silently
-  // switch to root 100: explicit customer context must be preserved on errors.
-  await assert.rejects(service.readSmoke(owner.principal, result.connection.id, account.id), { code: "PROVIDER_PERMISSION_DENIED" });
+  assert.equal((await service.readSmoke(owner.principal, result.connection.id, account.id)).canRead, true);
+  // A separate real HTTP fixture simulates report-role loss for the selected
+  // root. The service must report it rather than switching to another root.
+  const fixture = JSON.parse(await readFile("tests/mockoon/google-ads.json", "utf8"));
+  for (const route of fixture.routes) {
+    for (const response of route.responses) {
+      if (!["Campaign report first page", "Campaign report second page"].includes(response.label)) continue;
+      for (const rule of response.rules) {
+        if (rule.target === "header" && rule.modifier === "login-customer-id") rule.value = "^100$";
+      }
+    }
+  }
+  const filename = join(directory, "report-role-loss.json");
+  await writeFile(filename, JSON.stringify(fixture));
+  const denied = await startMockoon(filename);
+  try {
+    const deniedClient = new GoogleAdsClient({ clientId: "mock-google-client", clientSecret: "mock-client-secret",
+      redirectUri: `${origin}/api/connections/google/callback`, mockoonEnabled: true, mockoonBaseUrl: denied.origin }, () => clock);
+    const deniedService = new GoogleConnectionService(auth, connections, state, deniedClient, "mock", () => clock);
+    await assert.rejects(deniedService.readSmoke(owner.principal, result.connection.id, account.id), { code: "PROVIDER_PERMISSION_DENIED" });
+    const current = await connections.get(owner.principal, result.connection.id);
+    assert.deepEqual(current.destinations.find((item) => item.id === account.id)?.selectedContext, { loginCustomerId: "200" });
+  } finally { await denied.stop(); }
   await service.selectAccount(owner.principal, result.connection.id, account.id, "100");
   assert.equal((await service.readSmoke(owner.principal, result.connection.id, account.id)).canRead, true);
 });

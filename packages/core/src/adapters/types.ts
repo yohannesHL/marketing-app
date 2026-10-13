@@ -171,6 +171,7 @@ export interface ReportQuery {
 
 export interface PlatformExecutionResult<T> {
   platform: Platform;
+  accountId?: string;
   success: boolean;
   data?: T;
   error?: {

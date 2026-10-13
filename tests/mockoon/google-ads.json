@@ -52,6 +52,38 @@
       "endpoint": "o/oauth2/v2/auth",
       "responses": [
         {
+          "uuid": "7d8909ca-22ab-436b-aca0-50783c1b97a5",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Fixture denied consent redirect",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?error=access_denied&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fixture_consent",
+              "value": "denied",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
           "uuid": "79ceadef-4058-4460-b9be-ecaf5756d740",
           "body": "",
           "latency": 0,
@@ -1640,9 +1672,9 @@
             {
               "target": "header",
               "modifier": "login-customer-id",
-              "value": "100",
+              "value": "^(100|200)$",
               "invert": false,
-              "operator": "equals"
+              "operator": "regex"
             },
             {
               "target": "body",
@@ -1700,9 +1732,9 @@
             {
               "target": "header",
               "modifier": "login-customer-id",
-              "value": "100",
+              "value": "^(100|200)$",
               "invert": false,
-              "operator": "equals"
+              "operator": "regex"
             },
             {
               "target": "body",

@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 
 import {
   campaignWizardSteps,
   type CampaignGoal,
   type SupportedPlatform,
 } from "@launchpad/core";
-import { Button, Container, Divider, Stack, Stepper } from "@launchpad/ui";
+import { Alert, Button, Container, Divider, Stack, Stepper } from "@launchpad/ui";
 
 import {
   fetchAudienceEstimate,
@@ -49,7 +50,7 @@ const stepDescriptions = [
 
 const budgetFields = ["dailyBudget", "durationInDays", "totalBudget"] as const;
 
-export function CampaignCreationWizard() {
+export function CampaignCreationWizard({ demoEnabled = false }: { demoEnabled?: boolean }) {
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
   const [formState, setFormState] = React.useState<CampaignWizardFormState>(
     initialCampaignWizardFormState,
@@ -472,6 +473,7 @@ export function CampaignCreationWizard() {
   };
 
   const handleLaunchCampaign = async () => {
+    if (!demoEnabled) return;
     if (
       !hasStepOneReady(formState.goal) ||
       toAudienceTargetingInput(formState.audience) === null ||
@@ -515,6 +517,12 @@ export function CampaignCreationWizard() {
     <main className="py-8" data-testid="campaign-wizard">
       <Container>
         <Stack gap={8}>
+          <Alert title={demoEnabled ? "Advertising demo" : "Campaign publishing unavailable"} tone="info">
+            {demoEnabled
+              ? "This wizard runs simulated advertising requests. It does not create or activate ads in customer accounts."
+              : "Connect and check your accounts in settings. Campaign publishing will be available after provider validation."}
+            {" "}<Link className="underline" href="/connections">Manage customer connections</Link>
+          </Alert>
           <Stepper
             currentStep={currentStepIndex}
             steps={campaignWizardSteps.map((step, index) => ({
@@ -559,6 +567,7 @@ export function CampaignCreationWizard() {
           <Divider />
 
           <WizardFooter
+            demoEnabled={demoEnabled}
             canContinue={canContinue}
             currentStepIndex={currentStepIndex}
             isLastStep={currentStepIndex === campaignWizardSteps.length - 1}
@@ -580,6 +589,7 @@ export function CampaignCreationWizard() {
 }
 
 function WizardFooter({
+  demoEnabled,
   currentStepIndex,
   canContinue,
   isLastStep,
@@ -588,6 +598,7 @@ function WizardFooter({
   onContinue,
   onLaunch,
 }: {
+  demoEnabled: boolean;
   currentStepIndex: number;
   canContinue: boolean;
   isLastStep: boolean;
@@ -622,6 +633,7 @@ function WizardFooter({
       </Button>
       {isLastStep ? (
         <Button
+          disabled={!demoEnabled}
           onClick={() => void onLaunch()}
           loading={isLaunching}
           leadingIcon={

@@ -172,24 +172,24 @@ function buildRegistry(
   const registry = new AdapterRegistry();
 
   if (invocationByPlatform.has("GOOGLE"))
-    registry.register(
-      new MockGoogleAdsAdapter({
+    registry.registerFactory("GOOGLE",
+      () => new MockGoogleAdsAdapter({
         invocationId: invocationByPlatform.get("GOOGLE")!.id,
         operation,
         cookie,
       }),
     );
   if (invocationByPlatform.has("META"))
-    registry.register(
-      new MockMetaAdsAdapter({
+    registry.registerFactory("META",
+      () => new MockMetaAdsAdapter({
         invocationId: invocationByPlatform.get("META")!.id,
         operation,
         cookie,
       }),
     );
   if (invocationByPlatform.has("TIKTOK"))
-    registry.register(
-      new MockTikTokAdsAdapter({
+    registry.registerFactory("TIKTOK",
+      () => new MockTikTokAdsAdapter({
         invocationId: invocationByPlatform.get("TIKTOK")!.id,
         operation,
         cookie,

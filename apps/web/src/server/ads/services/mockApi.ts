@@ -14,7 +14,7 @@ export async function handleMockAds(request: Request, platform: string) {
     const auth = customerAuth();
     const principal = await auth.requireSession(request);
     auth.assertOrigin(request);
-    if (process.env.ADS_MODE !== "mock")
+    if (process.env.ADS_MODE !== "mock" || process.env.CONNECTION_MODE === "live")
       fail("MOCK_DISABLED", 404, "Endpoint not found.");
     const invocationId = request.headers.get("x-ads-invocation-id");
     const invocation = invocationId

@@ -101,6 +101,34 @@ export class ProviderConnectionState {
     });
   }
 
+  async recordGoogleAccount(principal: CustomerPrincipal, id: string, version: number,
+    destinationId: string, account: DiscoveredAccount) {
+    await this.auth.assertSession(principal);
+    await this.db.$transaction(async (tx) => {
+      const destination = await tx.connectionDestination.findFirst({ where: {
+        id: destinationId, authorizationId: id, externalId: account.externalId, kind: "AD_ACCOUNT",
+        authorization: { userId: principal.userId, provider: "GOOGLE", capability: "ADS",
+          status: "CONNECTED", credentialVersion: version },
+      } });
+      if (!destination) fail("STALE_CREDENTIALS", 409, "The account changed during its access check.");
+      const context = destination.selectedContext as { loginCustomerId?: string | null } | null;
+      const retained = !!context && account.metadata.contexts?.some((item) => item.loginCustomerId === context.loginCustomerId);
+      const available = account.available && account.metadata.manager !== true && account.metadata.status === "ENABLED";
+      const invalidated = !available || !retained;
+      await tx.connectionDestination.update({ where: { id: destinationId }, data: {
+        name: account.name, currency: account.currency, timezone: account.timezone,
+        available, lastCheckedAt: this.now(),
+        metadata: { canRead: account.metadata.canRead, canWrite: account.metadata.canWrite,
+          manager: account.metadata.manager ?? false, status: account.metadata.status ?? "UNKNOWN",
+          contexts: (account.metadata.contexts ?? []).map((item) => ({ loginCustomerId: item.loginCustomerId })) },
+        ...(invalidated ? { selected: false } : {}),
+      } });
+      if (invalidated) await tx.connectionOperation.updateMany({ where: {
+        destinationId, status: { in: ["PENDING", "RUNNING"] },
+      }, data: { status: "CANCELLED", completedAt: this.now() } });
+    });
+  }
+
   async selectMetaAccount(principal: CustomerPrincipal, id: string, version: number, destinationId: string) {
     await this.auth.assertSession(principal);
     await this.db.$transaction(async (tx) => {
