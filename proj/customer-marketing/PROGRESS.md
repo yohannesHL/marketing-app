@@ -11,8 +11,8 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 | [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Merged; 88 backend tests and 27 app-browser cases pass; live checks unavailable | [#23](https://github.com/yohannesHL/marketing-app/pull/23) |
 | [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Handoff merged; public/live gates remain open | [#24](https://github.com/yohannesHL/marketing-app/pull/24) |
 | [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Independent review and exact CI pass; owner review/recording/live gates tracked separately | [#25](https://github.com/yohannesHL/marketing-app/pull/25) |
-| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | In progress | — |
-| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | In progress | — |
+| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | 135 backend checks pass; independent findings fixed, exact review/CI underway | [#26](https://github.com/yohannesHL/marketing-app/pull/26) |
+| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | Implemented; three-browser journeys pass; independent review pending | Pending |
 | [12](https://github.com/yohannesHL/marketing-app/issues/12) | feat: Connect YouTube channels and publish scheduled Shorts | Planned | — |
 | [13](https://github.com/yohannesHL/marketing-app/issues/13) | feat: Publish scheduled Facebook Page posts and Instagram content | Planned | — |
 | [14](https://github.com/yohannesHL/marketing-app/issues/14) | feat: Connect TikTok creators and schedule approved Direct Post videos | Planned | — |
@@ -69,3 +69,10 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - Trusted media uploads verify actual PNG/JPEG/MP4 bytes and FFprobe metadata, restrict customer access and issue scoped expiring media links. Seven media regressions pass against actual files.
 - Disconnect/reconnect/revocation hooks stop pending local social work while retaining honest outcomes for provider requests already sent. Operator key rotation includes encrypted resumable upload progress.
 - The isolated application builds successfully and the #11 social UI is undergoing three-browser validation. No live provider pilot or actual platform review is claimed.
+
+## Social UI verification
+
+- Separate category navigation, saved social drafts, verified media previews, explicit destination variants, review before scheduling, a calendar and per-destination recovery actions are implemented.
+- All three social journeys pass in Chromium, Firefox and WebKit. Mobile captions and desktop calendars were visually inspected; the captured fixture evidence is in `docs/evidence/social-ui`.
+- CI now includes the social journey with the existing paid/customer journeys. The empty provider registry prevents enqueue and TikTok controls await fresh creator capabilities from its integration.
+- Exact foundation revision `8c88ba1` contains no UI or YouTube SDK changes. All 135 foundation/backend checks and seven fresh migrations pass; independent findings have dedicated recovery regressions.

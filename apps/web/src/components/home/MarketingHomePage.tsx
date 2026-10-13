@@ -41,6 +41,9 @@ export function MarketingHomePage() {
                   <Link className="btn normal-case shadow-soft btn-secondary" href="/connections">
                     Manage connections
                   </Link>
+                  <Link className="btn normal-case shadow-soft btn-secondary" href="/social/create">
+                    Create social post
+                  </Link>
                   <Link className="btn normal-case shadow-soft btn-ghost" href="/sign-in">
                     Sign in
                   </Link>
