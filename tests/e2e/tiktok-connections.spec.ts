@@ -49,10 +49,28 @@ test("TikTok verifies its creator, requires explicit controls and preserves a di
     await expect(page.getByTestId("paid-connections").getByTestId("provider-connection")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath("tiktok-connections-mobile.png"), fullPage: true });
+    let releaseCheck: (() => void) | undefined;
+    let blockCheck = true, failCheck = false, checkCount = 0;
+    let checkStarted: (() => void) | undefined;
+    await page.route((url) => url.pathname === `/api/connections/tiktok/${connection.id}/check`, async (route) => {
+      checkCount++;
+      if (failCheck) { await route.abort("failed"); return; }
+      if (blockCheck) { checkStarted?.(); await new Promise<void>((resolve) => { releaseCheck = resolve; }); }
+      if (failCheck) await route.abort("failed"); else await route.continue();
+    });
     await page.goto("/social/create");
     await page.getByLabel(/^Draft title/).fill("Reviewed TikTok draft");
     await page.getByLabel("Caption or post text", { exact: true }).fill("Original TikTok caption.");
+    const automaticCheck = new Promise<void>((resolve) => { checkStarted = resolve; });
     await page.getByRole("checkbox", { name: /^Fixture TikTok creator\b/ }).check();
+    await Promise.race([automaticCheck, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Composer did not automatically check its TikTok creator")), 5_000))]);
+    await expect(page.getByLabel("TikTok privacy", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("checkbox", { name: /^I approve posting this exact TikTok video and caption/ })).toBeDisabled();
+    await page.getByLabel("Caption for Fixture TikTok creator", { exact: true }).fill("Content edited while creator check is pending.");
+    const automaticResponse = page.waitForResponse((response) => new URL(response.url()).pathname === `/api/connections/tiktok/${connection.id}/check`);
+    blockCheck = false; releaseCheck!();
+    expect((await automaticResponse).status()).toBe(200);
+    await expect(page.getByLabel("Caption for Fixture TikTok creator", { exact: true })).toHaveValue("Content edited while creator check is pending.");
     await expect(page.getByRole("heading", { name: "Fixture TikTok creator · @fixture_creator", exact: true })).toBeVisible();
     await expect(page.getByText("Creator settings checked", { exact: false })).toBeVisible();
     const privacy = page.getByLabel("TikTok privacy", { exact: true }); await expect(privacy).toHaveValue("");
@@ -76,6 +94,7 @@ test("TikTok verifies its creator, requires explicit controls and preserves a di
     await attachment.check();
     const chooseControls = async () => { await privacy.selectOption("SELF_ONLY"); await comments.selectOption("no"); await commercial.selectOption("no"); await policy.check(); await ai.selectOption("no"); };
     await chooseControls(); await expect(consent).toBeEnabled(); await consent.check();
+    expect(checkCount).toBe(1);
     const caption = page.getByLabel("Caption for Fixture TikTok creator", { exact: true });
     await caption.fill("Unsaved caption stays through creator refresh."); await expect(consent).not.toBeChecked();
     await consent.check(); await expect(consent).toBeChecked();
@@ -83,6 +102,7 @@ test("TikTok verifies its creator, requires explicit controls and preserves a di
     await page.getByRole("button", { name: "Refresh TikTok creator settings", exact: true }).click();
     const refreshResponse = await refreshed; expect(refreshResponse.status()).toBe(200);
     expect(refreshResponse.request().postDataJSON()).toEqual({ destinationId: destination.id });
+    expect(checkCount).toBe(2);
     const freshConnection = (await refreshResponse.json()).connection, freshCreator = freshConnection.destinations[0].metadata.tiktokCreator;
     await expect(caption).toHaveValue("Unsaved caption stays through creator refresh.");
     await expect(page.getByLabel(/^Draft title/)).toHaveValue("Reviewed TikTok draft"); await expect(attachment).toBeChecked();
@@ -105,5 +125,27 @@ test("TikTok verifies its creator, requires explicit controls and preserves a di
     const persistedResponse = await page.request.get(`/api/social/posts/${post.id}`); expect(persistedResponse.status()).toBe(200);
     const persisted = await persistedResponse.json(); expect(persisted.revision.id).toBe(post.revision.id); expect(persisted.deliveries).toEqual([]);
     expect(JSON.stringify(persisted)).not.toMatch(/tt-private|tt-refresh|Ciphertext|accessToken|fixture-tt-secret|storageKey|signature=/);
+    // A saved draft must also check on each composer load. Cached saved choices
+    // cannot enable acknowledgment while that real request is pending or fails.
+    blockCheck = true;
+    const loadCheck = new Promise<void>((resolve) => { checkStarted = resolve; });
+    await page.reload(); await loadCheck;
+    await expect(page.getByLabel("TikTok privacy", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("checkbox", { name: /^I approve posting this exact TikTok video and caption/ })).toBeDisabled();
+    await page.getByLabel("Caption for Fixture TikTok creator", { exact: true }).fill("Dirty saved draft survives failed creator check.");
+    failCheck = true; releaseCheck!();
+    blockCheck = false;
+    await expect(page.getByText("The request could not be completed. Refresh this page or try again.", { exact: true })).toBeVisible();
+    expect(checkCount).toBe(3);
+    await expect(page.getByLabel("TikTok privacy", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("checkbox", { name: /^I approve posting this exact TikTok video and caption/ })).toBeDisabled();
+    await expect(page.getByLabel("Caption for Fixture TikTok creator", { exact: true })).toHaveValue("Dirty saved draft survives failed creator check.");
+    await page.getByLabel("Caption for Fixture TikTok creator", { exact: true }).fill("Dirty caption survives recovery from failed check.");
+    failCheck = false;
+    await page.getByRole("button", { name: "Refresh TikTok creator settings", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Fixture TikTok creator · @fixture_creator", exact: true })).toBeVisible();
+    await expect(page.getByLabel("Caption for Fixture TikTok creator", { exact: true })).toHaveValue("Dirty caption survives recovery from failed check.");
+    await expect(privacy).toHaveValue(""); await expect(consent).not.toBeChecked(); await expect(consent).toBeDisabled();
+    expect(checkCount).toBe(4);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
