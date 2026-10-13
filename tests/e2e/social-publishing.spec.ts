@@ -98,8 +98,8 @@ test("a refreshed content revision requires a fresh review acknowledgment", asyn
   const id = new URL(page.url()).pathname.split("/").at(-1)!;
   // A read-only cancelled delivery fixture exposes the status-refresh UI.
   // Content revisions and approvals still use the real authenticated API.
-  await page.route(`**/api/social/posts/${id}`, async (route) => {
-    if (route.request().method() !== "GET") return route.continue();
+  await page.route((url) => [ `/api/social/posts/${id}`, `/api/social/posts/${id}/approve` ].includes(url.pathname), async (route) => {
+    if (route.request().method() !== "GET" && !route.request().url().endsWith("/approve")) return route.continue();
     const response = await route.fetch();
     const value = await response.json();
     value.deliveries = [{ id: "review_refresh_fixture", revisionId: value.revision.id,
