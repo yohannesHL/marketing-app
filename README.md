@@ -23,3 +23,5 @@ Customer account settings and environment behavior: [connection settings](docs/c
 Controlled connection-only rollout, read-only pilot checks and rollback: [operator guide](docs/paid-ads-rollout.md).
 
 Google/Meta implementation evidence and remaining public-release gates: [paid advertising readiness](docs/paid-advertising-readiness.md).
+
+Social publishing owner setup, permissions, costs and review requirements: [social setup](docs/social-publishing-setup.md) and [social readiness tracker](docs/social-publishing-readiness.md).

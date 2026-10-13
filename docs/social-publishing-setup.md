@@ -1,123 +1,110 @@
-# Social publishing setup and release scope
+# Social publishing setup
 
-LaunchPad will offer two marketing categories: Paid advertising and Social publishing. The first social release includes YouTube Shorts, Facebook Pages, Instagram professional accounts, TikTok, LinkedIn, and X. All are in scope; each needs its own validated publishing capability before the release is considered complete.
+This guide is the owner handoff for YouTube Shorts, Facebook Pages, Instagram professional accounts, TikTok, LinkedIn and X. Publishing uses a separate customer authorization from Paid advertising. Connecting an account never publishes content. The planned publishing release will schedule customer-reviewed posts; direct messages, automated engagement and automatic paid boosts are outside this release.
 
-This is planned work, not an implemented connection or publishing feature. Automation means scheduling customer-reviewed content for publication. Account connection alone never publishes anything. Direct messages, automated engagement, autonomous content generation, and recurring repost rules are outside this first scope.
+## What Yohannes supplies
 
-## Customer experience
+- Staging and production HTTPS origins, developer app ownership, business details, support contact, approved privacy/terms/deletion policies and retention requirements.
+- A pilot channel/Page/profile and an authorized customer for each destination. A developer app approval and a customer's permission are separate requirements.
+- App identifiers, secret-store locations, approval status, pilot destination IDs and permitted test visibility. Share references rather than secret values in chat/issues.
+- Approved pilot media, captions, target identities and intended publication time. Real publication requires approval for that exact content and destination.
+- Platform review submissions using the working engineering demo and permission-specific recordings. A mock demonstration does not establish actual provider approval or publication.
 
-| Paid advertising | Social publishing |
-| --- | --- |
-| Create campaign | Create post |
-| Choose ad account, goal, audience, budget and creative | Choose social profile/channel, content, per-platform caption and publishing time |
-| Review and launch campaign | Review and publish now or schedule |
-| Campaign delivery, spend and ad results | Calendar, drafts, delivery status and links to published posts |
+Engineering owns the authenticated customer UI and encrypted-credential foundation. Issues #12–#16 must add the publishing callbacks, capability-specific consent, destination discovery, validation, durable scheduling, status/recovery and reviewer evidence described here. Platform review, customer access, quotas and billing are tracked separately below.
 
-Use distinct navigation and creation flows. Marketing type must be explicit in stored records, filters and routes; it is not a campaign objective. Existing campaigns remain paid advertising. Shared connections show capabilities separately, such as Ads access and Publishing access. Request extra permissions when the customer enables the relevant capability.
+## Application contract
 
-The social composer previews each destination independently and allows platform-specific content. An unsupported format or unapproved account produces an actionable error before scheduling. Partial success remains visible per destination and retrying one failure does not repost successful destinations.
+The following callback names and environment keys are the implementation contract for issues #12–#16. These routes remain unavailable until the corresponding provider implementation is merged. Replace `{APP_ORIGIN}` with the exact staging/production origin; register each environment separately. Do not use wildcards.
 
-## Initial publishing formats
+| Destination | OAuth callback | Server configuration/secret references |
+| --- | --- | --- |
+| YouTube Shorts | `{APP_ORIGIN}/api/connections/youtube/callback` | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` |
+| Facebook Pages / Instagram | `{APP_ORIGIN}/api/connections/meta-publishing/callback` | `META_APP_ID`, `META_APP_SECRET`, `META_PUBLISHING_CONFIG_ID`, `META_GRAPH_VERSION=v26.0` |
+| TikTok | `{APP_ORIGIN}/api/connections/tiktok/callback` | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` |
+| LinkedIn | `{APP_ORIGIN}/api/connections/linkedin/callback` | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_API_VERSION=202609` |
+| X | `{APP_ORIGIN}/api/connections/x/callback` | `X_CLIENT_ID`, `X_CLIENT_SECRET` |
 
-- YouTube: Shorts only; square or vertical video up to three minutes under the current classification rules. Upload through the YouTube Data API; there is no separate Shorts upload endpoint. YouTube determines classification and delivery after upload.
-- Facebook: Page text/image posts and Reels. Personal profiles are not publishing destinations in this release.
-- Instagram: professional-account image posts and Reels. Choose and document the login model; Facebook Login requires the appropriate linked Page, while Instagram Login has a different permission model.
-- TikTok: short video through Content Posting API Direct Post, subject to app approval and creator-specific settings.
-- LinkedIn: member and organization text/image/video posts, subject to the relevant product access, scopes and organization roles.
-- X: text/image/video posts using the X API, subject to the account's supported media and API access.
+Shared `APP_ORIGIN`, customer authentication and credential-vault key references are documented in [customer security](customer-ad-account-setup.md). `CONNECTION_MODE=mock` uses loopback Mockoon endpoints and synthetic credentials. `CONNECTION_MODE=live` requires real provider configuration; failed live access cannot fall back to simulated success. Publishing enablement, customer/destination allowlists and provider review readiness must be recorded independently from configuring OAuth.
 
-These are acceptance targets. Implementers must validate current media limits, permissions and account eligibility. Do not treat ad-platform support as evidence of organic publishing support.
+Meta app removal/data-deletion URLs are `{APP_ORIGIN}/api/connections/meta/deauthorize` and `{APP_ORIGIN}/api/connections/meta/data-deletion`. They must be registered and verified before external-customer rollout; publishing implementations must verify that the app-wide lifecycle handler covers their grant and stored-content provenance. App-wide removal may affect separate Ads and Publishing grants that belong to the removed app identity; individual in-app disconnects remain capability-specific.
 
-## What Yohannes needs to set up
+## YouTube Shorts
 
-### Shared prerequisites
+Owner: enable YouTube Data API v3 in a business-owned Google Cloud project, configure a Web OAuth client and its consent screen, register the YouTube callback and add pilot/test users where required. Provide a channel owner who can authorize the actual channel/Brand Account. Studio-invited roles alone do not establish API access. [Channel permission limitations](https://support.google.com/youtube/answer/9481328).
 
-- [ ] Confirm staging and production HTTPS domains, business details and support contact.
-- [ ] Approve privacy, terms, retention, deletion and publishing-consent wording covering social content and scheduled jobs.
-- [ ] Own the developer apps/projects and provide a pilot destination for every platform, including the appropriate channel/Page/profile administrator.
-- [ ] Register exact callback URLs supplied by engineering after the implementation contract is agreed.
-- [ ] Put secrets in the agreed deployment secret store. Share app IDs, account/channel IDs, approval status and secret references, not tokens or client secrets in issues or chat.
-- [ ] Submit platform reviews using engineering's working demo, test login and permission-specific recordings.
-- [ ] Supply approved pilot media and confirm the visibility/time of any real publishing test before it runs.
+For the combined upload/read/update/delete flow, request `openid` and `https://www.googleapis.com/auth/youtube.force-ssl`. The current endpoint scope lists accept force-ssl for all these operations, including channel discovery; adding `youtube.upload` and `youtube.readonly` is redundant for this combined flow. An upload-only or read-only capability may instead use its narrower scope. Use server-side user OAuth with offline access, and discover the actual channel with `channels.list?mine=true`; the Google subject and YouTube channel ID are distinct. [Endpoint scope contract](https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest), [channel discovery](https://developers.google.com/youtube/v3/docs/channels/list), [offline OAuth](https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps).
 
-### YouTube Shorts
+First format: square or vertical video up to 180 seconds, validated using decoded media dimensions, duration and rotation. There is no Shorts-specific upload endpoint; YouTube determines classification. Visibility, made-for-kids audience and synthetic-content disclosures are explicit user choices. A Short longer than one minute with an active copyright claim is blocked globally until the claim is resolved. [Current Shorts classification](https://support.google.com/youtube/answer/15424877).
 
-- [ ] Enable YouTube Data API v3 in a business-owned Google Cloud project. The Google Ads API does not provide publishing access.
-- [ ] Create/configure a web OAuth client and consent setup with upload permission; add only the additional scopes required for implemented channel/status operations.
-- [ ] Supply a pilot YouTube channel and a user who can authorize it. Verify the actual selected channel rather than inferring it from the Google email.
-- [ ] Complete applicable OAuth verification and YouTube compliance/quota processes. Record the current console access and quota status; verify current upload visibility behavior instead of relying on older audit restrictions.
+Engineering supplies resumable upload with persisted upload progress, processing/status checks and honest cancellation. Native `status.publishAt` requires a private, never-published video. This app must require a future time: YouTube accepts a past time and publishes immediately. Cancelling a future native schedule must clear `publishAt` while preserving the other mutable status fields, then read back status; stopping only a local job is insufficient. Upload uses `POST /upload/youtube/v3/videos?uploadType=resumable&part=snippet,status` followed by the returned session URL. [Resumable upload](https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol), [scheduling semantics](https://developers.google.com/youtube/v3/docs/videos#status.publishAt), [update replacement semantics](https://developers.google.com/youtube/v3/docs/videos/update), [video status](https://developers.google.com/youtube/v3/docs/videos/list).
 
-Engineering supplies resumable upload, channel verification, Shorts media validation, explicit visibility/audience/disclosure inputs, processing checks and schedule/cancel behavior. Set visibility explicitly rather than trusting API defaults.
+Owner records OAuth verification, actual upload visibility and quota approval from the current console. The current `videos.insert` body explicitly says unverified API projects are not restricted to private viewing; OAuth verification and quota audits are separate requirements. The current default is 100 uploads/day and 100 searches/day in separate buckets, plus 10,000 daily units shared by other methods. Upload costs one Video Uploads unit, channel/video reads usually one unit, and video updates/deletes 50 units. Record the project's actual allocation before pilot tests. [Current insert behavior and cost](https://developers.google.com/youtube/v3/docs/videos/insert), [update cost](https://developers.google.com/youtube/v3/docs/videos/update), [delete cost](https://developers.google.com/youtube/v3/docs/videos/delete). API usage quota, hosting/storage and customer advertising spend are different costs. [Quota and compliance](https://developers.google.com/youtube/v3/guides/quota_and_compliance_audits), [getting started](https://developers.google.com/youtube/v3/getting-started).
 
-Sources: [video upload API](https://developers.google.com/youtube/v3/docs/videos/insert), [Shorts classification](https://support.google.com/youtube/answer/15424877?hl=en), [YouTube compliance and quota](https://developers.google.com/youtube/v3/guides/quota_and_compliance_audits).
+## Facebook Pages and Instagram
 
-### Facebook and Instagram
+Chosen model: Facebook Login for Business with a separate **Publishing** configuration and USER authorization. Pin Graph API `v26.0`, the current documented release introduced 29 July 2026, and record its sunset when announced (currently TBD). Version support does not establish this app’s approval. [Current Graph changelog](https://developers.facebook.com/docs/graph-api/changelog/). This release does not mix the separate Instagram Login permission model into Facebook Login. Provide a Facebook Page and, for Instagram, a linked professional account. Personal Facebook profiles and consumer Instagram accounts are unavailable.
 
-- [ ] Configure the Meta app for Page/Instagram publishing separately from Marketing API access. Reuse the same business-owned app only where the selected products and login flows support it.
-- [ ] Provide a pilot Facebook Page, an Instagram professional account, and users with the necessary asset roles.
-- [ ] For the selected login flow, request the required Page publishing/discovery and Instagram publishing scopes. Engineering must supply an exact permission matrix; do not mix scopes from different login models.
-- [ ] Complete the applicable business verification and permission review for external customer accounts; register deletion and deauthorization handling.
+Requested publishing scopes: `pages_show_list` for Page discovery, `pages_read_engagement` for dependent Page access, `pages_manage_posts` for implemented Page text/image/Reels publishing, and `instagram_basic` plus `instagram_content_publish` for linked professional-account publishing. For Instagram container creation, if the customer's role on the linked Page came through Business Manager, the current reference also requires one of `ads_read` or `ads_management`; choose `ads_read` when it satisfies the implemented path. The media-read operation documents a different conditional alternative, `ads_management` or `business_management`. Check each chosen endpoint and customer asset path rather than treating these as interchangeable blanket scopes. [Instagram publishing](https://developers.facebook.com/documentation/instagram-platform/content-publishing), [creation/read permission conditions](https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-user/media), [Page posts](https://developers.facebook.com/documentation/pages-api/posts), [permission dependencies](https://developers.facebook.com/documentation/development/permissions).
 
-Engineering supplies Page/profile selection, token lifecycle, media processing/container checks and publication confirmation. Ads access does not automatically grant permission to publish organic content.
+The Facebook Login for Business article says `email` and `public_profile` are automatically granted and at least one additional supported permission is needed. It also requires Advanced Access review to serve businesses the app owner does not own/manage. Its FAQ separately requires Advanced Access to `public_profile` before a Business Login app goes live for external users. Automatic default permission is not external-user approval: record that access level, the actual USER configuration and every publishing permission’s dependencies/review status before rollout. [Business Login requirements](https://developers.facebook.com/documentation/facebook-login/facebook-login-for-business).
 
-Sources: [Meta Facebook API](https://www.postman.com/meta/facebook/documentation/r56bjfd/facebook-api), [Meta Instagram API](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api).
+Owner creates the business-type app, registers the callback and lifecycle URLs, configures reviewed scopes and supplies users with the required Page content tasks. Instagram creation needs `MANAGE` or `CREATE_CONTENT` on the linked Page; Facebook Reels requires `CREATE_CONTENT`. Instagram publishing can also be blocked until required Page Publishing Authorization is completed. Meta Ads access does not grant Page content tasks or Instagram publishing permission. Page tokens are encrypted separately for the verified destination. Engineering discovers actual Pages and linked Instagram IDs; it cannot infer them from ad-account access.
 
-### TikTok
+Formats: Facebook Page text/image posts and Reels; Instagram JPEG image posts and Reels. Current Instagram image constraints include JPEG up to 8 MB, 320–1440 px width and aspect ratio 4:5–1.91:1. The current Instagram reference permits Reels of 3 seconds–15 minutes, up to 300 MB; Facebook's Reels guide specifies 3–90 seconds. Instagram allows 100 API-published posts in a rolling 24-hour period; Facebook Reels allows 30. These are distinct limits, and engineering must check runtime eligibility/usage before execution. Page Reels must show the user that the Page audience is public; do not offer unsupported private Page audiences. Reels upload/container IDs and processing status persist before publication so unknown results can be reconciled. [Instagram media reference](https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-user/media), [Facebook Reels](https://developers.facebook.com/documentation/video-api/guides/reels-publishing).
 
-- [ ] Register a TikTok for Developers app with Content Posting API Direct Post and the required publishing scope, plus a pilot creator account.
-- [ ] Register callbacks and verify media domain ownership when the chosen upload method requires it.
-- [ ] Submit the app review/audit for the intended customer-facing scheduled publishing flow. Unaudited Direct Post clients have private-viewing restrictions.
+Native Page text scheduling uses `published=false` plus `scheduled_publish_time`, 10 minutes–30 days ahead. Facebook Reels finalization supports `video_state=SCHEDULED` plus a timestamp more than 10 minutes and within 29 days ahead; disclose AI-created/edited Reels through `is_ai_generated` when applicable. Instagram publishing uses container creation, processing status and `media_publish`; the scheduler must execute these calls at the intended time rather than assume the Facebook scheduling fields apply. Engineering must distinguish local cancellation from clearing an existing provider schedule. [Page scheduling](https://developers.facebook.com/documentation/pages-api/posts), [Reels scheduling/disclosure](https://developers.facebook.com/documentation/video-api/guides/reels-publishing).
 
-Engineering must validate the scheduling design against the current required consent/privacy/disclosure UI, query creator capabilities, and track asynchronous results. Public automated posting remains blocked if the intended flow is not approved; upload-to-inbox requiring manual completion is not equivalent to completed automated publishing.
+Owner records business-verification status and completes applicable permission/product review, including `public_profile` Advanced Access and actual external-user discovery. Page text/image permissions must be checked against the implemented feed/photo operations; the broader Page CRUD guide includes engagement permissions and `publish_video` for Page video, which are not automatically added to this narrower Reels/text/image release. Engineering records Page publishing readiness, professional-account eligibility and runtime content-publishing limits independently. No universal organic API-free promise is made; confirm current product/commercial requirements during review and budget app hosting/media delivery separately.
 
-Sources: [Direct Post setup](https://developers.tiktok.com/docs/en/content-posting-api-get-started), [content sharing requirements](https://developers.tiktok.com/docs/en/content-sharing-guidelines).
+## TikTok
 
-### LinkedIn
+Owner registers Login Kit Web and Content Posting API Direct Post, callback and pilot creator. Web OAuth requests `user.info.basic,video.publish`; `video.upload` inbox/manual completion is not a substitute for Direct Post. The code exchange returns `open_id`, a 24-hour access token and a refresh token initially valid for 365 days; persist any rotated refresh token and verify the returning subject/scopes. The documented Web flow uses state and an exact HTTPS redirect; the token reference requires a PKCE verifier for mobile/desktop only, so do not claim Web PKCE support has been validated. [Web login](https://developers.tiktok.com/docs/en/login-kit-web), [token management](https://developers.tiktok.com/docs/en/oauth-user-access-token-management).
 
-- [ ] Create/configure the developer app and obtain the product access for the intended member and organization publishing features.
-- [ ] Supply pilot member and company Page destinations with suitable roles.
-- [ ] Request member posting and organization posting permissions only for supported features; complete review for organizational/community-management access as applicable.
+When composing, query creator info and display creator identity, eligible duration/visibility and an editable caption/preview. Visibility has no default; comment/Duet/Stitch choices start unchecked and unavailable options stay disabled. Commercial disclosure starts off; enabling it requires an own-brand or third-party choice. Obtain explicit upload and music-policy consent. Recheck at execution and block changed eligibility. Third-party branded content cannot use private visibility. [Required sharing controls](https://developers.tiktok.com/docs/en/content-sharing-guidelines), [creator info](https://developers.tiktok.com/docs/en/content-posting-api-reference-query-creator-info).
 
-Engineering must distinguish the publishing actor, validate organization roles, implement media uploads and use a supported version of the Posts API. Advertising API approval is not a substitute for the required social product access.
+Scheduled server-held media uses `PULL_FROM_URL`. Owner verifies the served HTTPS media domain/prefix; URLs cannot redirect and must remain available throughout the download, whose timeout is one hour after initiation. `FILE_UPLOAD` is not the documented method for server-stored scheduled assets. [Media transfer](https://developers.tiktok.com/docs/en/content-posting-api-media-transfer-guide).
 
-Source: [LinkedIn Posts API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api).
+Release gate: audit this specific scheduled UX before public rollout; the docs do not automatically approve unattended scheduling. Serve original creator content for a broader audience, not only an internal upload utility. Unaudited clients are limited to five posting users per 24 hours, each creator account must itself be private, and posts must use `SELF_ONLY`. Public scheduling remains blocked pending audit of the intended flow. Both audited/unaudited clients also have an app active-creator cap and creator posting cap, typically about 15 posts/day across API clients. [Audit restrictions and intended use](https://developers.tiktok.com/docs/en/content-sharing-guidelines). Persist `publish_id` and poll actual status; inbox delivery is not publication. Direct Post init is `POST /v2/post/publish/video/init/`; status is `POST /v2/post/publish/status/fetch/`. Check the nested error as well as HTTP status; public post IDs appear only after moderation and private completion may have no public ID. `POST /v2/post/publish/cancel/` can best-effort cancel an ongoing URL download, but cannot reliably cancel near-complete downloads or media already processing. This is not a published-post deletion API. [Cancellation contract](https://developers.tiktok.com/docs/en/content-posting-api-media-transfer-guide). [Direct Post](https://developers.tiktok.com/docs/en/content-posting-api-reference-direct-post), [status](https://developers.tiktok.com/docs/en/content-posting-api-reference-get-video-status).
 
-### X
+## LinkedIn
 
-- [ ] Configure an X developer app for user-authorized post creation and the required media operations. Ads API approval does not cover this integration.
-- [ ] Provide a pilot X account and the agreed credentials through the secret store.
-- [ ] Arrange API credits/billing and choose a spending limit in the developer console. Do not assume organic publishing API calls are free.
+Owner configures Sign In with LinkedIn OpenID Connect and Share on LinkedIn for member publishing, then the reviewed Community Management product for organizational publishing/discovery/read access. Register the callback and provide both a pilot member and organization with an approved organic posting role. Advertising product approval is separate.
 
-Engineering supplies user authorization, supported media upload, publication results, rate-limit handling and clear quota/credit errors. Check current endpoint pricing before the pilot; do not hard-code cost assumptions into the customer UI.
+Member flow uses `openid profile w_member_social`; no email scope is needed for publishing. Organization flow adds `w_organization_social` and only the approved organizational discovery/read permissions needed by the implemented endpoints, including `rw_organization_admin` and `r_organization_social` where applicable. Member readback requires restricted `r_member_social` approval. `w_member_social` alone does not provide every image/status-read capability. If the app lacks required read/status access, show a blocked capability rather than claiming confirmed publication. [OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2), [Posts API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api?view=li-lms-2026-09), [Images API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api?view=li-lms-2026-09).
 
-Sources: [X post creation](https://docs.x.com/x-api/posts/create-post), [X API pricing](https://docs.x.com/x-api/getting-started/pricing).
+Engineering verifies the person/organization author URN, current approved `ORGANIC_SHARE_CREATE` organization authorization (not just a sponsored-content role), image/video upload state and returned `x-restli-id`. REST calls use `Linkedin-Version: 202609` and `X-Restli-Protocol-Version: 2.0.0`; September 2026 (`202609`) is the latest documented version on the research date; record its announced sunset and update before it expires. The currently announced `202510` sunset is 15 October 2026. Publish through `POST /rest/posts`; image/video initialization uses `/rest/images?action=initializeUpload` and `/rest/videos?action=initializeUpload`, with uploaded video part ETags finalized before use. Scheduling is local. A returned ID or requested `PUBLISHED` state alone is insufficient for asynchronous `PUBLISH_REQUESTED`/`PUBLISH_FAILED` outcomes. Unknown creation without an ID is uncertain and cannot be blindly resent. [Organic authorization](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/organizations/organization-authorizations/organization-authorizations?view=li-lms-2026-09), [asynchronous lifecycle](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/post-api-schema?view=li-lms-2026-09). [Versioning](https://learn.microsoft.com/en-us/linkedin/marketing/versioning?view=li-lms-2026-09), [Videos API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api?view=li-lms-2026-09).
 
-## Scheduling and operational requirements
+Access tokens normally expire after 60 days; programmatic refresh is available to approved Marketing Developer Platform partners, not every self-serve app, and its initial one-year refresh-token expiry is not extended by refresh. Community Management Development access allows 500 app calls/day and 100 calls/member/day, prohibits BATCH_GET and disables social-action webhook delivery. Owner records tier, actual endpoint limits, supported read scopes and review status. No universal free-per-call guarantee is made. [Refresh tokens](https://learn.microsoft.com/en-us/linkedin/shared/authentication/programmatic-refresh-tokens), [increasing access](https://learn.microsoft.com/en-us/linkedin/marketing/increasing-access?view=li-lms-2026-09).
 
-Engineering provides durable jobs that survive server restarts, explicit timezones with UTC storage, cancellation/rescheduling, per-destination results and retries that reconcile uncertain provider outcomes before sending again. Media access must remain valid when a job runs. The scheduler rechecks credentials and authorization at execution time.
+## X
 
-Stopping a local job must not falsely claim to cancel content already scheduled at a provider. If native provider scheduling is used, implement provider-side cancellation and report failures. Disconnecting publishing should stop its pending jobs and explain any broader effect if revoking a grant also affects advertising.
+Owner enables OAuth 2 user authentication with a confidential web client and callback, funds developer API credits and chooses console spend limits. Scopes are `tweet.read users.read tweet.write media.write offline.access`. Engineering uses PKCE S256, the stable ID from `GET /2/users/me`, persisted refresh-token replacements and current v2 media endpoints; app-only authentication cannot publish on behalf of a customer. [OAuth 2](https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code), [endpoint mapping](https://docs.x.com/fundamentals/authentication/guides/v2-authentication-mapping).
 
-## Release evidence
+First formats: standard text/image/video posts with the 280-character weighted validator and explicit `paid_partnership`/`made_with_ai` choices when applicable. Images are up to 5 MB; a post can attach up to four photos or one video. Current post-video defaults are 20 minutes/8 GB, or 125 minutes/16 GB for an eligible Premium/verified uploading user. Entitlement is checked again when attaching media; upload success is not posting permission. Use `POST /2/tweets`; image upload is `POST /2/media/upload`, and videos use v2 initialize/append/finalize followed by status polling and media-expiry checks. Scheduling is local; unknown creation is reconciled before retry. [Create post](https://docs.x.com/x-api/posts/create-post), [media upload](https://docs.x.com/x-api/media/upload-media), [current media entitlement limits](https://docs.x.com/x-api/media/introduction), [weighted character rules](https://docs.x.com/fundamentals/counting-characters).
 
-- [ ] Separate Paid advertising and Social publishing navigation, forms, statuses and records.
-- [ ] No advertising or posting begins merely from connecting an account.
-- [ ] All six destinations complete connect, compose, schedule, execute, status and recovery tests.
-- [ ] Cross-customer isolation, duplicate delivery, worker restarts, timezone boundaries, media expiry and partial failures are tested.
-- [ ] Real pilot evidence is recorded separately from mocked CI results; test publication is explicitly authorized for the target account and content.
-- [ ] Platform approvals, API credits and account eligibility are tracked as external blockers, never disguised as implementation success.
+**X is not free.** Current credit-based pay-per-use documentation has no subscriptions and lists post creation at $0.015 per request, or $0.200 with a URL, post reads at $0.005 per resource, user reads at $0.010 per resource and media metadata at $0.005 per request. The cheaper owned-read rate applies only under its specific app-owner condition, not every third-party customer. Exact media upload prices and current console terms must be verified before the pilot. Configure both an application budget ceiling and console spending cap; insufficient credits blocks delivery rather than becoming a generic retry. Rates and rate limits are separate. OAuth consent alone is not consent to automated posting: explain the scheduled actions, obtain explicit approval and honor opt-out immediately. Avoid duplicative/spammy posts across accounts. [Current pricing](https://docs.x.com/x-api/getting-started/pricing), [usage](https://docs.x.com/x-api/usage/get-usage-credits), [automation rules](https://help.x.com/en/rules-and-policies/x-automation).
 
-Platform documentation checked on 13 October 2026. Verify requirements and prices again during implementation and review submission.
+## Readiness and reviewer evidence
 
-## Implementation tracking
+| Platform | App/product approval | Pilot customer access | Public customer access | Quota/billing | Actual publication evidence |
+| --- | --- | --- | --- | --- | --- |
+| YouTube Shorts | Not supplied | Not supplied | Not validated | Console allocation unknown | Not performed |
+| Facebook Pages | Not supplied | Not supplied | Not validated | Current product limits unknown | Not performed |
+| Instagram | Not supplied | Not supplied | Not validated | Runtime publishing limits unknown | Not performed |
+| TikTok | Scheduled Direct Post audit not supplied | Not supplied | Blocked pending intended-flow audit | Creator/app quotas unknown | Not performed |
+| LinkedIn | Member/org/read approvals not supplied | Not supplied | Blocked for unapproved scopes/products | Development/Standard limits unknown | Not performed |
+| X | Developer configuration not supplied | Not supplied | Not validated | Credits/spend caps not supplied | Not performed |
 
-- [Social publishing tracker](https://github.com/yohannesHL/marketing-app/issues/18)
-- [Owner setup and approvals](https://github.com/yohannesHL/marketing-app/issues/9)
-- [Publishing records and scheduling](https://github.com/yohannesHL/marketing-app/issues/10)
-- [Marketing category UI](https://github.com/yohannesHL/marketing-app/issues/11)
-- [YouTube Shorts](https://github.com/yohannesHL/marketing-app/issues/12)
-- [Facebook and Instagram](https://github.com/yohannesHL/marketing-app/issues/13)
-- [TikTok](https://github.com/yohannesHL/marketing-app/issues/14)
-- [LinkedIn](https://github.com/yohannesHL/marketing-app/issues/15)
-- [X](https://github.com/yohannesHL/marketing-app/issues/16)
-- [Release verification](https://github.com/yohannesHL/marketing-app/issues/17)
+User requested Mockoon validation instead of live staging credentials. Mock fixtures demonstrate engineering behavior and remain separate from provider approvals, pilot reads/uploads and actual publication. No real provider review or pilot is claimed.
+
+Engineering reviewer checklist for each destination:
+
+1. Record the actual customer sign-in, capability-specific consent and verified destination selection.
+2. Show format validation and platform-required audience/visibility/disclosure choices.
+3. Review the exact content/destinations and UTC plus local timezone, then explicitly authorize a test post.
+4. Show persisted upload/publish progress, actual provider status and resulting link/ID. An HTTP 2xx alone is insufficient where processing is asynchronous.
+5. Demonstrate expiry/reconnect, permission loss, partial failure recovery, disconnect and honest cancellation.
+6. Verify customer isolation and that reconnecting Ads does not grant Publishing access.
+7. Attach sanitized recording/results and owner review-console status; do not include secrets, signed URLs or other customer's content.
+
+Documentation researched against primary provider sources on 13 October 2026. Recheck scopes, approval requirements, limits, prices and API sunsets when preparing a live review submission.
