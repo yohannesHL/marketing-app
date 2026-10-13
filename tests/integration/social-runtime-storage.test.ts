@@ -4,6 +4,7 @@ import { mkdtemp,rm,stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn,type ChildProcess } from "node:child_process";
+import type { Client, Config, Transaction } from "@libsql/client";
 import { setTimeout as pause } from "node:timers/promises";
 import { LocalSqliteAdapter } from "../../apps/web/src/server/prisma/localSqliteAdapter";
 import { PrismaClient } from "../../apps/web/src/generated/prisma/client";
@@ -32,6 +33,67 @@ test("the actual adapter preserves journal policy and configures finite busy tim
  }finally{await db.$disconnect();await rm(q.directory,{recursive:true,force:true});}
 });
 
+test("a rejected native COMMIT rolls back once and releases its lock without replaying the Prisma callback", { timeout: 15000 }, async () => {
+  const q = await temporaryDatabase();
+  const transactions: Transaction[] = [];
+  class CaptureForCleanupAdapter extends LocalSqliteAdapter {
+    override createClient(config: Config): Client {
+      const client = super.createClient(config);
+      // Capture only for finally cleanup when this regression is intentionally
+      // run against the broken adapter; operations and errors remain unchanged.
+      return new Proxy(client, {
+        get(target, key) {
+          const value = Reflect.get(target, key, target);
+          if (key === "transaction") return async (...args: unknown[]) => {
+            const transaction: Transaction = await Reflect.apply(value, target, args);
+            transactions.push(transaction);
+            return transaction;
+          };
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    }
+  }
+  const adapter = new CaptureForCleanupAdapter({ url: q.url });
+  const reader = adapter.createClient({ url: q.url });
+  const observer = adapter.createClient({ url: q.url });
+  const db = new PrismaClient({ adapter });
+  let readerOpen = false;
+  try {
+    await reader.execute('CREATE TABLE "CommitProbe" ("value" INTEGER)');
+    await reader.execute('INSERT INTO "CommitProbe" VALUES (1)');
+    // This explicit read transaction is an independent native connection. A
+    // DELETE-journal writer can BEGIN/write but cannot COMMIT until it ends.
+    await reader.execute("BEGIN DEFERRED");
+    readerOpen = true;
+    await reader.execute('SELECT * FROM "CommitProbe"');
+    let callbacks = 0;
+    await assert.rejects(db.$transaction(async tx => {
+      callbacks++;
+      await tx.$executeRawUnsafe('INSERT INTO "CommitProbe" VALUES (2)');
+    }), (error: unknown) => safeCode(error) === "SQLITE_BUSY" &&
+      Number((error as { rawCode?: unknown }).rawCode) % 256 === 5);
+    assert.equal(callbacks, 1, "A rejected COMMIT must never replay the callback");
+    await reader.execute("ROLLBACK");
+    readerOpen = false;
+    assert.deepEqual((await observer.execute('SELECT "value" FROM "CommitProbe" ORDER BY "value"')).rows.map(row => row.value), [1],
+      "The rejected write must be absent and the abandoned writer lock released");
+    await db.$transaction(async tx => {
+      callbacks++;
+      await tx.$executeRawUnsafe('INSERT INTO "CommitProbe" VALUES (3)');
+    });
+    assert.equal(callbacks, 2, "The independently requested later transaction runs once");
+    assert.deepEqual(await db.$queryRawUnsafe('SELECT "value" FROM "CommitProbe" ORDER BY "value"'), [{ value: 1 }, { value: 3 }]);
+  } finally {
+    if (readerOpen) await reader.execute("ROLLBACK").catch(() => {});
+    for (const transaction of transactions) transaction.close();
+    reader.close();
+    observer.close();
+    await db.$disconnect();
+    await rm(q.directory, { recursive: true, force: true });
+  }
+});
+
 test("native BEGIN acquires write intent, rejects bounded contention before any callback, then permits one later write",{timeout:15000},async()=>{
  const q=await temporaryDatabase(),adapter=new LocalSqliteAdapter({url:q.url}),a=adapter.createClient({url:q.url}),b=adapter.createClient({url:q.url});
  let holder:Awaited<ReturnType<typeof a.transaction>>|undefined;
@@ -49,6 +111,196 @@ test("native BEGIN acquires write intent, rejects bounded contention before any 
   assert.equal((await b.execute("PRAGMA busy_timeout")).rows[0].timeout,100);
   await b.reconnect();assert.equal((await b.execute("PRAGMA busy_timeout")).rows[0].timeout,100);
  }finally{holder?.close();a.close();b.close();await rm(q.directory,{recursive:true,force:true});}
+});
+
+test("a transient reader releases during bounded COMMIT backoff without replaying the Prisma callback or write", { timeout: 15000 }, async () => {
+  const q = await temporaryDatabase();
+  const adapter = new LocalSqliteAdapter({ url: q.url });
+  const reader = adapter.createClient({ url: q.url });
+  const observer = adapter.createClient({ url: q.url });
+  const db = new PrismaClient({ adapter });
+  let readerOpen = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let release: Promise<unknown> | undefined;
+  let callbacks = 0;
+  try {
+    await reader.execute('CREATE TABLE "TransientCommitProbe" ("value" INTEGER PRIMARY KEY)');
+    await reader.execute('INSERT INTO "TransientCommitProbe" VALUES (1)');
+    await reader.execute("BEGIN DEFERRED");
+    readerOpen = true;
+    await reader.execute('SELECT * FROM "TransientCommitProbe"');
+    await db.$transaction(async tx => {
+      callbacks++;
+      await tx.$executeRawUnsafe('INSERT INTO "TransientCommitProbe" VALUES (2)');
+      // Native COMMIT waits synchronously for 100ms. The reader can release
+      // only when a bounded retry yields to this same process's timer.
+      timer = setTimeout(() => {
+        release = reader.execute("ROLLBACK").then(() => { readerOpen = false; });
+      }, 25);
+    });
+    await release;
+    assert.equal(readerOpen, false, "The reader's timer must run before COMMIT succeeds");
+    assert.equal(callbacks, 1, "Only the failed COMMIT may be retried");
+    assert.deepEqual((await observer.execute('SELECT "value" FROM "TransientCommitProbe" ORDER BY "value"')).rows.map(row => row.value), [1, 2],
+      "The requested write must appear exactly once");
+  } finally {
+    if (timer) clearTimeout(timer);
+    await release;
+    if (readerOpen) await reader.execute("ROLLBACK").catch(() => {});
+    reader.close();
+    observer.close();
+    await db.$disconnect();
+    await rm(q.directory, { recursive: true, force: true });
+  }
+});
+
+test("a real deferred constraint rejection preserves the COMMIT error and cleans up without replaying the callback", { timeout: 15000 }, async () => {
+  const q = await temporaryDatabase();
+  const transactions: Transaction[] = [];
+  let commitCalls = 0;
+  let commitError: unknown;
+  class ObserveCommitAdapter extends LocalSqliteAdapter {
+    override createClient(config: Config): Client {
+      const client = super.createClient(config);
+      return new Proxy(client, {
+        get(target, key) {
+          const value = Reflect.get(target, key, target);
+          if (key === "transaction") return async (...args: unknown[]) => {
+            const transaction: Transaction = await Reflect.apply(value, target, args);
+            transactions.push(transaction);
+            return new Proxy(transaction, {
+              get(tx, method) {
+                const fn = Reflect.get(tx, method, tx);
+                if (method === "commit") return async () => {
+                  commitCalls++;
+                  try { await tx.commit(); }
+                  catch (error) { commitError = error; throw error; }
+                };
+                return typeof fn === "function" ? fn.bind(tx) : fn;
+              },
+            });
+          };
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    }
+  }
+  const adapter = new ObserveCommitAdapter({ url: q.url });
+  const observer = adapter.createClient({ url: q.url });
+  const db = new PrismaClient({ adapter });
+  try {
+    await observer.executeMultiple('CREATE TABLE "CommitParent" ("id" INTEGER PRIMARY KEY);' +
+      'CREATE TABLE "CommitChild" ("id" INTEGER PRIMARY KEY, "parentId" INTEGER REFERENCES "CommitParent"("id") DEFERRABLE INITIALLY DEFERRED);' +
+      'INSERT INTO "CommitParent" VALUES (1);');
+    let callbacks = 0;
+    await assert.rejects(db.$transaction(async tx => {
+      callbacks++;
+      await tx.$executeRawUnsafe('INSERT INTO "CommitChild" VALUES (2, 999)');
+    }), (error: unknown) => error === commitError &&
+      Number((error as { rawCode?: unknown }).rawCode) % 256 === 19);
+    assert.equal(callbacks, 1);
+    assert.equal(commitCalls, 1, "Prisma must not replay the rejected transaction's COMMIT");
+    assert.deepEqual((await observer.execute('SELECT "id" FROM "CommitChild"')).rows, [],
+      "The deferred constraint failure must roll back its pending write");
+    await db.$transaction(async tx => {
+      callbacks++;
+      await tx.$executeRawUnsafe('INSERT INTO "CommitChild" VALUES (3, 1)');
+    });
+    assert.equal(callbacks, 2);
+    assert.equal(commitCalls, 2);
+    assert.deepEqual(await db.$queryRawUnsafe('SELECT "id", "parentId" FROM "CommitChild"'), [{ id: 3, parentId: 1 }]);
+  } finally {
+    for (const transaction of transactions) transaction.close();
+    observer.close();
+    await db.$disconnect();
+    await rm(q.directory, { recursive: true, force: true });
+  }
+});
+
+test("a failed BEGIN on the same raw client preserves its already detached holder transaction", { timeout: 15000 }, async () => {
+  const q = await temporaryDatabase();
+  const client = new LocalSqliteAdapter({ url: q.url }).createClient({ url: q.url });
+  let holder: Transaction | undefined;
+  let unexpected: Transaction | undefined;
+  try {
+    await client.execute('CREATE TABLE "DetachedHolder" ("value" INTEGER PRIMARY KEY)');
+    holder = await client.transaction("deferred");
+    await holder.execute('INSERT INTO "DetachedHolder" VALUES (1)');
+    await assert.rejects(client.transaction("deferred").then(tx => {
+      unexpected = tx;
+      return tx;
+    }), (error: unknown) => safeCode(error) === "SQLITE_BUSY" &&
+      Number((error as { rawCode?: unknown }).rawCode) % 256 === 5);
+    assert.equal(holder.closed, false, "Reconnecting an unacquired BEGIN must leave the independent holder active");
+    await holder.commit();
+    assert.equal(holder.closed, true);
+    assert.deepEqual((await client.execute('SELECT "value" FROM "DetachedHolder"')).rows.map(row => row.value), [1],
+      "The holder must commit its pending write exactly once");
+  } finally {
+    unexpected?.close();
+    holder?.close();
+    client.close();
+    await rm(q.directory, { recursive: true, force: true });
+  }
+});
+
+test("the local client preserves libSQL argument, integer, binary, row and constraint contracts", async () => {
+  const q = await temporaryDatabase();
+  const create = (intMode: "number" | "bigint" | "string") =>
+    new LocalSqliteAdapter({ url: q.url, intMode }).createClient({ url: q.url, intMode });
+  const number = create("number"), bigint = create("bigint"), string = create("string");
+  try {
+    for (const url of ["file:", `${q.url}?ignored=setting`, `${q.url}#ignored`, `file://example.invalid${q.url.slice(5)}`]) {
+      assert.throws(() => new LocalSqliteAdapter({ url }).createClient({ url }),
+        (error: unknown) => safeCode(error) === "URL_INVALID");
+    }
+    for (const setting of [{ encryptionKey: "" }, { syncUrl: "https://example.invalid" }, { offline: false }, { readYourWrites: false }]) {
+      const config = { url: q.url, ...setting };
+      assert.throws(() => new LocalSqliteAdapter(config).createClient(config),
+        (error: unknown) => safeCode(error) === "CONFIG_UNSUPPORTED");
+    }
+    await number.execute('CREATE TABLE "ValueContract" ("id" INTEGER PRIMARY KEY, "large" INTEGER, "payload" BLOB, "name" TEXT UNIQUE)');
+    const bytes = new Uint8Array([99, 0, 255, 128, 77]);
+    const inserted = await number.execute({
+      sql: 'INSERT INTO "ValueContract" ("id", "large", "payload", "name") VALUES (?, ?, ?, ?)',
+      args: [1, 9223372036854775807n, bytes.subarray(1, 4), "first"],
+    });
+    assert.equal(inserted.rowsAffected, 1);
+    assert.equal(inserted.lastInsertRowid, 1n);
+    // Actual upstream libSQL parity: boolean bindings follow integer mode,
+    // including SQLite's storage type rather than only the returned value.
+    assert.deepEqual((await number.execute("SELECT typeof(?) AS kind, ? AS flag", [true, true])).rows.map(row => [row.kind, row.flag]), [["real", 1]]);
+    assert.deepEqual((await bigint.execute("SELECT typeof(?) AS kind, ? AS flag", [true, true])).rows.map(row => [row.kind, row.flag]), [["integer", 1n]]);
+    assert.deepEqual((await string.execute("SELECT typeof(?) AS kind, ? AS flag", [true, true])).rows.map(row => [row.kind, row.flag]), [["text", "1"]]);
+    const binary = await number.execute('SELECT "payload" FROM "ValueContract" WHERE "name" = :name', { name: "first" });
+    assert.ok(binary.rows[0].payload instanceof ArrayBuffer);
+    assert.deepEqual([...new Uint8Array(binary.rows[0].payload as ArrayBuffer)], [0, 255, 128]);
+    assert.deepEqual(binary.toJSON().rows, [["AP+A"]]);
+    const duplicates = await number.execute("SELECT :left AS duplicate, :right AS duplicate", { left: 7, right: 8 });
+    assert.deepEqual(duplicates.columns, ["duplicate", "duplicate"]);
+    assert.equal(duplicates.rows[0].length, 2);
+    assert.equal(duplicates.rows[0][0], 7);
+    assert.equal(duplicates.rows[0][1], 8);
+    assert.equal(duplicates.rows[0].duplicate, 7);
+    assert.deepEqual(Object.keys(duplicates.rows[0]), ["duplicate"]);
+    assert.equal((await bigint.execute('SELECT "large" FROM "ValueContract"')).rows[0].large, 9223372036854775807n);
+    assert.equal((await string.execute('SELECT "large" FROM "ValueContract"')).rows[0].large, "9223372036854775807");
+    await assert.rejects(number.execute('SELECT "large" FROM "ValueContract"'), RangeError);
+    await assert.rejects(number.execute("SELECT ?", [9223372036854775808n]), RangeError);
+    await assert.rejects(number.execute("SELECT ?", [Number.POSITIVE_INFINITY]), RangeError);
+    await assert.rejects(number.execute('INSERT INTO "ValueContract" ("id", "name") VALUES (2, ?)', ["first"]),
+      (error: unknown) => safeCode(error) === "SQLITE_CONSTRAINT" && (error as { rawCode?: unknown }).rawCode === 2067);
+    // Failed conversion and constraint checks must not leave a cursor/lock
+    // behind. A normal later read and write still use the same client.
+    assert.equal((await number.execute('SELECT "id" FROM "ValueContract"')).rows[0].id, 1);
+    await number.execute('INSERT INTO "ValueContract" ("id", "name") VALUES (3, ?)', ["later"]);
+    assert.deepEqual((await number.execute('SELECT "id" FROM "ValueContract" ORDER BY "id"')).rows.map(row => row.id), [1, 3]);
+  } finally {
+    number.close();
+    bigint.close();
+    string.close();
+    await rm(q.directory, { recursive: true, force: true });
+  }
 });
 
 type Owner=Awaited<ReturnType<AllPlatformFixture["customer"]>>;

@@ -1,5 +1,6 @@
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import type { Client, Config, TransactionMode } from "@libsql/client";
+import { LibsqlError, type Client, type Config, type TransactionMode } from "@libsql/client";
+import { createOwnedSqliteClient } from "./ownedSqliteClient";
 
 function busyBeforeBegin(error: unknown) {
   const value = error as { code?: unknown; rawCode?: unknown } | null;
@@ -12,14 +13,21 @@ function busyBeforeBegin(error: unknown) {
 /** Coordinate the web app and worker on a durable local SQLite file. */
 export class LocalSqliteAdapter extends PrismaLibSql {
   override createClient(config: Config): Client {
-    const client = super.createClient(config);
-    if (client.protocol !== "file") return client;
+    if (config.url !== ":memory:" && !config.url.startsWith("file:")) return super.createClient(config);
     // WHATWG URL adds a leading slash to file::memory:, unlike libSQL's URI
     // parser. Preserve its path semantics and decode supported memory URLs.
     const uriPath = config.url === ":memory:" ? ":memory:" : config.url.slice(config.url.indexOf(":") + 1).split(/[?#]/, 1)[0];
     const path = uriPath.startsWith("//") ? uriPath.replace(/^\/\/[^/]*/, "") : uriPath;
     const decodedPath = decodeURIComponent(path);
-    if (decodedPath === ":memory:" || decodedPath.startsWith(":memory:?")) return client;
+    if (decodedPath === ":memory:" || decodedPath.startsWith(":memory:?")) return super.createClient(config);
+    if (!decodedPath || /[?#]/.test(config.url))
+      throw new LibsqlError("A persistent SQLite file requires a path without URL parameters or fragments.", "URL_INVALID");
+    if (uriPath.startsWith("//")) {
+      const url = new URL(config.url);
+      if ((url.hostname && url.hostname !== "localhost") || url.port || url.username || url.password)
+        throw new LibsqlError("A local SQLite file requires an empty or localhost authority.", "URL_INVALID");
+    }
+    const client = createOwnedSqliteClient(config, decodedPath);
 
     let observations = 0;
     const observe = (stage: string, operation: string, error: unknown, attempt?: number) => {
@@ -56,14 +64,37 @@ export class LocalSqliteAdapter extends PrismaLibSql {
             await prepare("transaction");
             try {
               // Acquire write intent before Prisma can run any callback or
-              // fence SELECT. Never retry a callback, statement or commit.
+              // fence SELECT. Never retry a callback or statement.
               const transaction = await target.transaction(mode === "deferred" ? "write" : mode);
               return new Proxy(transaction, { get(tx, method) {
                 const fn = Reflect.get(tx, method, tx);
                 if (typeof fn !== "function") return fn;
                 if (["execute", "batch", "executeMultiple", "commit", "rollback"].includes(String(method))) return async (...args: unknown[]) => {
-                  try { return await Reflect.apply(fn, tx, args); }
-                  catch (error) { observe("transaction", String(method), error); throw error; }
+                  for (let attempt = 0; ; attempt++) {
+                    try { return await Reflect.apply(fn, tx, args); }
+                    catch (error) {
+                      const busy = error as { code?: unknown; rawCode?: unknown } | null;
+                      // SQLite explicitly leaves a COMMIT rejected with BUSY
+                      // active and uncommitted. Yield to the blocking reader,
+                      // then retry only that COMMIT on the same transaction.
+                      // Never replay its statements, callback or provider RPCs.
+                      if (method === "commit" && busy?.code === "SQLITE_BUSY" &&
+                        (busy.rawCode === 5 || busy.rawCode === "5") && tx.closed === false && attempt < 3) {
+                        observe("transaction", "commit", error, attempt + 1);
+                        await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+                        continue;
+                      }
+                      // Prisma releases its parent mutex even if COMMIT fails.
+                      // Native SQLite can retain that rejected transaction and
+                      // its locks: close rolls it back, never replays the commit.
+                      // Preserve the original failure, including uncertain ones.
+                      if (method === "commit" || method === "rollback") {
+                        try { tx.close(); }
+                        catch (cleanupError) { observe("cleanup", String(method), cleanupError); }
+                      }
+                      observe("transaction", String(method), error); throw error;
+                    }
+                  }
                 };
                 return fn.bind(tx);
               } });
