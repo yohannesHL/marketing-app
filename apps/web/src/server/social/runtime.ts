@@ -23,6 +23,13 @@ import { renewLinkedInPublishing } from "../connections/linkedinRenewal";
 import { LinkedInClient } from "../providers/linkedin";
 import { linkedinSocialRegistration } from "./providers/linkedin";
 
+import { xProviderConfig, xApiBudgetPolicies } from "../connections/xRuntime";
+import { renewXPublishing } from "../connections/xRenewal";
+import { xPriceSchedule } from "../providers/xPricing";
+import { XClient } from "../providers/x";
+import { xSocialRegistration } from "./providers/x";
+import { SocialApiBudget } from "./apiBudget";
+
 /** Providers are added only by their separately validated implementation slices. */
 export function socialProviders() {
   const registry = new SocialProviderRegistry();
@@ -52,6 +59,12 @@ export function socialProviders() {
       if (registration.requiredScopes.every(scope => config.scopes.includes(scope))) registry.register(registration);
     }
   } catch { /* Actual approved member/organization read permissions are independently required. */ }
+  try {
+    const config = xProviderConfig(); new XClient(config);
+    const prices = xPriceSchedule();
+    new SocialApiBudget(prisma, xApiBudgetPolicies());
+    registry.register(xSocialRegistration(config, { mediaOrigin: process.env.SOCIAL_MEDIA_PUBLIC_ORIGIN ?? customerAuth().origin, prices }));
+  } catch { /* API pricing and explicit owner budgets must be configured before X dispatch. */ }
   return registry;
 }
 
@@ -69,6 +82,10 @@ export function socialPostService() {
   return new SocialPostService(prisma, customerAuth(), socialConfiguration(), socialProviders());
 }
 
+function configuredXBudget() {
+  try { return new SocialApiBudget(prisma, xApiBudgetPolicies()); }
+  catch { return undefined; } // X stays unavailable; unrelated configured providers can dispatch.
+}
 export function socialDeliveryWorker() {
   return new SocialDeliveryWorker(prisma, CredentialVault.fromEnvironment(), socialProviders(), socialConfiguration(),
     (request) => socialMediaStore().resolve(request), () => new Date(), async (request) => {
@@ -80,8 +97,17 @@ export function socialDeliveryWorker() {
         ownerId: request.ownerId, authorizationId: request.authorizationId, generation: request.authorizationGeneration,
         credentialVersion: request.credentialVersion, verifyCurrent: request.verifyCurrent,
       });
+      if (request.provider === "X") {
+        const prices = xPriceSchedule();
+        if (!request.authorizeApiCost || request.maxApiCostMicros === undefined) fail("API_COST_APPROVAL_REQUIRED", 409, "Review an X API allowance before renewal.");
+        return renewXPublishing(prisma, CredentialVault.fromEnvironment(), xProviderConfig(), {
+          ownerId: request.ownerId, authorizationId: request.authorizationId, generation: request.authorizationGeneration,
+          credentialVersion: request.credentialVersion, verifyCurrent: request.verifyCurrent,
+          prefundUserRead: () => request.authorizeApiCost!({ operation: "USER_READ", costMicros: prices.USER_READ, maxApiCostMicros: request.maxApiCostMicros! }),
+        });
+      }
       if (request.provider !== "GOOGLE") fail("RECONNECT_REQUIRED", 409, "This provider needs renewed customer authorization.");
       const client = new YouTubeClient(youtubeProviderConfig(request.verifyCurrent));
       return client.renewVerified({ providerUserId: request.providerUserId, refreshToken: request.refreshToken, scopes: request.scopes });
-    });
+    }, configuredXBudget());
 }

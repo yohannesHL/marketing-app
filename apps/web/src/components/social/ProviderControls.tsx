@@ -1,7 +1,5 @@
 "use client";
 import {
-  Alert,
-  Checkbox,
   Input,
   Select,
   Stack,
@@ -9,6 +7,8 @@ import {
 } from "@launchpad/ui";
 import type { TrustedTikTokCreator } from "../connections/connectionUi";
 import type { SocialMedia } from "./socialUi";
+import { XControls, type XQuoteInput } from "./XControls";
+import { microsToUsd } from "../connections/connectionUi";
 import { TikTokControls } from "./TikTokControls";
 export function ProviderControls({
   kind,
@@ -16,13 +16,13 @@ export function ProviderControls({
   options,
   onChange,
   disabled = false,
-  creator, audited, onRefresh, video,
+  creator, audited, onRefresh, video, xQuoteInput,
 }: {
   kind: string;
   format?: "TEXT" | "IMAGE" | "SHORT_VIDEO";
   options: Record<string, unknown>;
   onChange: (options: Record<string, unknown>) => void;
-  disabled?: boolean; creator?: TrustedTikTokCreator; audited?: boolean; onRefresh?: () => void; video?: SocialMedia;
+  disabled?: boolean; creator?: TrustedTikTokCreator; audited?: boolean; onRefresh?: () => void; video?: SocialMedia; xQuoteInput?: XQuoteInput;
 }) {
   const set = (key: string, value: unknown) => {
     const next = { ...options };
@@ -111,35 +111,7 @@ export function ProviderControls({
       </Stack>
     );
   if (kind === "X_PROFILE")
-    return (
-      <Stack gap={3}>
-        <Alert title="X publishing incurs API costs" tone="warning" role="note">
-          A provider-verified weighted text count and cost estimate are required
-          before approval to spend. Character count alone cannot confirm an X
-          post fits.
-        </Alert>
-        <Input
-          label="Maximum API cost (USD micros)"
-          description="1,000,000 micros = US$1. The actual provider must check cost and account credits before publishing."
-          inputMode="numeric"
-          value={String(options.maxApiCostMicros ?? "")}
-          disabled={disabled}
-          onChange={(e) => set("maxApiCostMicros", e.target.value || undefined)}
-        />
-        <Checkbox
-          label="Made with AI disclosure"
-          checked={options.madeWithAi === true}
-          disabled={disabled}
-          onChange={(e) => set("madeWithAi", e.target.checked)}
-        />
-        <Checkbox
-          label="Paid partnership disclosure"
-          checked={options.paidPartnership === true}
-          disabled={disabled}
-          onChange={(e) => set("paidPartnership", e.target.checked)}
-        />
-      </Stack>
-    );
+    return <XControls options={options} onChange={onChange} disabled={disabled} quoteInput={xQuoteInput} />;
   return (
     <Typography variant="caption" tone="muted">
       Instagram format and professional account permissions will be checked by
@@ -172,7 +144,7 @@ export function ReviewedOptions({
     visibility: "Visibility",
     madeWithAi: "Made with AI",
     paidPartnership: "Paid partnership",
-    maxApiCostMicros: "Maximum API cost (USD micros)",
+    maxApiCostMicros: "Maximum X API cost (USD)",
   };
   return Object.keys(options).length ? (
     <dl className="grid gap-1 text-sm">
@@ -180,7 +152,7 @@ export function ReviewedOptions({
         <div key={key} className="flex flex-wrap gap-x-2">
           <dt className="font-medium">{labels[key] ?? "Provider setting"}:</dt>
           <dd>
-            {typeof value === "boolean"
+            {key === "maxApiCostMicros" && Number.isSafeInteger(Number(value)) ? `US$${microsToUsd(Number(value))}` : typeof value === "boolean"
               ? value
                 ? "Yes"
                 : "No"

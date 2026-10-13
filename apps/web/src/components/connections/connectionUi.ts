@@ -23,7 +23,7 @@ export interface Connection {
 export interface ProviderSettings {
   mode: ProviderMode;
   paid: { provider: Provider; enabled: boolean; reason?: string; liveWritesEnabled: boolean }[];
-  social: { provider: SocialProvider; label: string; enabled: boolean; audited?: boolean }[];
+  social: { provider: SocialProvider; label: string; enabled: boolean; audited?: boolean; connectionReadCostMicros?: number }[];
 }
 
 export class ConnectionUiError extends Error {
@@ -49,6 +49,11 @@ const HELP: Record<string, string> = {
   READ_CAPABILITY_REQUIRED: "This author needs approved LinkedIn read access to confirm posts. Ask your workspace administrator to check the app's product permissions.",
   ORGANIZATION_ROLE_REQUIRED: "Restore approved organic posting and reading access to this LinkedIn organization, then refresh accounts.",
   AUTHOR_MISMATCH: "Choose the verified member or organization belonging to this LinkedIn connection.",
+  INVALID_API_COST: "Enter a maximum X API cost in US dollars with up to six decimal places.",
+  API_COST_APPROVAL_REQUIRED: "X API cost approval or configured rates are missing. Ask your administrator to review this workspace's allowance.",
+  API_COST_LIMIT: "This action exceeds the approved X API allowance. Review the estimate and your limit, or ask your administrator to update the allowance.",
+  PROVIDER_CREDITS_REQUIRED: "X reports insufficient API credits. Ask the app owner to fund the Developer Console before retrying.",
+  INSUFFICIENT_CREDITS: "X reports insufficient API credits. Ask the app owner to fund the Developer Console before retrying.",
   INVALID_SELECTION: "Choose an available account and its verified access path.",
   DESTINATION_UNAVAILABLE: "Choose a Facebook Page with content creation access, or a linked Instagram professional account. Personal profiles cannot publish through this connection.",
   TARGET_UNAVAILABLE: "The selected Page or Instagram professional account is no longer available. Check its permissions and Page linkage, then refresh discovery.",
@@ -119,4 +124,19 @@ export interface SelectedAccountReadiness {
   outcomes: { destinationId: string; provider: Provider; success: boolean; canRead: boolean;
     canWrite: "DISABLED"; account?: { externalId: string; name?: string; currency?: string; timezone?: string };
     error?: { code: string; message: string; status: number } }[];
+}
+
+/** Parse dollars exactly: no floating-point multiplication or silent rounding. */
+export function usdToMicros(value: string): number | undefined {
+  if (value.length > 30) return undefined;
+  if (!/^\d+(?:\.\d{1,6})?$/.test(value)) return undefined;
+  const [whole, fraction = ""] = value.split(".");
+  const amount = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+  return amount <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(amount) : undefined;
+}
+export function microsToUsd(value: number): string {
+  if (!Number.isSafeInteger(value) || value < 0) return "";
+  const amount = BigInt(value);
+  const fraction = String(amount % 1_000_000n).padStart(6, "0").replace(/0+$/, "");
+  return `${amount / 1_000_000n}${fraction ? `.${fraction}` : ""}`;
 }

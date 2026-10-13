@@ -19,6 +19,7 @@ import {
   deliveryLabel,
   safePublishUrl,
   socialRequest,
+  socialErrorHelp,
   type SocialPost,
 } from "./socialUi";
 export function SocialDeliveries({
@@ -192,7 +193,7 @@ export function SocialDeliveries({
                 ) : null}
                 {d.errorCode && d.status !== "UNCERTAIN" ? (
                   <Typography variant="caption">
-                    {d.errorCode === "PROVIDER_PROCESSING_FAILED" ? "The provider confirmed processing failed. Its receipt is retained and this delivery cannot be sent again. Review the content before creating another post." : "Delivery needs attention. Check access, media availability, and provider readiness before retrying."}
+                    {d.errorCode === "PROVIDER_PROCESSING_FAILED" ? "The provider confirmed processing failed. Its receipt is retained and this delivery cannot be sent again. Review the content before creating another post." : socialErrorHelp(d.errorCode)}
                   </Typography>
                 ) : null}
               </Stack>

@@ -664,12 +664,64 @@ model MetaPageCredential {
 }
 
 // Estimated API allocations, never claims of actual provider bills. Retained when a draft/job is deleted.
+model SocialApiBudgetWindow {
+  ownerId        String
+  provider       Platform
+  connectionMode String
+  windowStart    DateTime
+  reservedMicros BigInt                     @default(0)
+  createdAt      DateTime                   @default(now())
+  reservations   SocialApiCostReservation[]
 
+  @@id([ownerId, provider, connectionMode, windowStart])
+}
 
+model SocialApiCostReservation {
+  id                      String                @id
+  ownerId                 String
+  provider                Platform
+  connectionMode          String
+  windowStart             DateTime
+  kind                    String                @default("DELIVERY")
+  deliveryId              String?
+  revisionId              String?
+  authorizationId         String?
+  authorizationGeneration Int?
+  credentialVersion       Int?
+  leaseHash               String?
+  connectionApprovalId    String?
+  operation               String
+  costMicros              BigInt
+  reviewedCapMicros       BigInt
+  createdAt               DateTime              @default(now())
+  window                  SocialApiBudgetWindow @relation(fields: [ownerId, provider, connectionMode, windowStart], references: [ownerId, provider, connectionMode, windowStart], onDelete: Restrict)
+  connectionApproval      XConnectionCostApproval? @relation(fields: [connectionApprovalId], references: [id], onDelete: Restrict)
 
+  @@index([deliveryId])
+  @@index([ownerId, provider, connectionMode, createdAt])
+  @@index([connectionApprovalId])
+}
 
 // Private, explicit session-owned approval for one OAuth or account-check operation.
+model XConnectionCostApproval {
+  id                      String   @id
+  kind                    String
+  ownerId                 String
+  sessionId               String
+  connectionMode          String
+  stateHash               String?  @unique
+  oauthAttemptId          String?  @unique
+  authorizationId         String?
+  authorizationGeneration Int?
+  credentialVersion       Int?
+  capMicros               BigInt
+  expiresAt               DateTime
+  consumedAt              DateTime?
+  createdAt               DateTime @default(now())
+  reservations            SocialApiCostReservation[]
 
+  @@index([ownerId, sessionId, expiresAt])
+}
 
 // Private rotating-refresh coordination; contains no access/refresh token plaintext.
 model SocialCredentialRenewalLease {

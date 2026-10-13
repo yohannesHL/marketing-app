@@ -101,6 +101,7 @@ jobs:
           tests/e2e/meta-publishing-connections.spec.ts
           tests/e2e/tiktok-connections.spec.ts
           tests/e2e/linkedin-connections.spec.ts
+          tests/e2e/x-connections.spec.ts
           --project=${{ matrix.browser }}
       - name: Retain fixture browser evidence
         if: ${{ !cancelled() }}

@@ -112,3 +112,12 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - Preliminary isolated LinkedIn application passed315/315 backend checks and its3 member/organization browser cases without advertising requests or enqueue. Desktop/mobile screenshots were inspected.
 - Independent review reproduced asynchronous media processing being terminalized before publication. Safe bounded polling now preserves the exact upload/parts/finalization plan and prevents re-upload; four real Mockoon/SQLite regressions pass. Existing unknown-finalization coverage now asserts read polling without another mutation.
 - Approved MDP renewal uses the shared coordinator and real refresh expiry; a new guarded-request regression requires reconnect after a successful token exchange followed by a local429 failure. Owner approvals, real member/organization pilot evidence and external cleanup remain unperformed.
+
+
+### X integration — 13 October 2026
+
+- TikTok #30 finalhead18ef4c2 and LinkedIn #31 head471d446 passed exact-head migration/security and all three browser CI jobs. They remain open for the requested five-issue batch. LinkedIn exact backend321 passed; one local WebKit auth prefetch diagnostic required retry, then a focused no-retry rerun passed3/3.
+- X connects separately with session-bound PKCE and explicitly approved identity-read cost allocations; cached selection is honestly labeled. Each billable worker request reserves against immutable reviewed delivery/owner/day/operation limits; renewal prefunds identity verification before rotating.
+- Local owned draft quotes use official weighted text and operator-configured rates, distinguish possible renewal cost and expose no invented bill or credit balance. Customer caps use exact dollars and explicit AI/partnership decisions.
+- Preliminary isolated backend378/378 passed. Independent review found a live SDK read-funding escape; the fix and three permanent no-network live-read regressions pass in57/57 X checks. Isolated browser build found incompatible named CommonJS text-validator exports; default import fixes it, with57/57 checks and typecheck passing again.
+- New X journey passed3/3 in Chromium/Firefox/WebKit without retry, with inspected mobile/desktop screenshots and no build diagnostics. Synthetic rates, saved drafts and actual Mockoon HTTP do not establish live approval, credits, billing, publication or cleanup.
