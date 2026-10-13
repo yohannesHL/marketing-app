@@ -91,7 +91,7 @@ test("customer publishes all seven reviewed destinations once, then schedules, r
   }
   await expect(page.getByTestId("paid-connections").getByTestId("provider-connection")).toHaveCount(0);
   await noHorizontalOverflow(page);
-  await page.screenshot({ path: info.outputPath("all-social-connections-mobile.png"), fullPage: true });
+  await page.screenshot({ path: info.outputPath("all-social-connections-mobile.png") });
   await page.goto("/social/create");
   await page.getByLabel(/^Draft title/).fill("All seven customer-reviewed fixture destinations");
   await page.getByLabel("Caption or post text", { exact: true }).fill("Reviewed source caption");
@@ -185,11 +185,12 @@ test("customer publishes all seven reviewed destinations once, then schedules, r
   expect(await counts()).toEqual(expectedCounts);
   await expect(page.getByRole("button", { name: "Retry selected safe failures", exact: true })).toBeDisabled();
   await noHorizontalOverflow(page);
-  await page.screenshot({ path: info.outputPath("all-social-published-mobile.png"), fullPage: true });
+  await page.getByRole("heading", { name: "Delivery details", exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("all-social-published-mobile.png") });
   await page.getByRole("heading", { name: "Delivery details", exact: true }).locator("..").screenshot({ path: info.outputPath("all-social-delivery-details-mobile.png") });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await noHorizontalOverflow(page);
-  await page.screenshot({ path: info.outputPath("all-social-published-desktop.png"), fullPage: true });
+  await page.screenshot({ path: info.outputPath("all-social-published-desktop.png") });
   await page.getByRole("heading", { name: "Delivery details", exact: true }).locator("..").screenshot({ path: info.outputPath("all-social-delivery-details-desktop.png") });
 
   // A separate reviewed future post exercises lifecycle controls without
@@ -227,5 +228,7 @@ test("customer publishes all seven reviewed destinations once, then schedules, r
   expect((await cancelledResponse).status()).toBe(200);
   expect((await post(page, future.id)).deliveries[0]).toMatchObject({ status: "CANCELLED", attempts: 0, externalId: null });
   expect(await counts()).toEqual(expectedCounts); expect(advertisingWrites).toEqual([]);
-  await page.screenshot({ path: info.outputPath("all-social-future-cancelled-desktop.png"), fullPage: true });
+  await expect(page.getByText("Cancelled", { exact: true })).toBeVisible();
+  await page.getByRole("heading", { name: "Delivery details", exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("all-social-future-cancelled-desktop.png") });
 });

@@ -17,8 +17,8 @@ async function main() {
     cleaning = true; controller.abort();
     cleanupPromise = (async () => {
     const owned = fixture ?? await starting?.catch(() => undefined);
-    for (const process of processes) if (process.exitCode === null) process.kill("SIGTERM");
-    await Promise.all(processes.map(process => process.exitCode !== null ? Promise.resolve() :
+    for (const process of processes) if (process.pid && process.exitCode === null) process.kill("SIGTERM");
+    await Promise.all(processes.map(process => !process.pid || process.exitCode !== null || process.signalCode !== null ? Promise.resolve() :
       new Promise<void>(resolve => {
         const timer = setTimeout(() => { process.kill("SIGKILL"); resolve(); }, 5000);
         process.once("exit", () => { clearTimeout(timer); resolve(); });
@@ -51,12 +51,15 @@ async function main() {
       X_API_OWNER_BUDGETS: JSON.stringify(fixture.xOwnerPolicies), PORT: parsed.port, NODE_ENV: "production" };
     controller.signal.throwIfAborted();
     const build = spawn("npm", ["--workspace", "@launchpad/web", "run", "build"], { env, stdio: "inherit" }); processes.push(build);
-    if (await new Promise<number | null>(resolve => build.once("exit", resolve)) !== 0) throw new Error("Isolated delivery app build failed.");
+    if (await new Promise<number | null>((resolve, reject) => { build.once("exit", resolve); build.once("error", reject); }) !== 0)
+      throw new Error("Isolated delivery app build failed.");
     controller.signal.throwIfAborted();
     const server = spawn(process.execPath, ["server.js"], { cwd: join(process.cwd(), "apps/web"), env, stdio: "inherit" }); processes.push(server);
     server.once("exit", code => { if (!cleaning) { process.exitCode = code ?? 1; void cleanup(); } });
+    server.once("error", () => { process.exitCode = 1; void cleanup(); });
     const worker = spawn(process.execPath, ["--import", "tsx", "apps/web/scripts/social-worker.ts", "run"], { env, stdio: "inherit" }); processes.push(worker);
     worker.once("exit", code => { if (!cleaning) { process.exitCode = code ?? 1; void cleanup(); } });
+    worker.once("error", () => { process.exitCode = 1; void cleanup(); });
   } catch (error) { await cleanup(); throw error; }
 }
 main().catch(() => { console.error("Isolated mock social-delivery setup stopped."); process.exitCode = 1; });

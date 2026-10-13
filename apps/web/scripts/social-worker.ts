@@ -37,9 +37,7 @@ main().catch((error: unknown) => {
   // Never log provider payloads, SQL arguments, tokens or exception messages.
   const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" &&
     /^(?:P[0-9]{4}|[A-Z][A-Z_]{0,63})$/.test(error.code) ? error.code : "INTERNAL_ERROR";
-  const detail = error instanceof Error ? error.message : "";
-  console.error(JSON.stringify({ status: "STOPPED", code,
-    storageBusy: /SQLITE_BUSY|database (?:is )?locked|database is busy/i.test(detail) }));
+  console.error(JSON.stringify({ status: "STOPPED", code }));
   console.error("Social delivery stopped. Check configuration, migrations and the server keyring.");
   process.exitCode = 1;
 }).finally(() => prisma.$disconnect());

@@ -20,6 +20,18 @@ const publicHosts: Record<string, readonly string[]> = {
 };
 type Lease = { id: string; token: string; hash: string; attempt: number };
 
+function claimStorageContention(error: unknown) {
+  if (error instanceof SecurityError) return false;
+  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  const cause = (error as { meta?: { driverAdapterError?: { cause?: { kind?: unknown; originalCode?: unknown } } } } | null)?.meta?.driverAdapterError?.cause;
+  const original = typeof cause?.originalCode === "number" ? cause.originalCode :
+    typeof cause?.originalCode === "string" && /^\d{1,10}$/.test(cause.originalCode) ? Number(cause.originalCode) : NaN;
+  // The installed libSQL adapter maps SQLite BUSY to Prisma P1008. This
+  // classifier is used only before any provider request, never around execute.
+  return ["P1008", "P2034", "SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT", "TRANSACTION_CONFLICT"].includes(String(code)) ||
+    (code === "P2010" && cause?.kind === "SocketTimeout" && Number.isSafeInteger(original) && original >= 0 && original % 256 === 5);
+}
+
 /** Scheduled jobs authorize from durable ownership/grants, never a browser session. */
 export class SocialDeliveryWorker {
   private readonly config: Readonly<SocialWorkerConfig>;
@@ -52,25 +64,36 @@ export class SocialDeliveryWorker {
   }
   private async claim(id?: string, reconciliation = false): Promise<Lease | null> {
     const token = randomBytes(32).toString("base64url"), hash = digest(token);
-    return this.db.$transaction(async (tx) => {
-      await this.recover(tx);
-      const delivery = await tx.socialDelivery.findFirst({ where: {
-        ...(id ? { id } : {}), connectionMode: this.config.mode.toUpperCase(),
-        status: reconciliation ? "UNCERTAIN" : { in: [...work] },
-        ...(reconciliation ? { leaseTokenHash: null, ...(!id ? { attempts: { lt: this.maximum + 3 } } : {}), OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] } : { cancellationRequested: false, dueAt: { lte: this.now() }, attempts: { lt: this.maximum },
-          OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] }),
-      }, orderBy: { dueAt: "asc" } });
-      if (!delivery) return null;
-      const attempt = delivery.attempts + 1;
-      const changed = await tx.socialDelivery.updateMany({ where: { id: delivery.id, status: delivery.status,
-        leaseTokenHash: delivery.leaseTokenHash, attempts: delivery.attempts, dueAt: delivery.dueAt,
-        nextAttemptAt: delivery.nextAttemptAt, cancellationRequested: delivery.cancellationRequested }, data: {
-          status: "LEASED", leaseTokenHash: hash, leaseUntil: new Date(this.now().getTime() + this.leaseMs), attempts: attempt,
-        } });
-      if (!changed.count) return null;
-      await tx.socialDeliveryAttempt.create({ data: { deliveryId: delivery.id, number: attempt, leaseHash: hash, startedAt: this.now() } });
-      return { id: delivery.id, token, hash, attempt };
-    });
+    for (let retry = 0; ; retry++) {
+      try { return await this.db.$transaction(async (tx) => {
+        // Acquire write intent before reading a snapshot. All work in this
+        // transaction is local; a failed/lost commit never authorizes HTTP.
+        await tx.$executeRawUnsafe('UPDATE "SocialDelivery" SET "attempts" = "attempts" WHERE 0');
+        await this.recover(tx);
+        const delivery = await tx.socialDelivery.findFirst({ where: {
+          ...(id ? { id } : {}), connectionMode: this.config.mode.toUpperCase(),
+          status: reconciliation ? "UNCERTAIN" : { in: [...work] },
+          ...(reconciliation ? { leaseTokenHash: null, ...(!id ? { attempts: { lt: this.maximum + 3 } } : {}), OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] } : { cancellationRequested: false, dueAt: { lte: this.now() }, attempts: { lt: this.maximum },
+            OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] }),
+        }, orderBy: { dueAt: "asc" } });
+        if (!delivery) return null;
+        const attempt = delivery.attempts + 1;
+        const changed = await tx.socialDelivery.updateMany({ where: { id: delivery.id, status: delivery.status,
+          leaseTokenHash: delivery.leaseTokenHash, attempts: delivery.attempts, dueAt: delivery.dueAt,
+          nextAttemptAt: delivery.nextAttemptAt, cancellationRequested: delivery.cancellationRequested }, data: {
+            status: "LEASED", leaseTokenHash: hash, leaseUntil: new Date(this.now().getTime() + this.leaseMs), attempts: attempt,
+          } });
+        if (!changed.count) return null;
+        await tx.socialDeliveryAttempt.create({ data: { deliveryId: delivery.id, number: attempt, leaseHash: hash, startedAt: this.now() } });
+        return { id: delivery.id, token, hash, attempt };
+      }); } catch (error) {
+        if (!claimStorageContention(error)) throw error;
+        // A committed lease whose response was lost stays leased. A fresh
+        // claim rereads its fences and leaves recovery to the existing deadline.
+        if (retry >= 3) return null;
+        await new Promise(resolve => setTimeout(resolve, 25 * (retry + 1)));
+      }
+    }
   }
   private async verified(tx: Prisma.TransactionClient, lease: Lease, reconciliation = false, credentialVersion?: number, allowExpiredForRenewal = false) {
     const delivery = await tx.socialDelivery.findUnique({ where: { id: lease.id }, include: {
