@@ -10,10 +10,12 @@
     "test:e2e:debug": "playwright test --config=playwright.config.ts --debug",
     "test:e2e:ui": "playwright test --config=playwright.config.ts --ui",
     "test:e2e:report": "playwright show-report playwright-report",
-    "test:security": "tsx --test tests/integration/*.test.ts"
+    "test:security": "tsx --test tests/integration/*.test.ts",
+    "mock:google": "mockoon-cli start --data tests/mockoon/google-ads.json --port 3910 --hostname 127.0.0.1 --disable-admin-api"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
+    "@mockoon/cli": "9.9.0",
     "@playwright/test": "^1.54.1",
     "tsx": "^4.23.15"
   },

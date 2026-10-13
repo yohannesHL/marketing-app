@@ -15,6 +15,8 @@ export async function withCustomerAdAccount<T>(
     grant.destinations.some((destination) => destination.id === destinationId),
   );
   if (!authorization) fail("NOT_FOUND", 404, "Destination not found.");
+  if (authorization.connectionMode !== "LIVE")
+    fail("LIVE_ADS_UNAVAILABLE", 503, "This connection cannot use the live advertising adapters.");
   const requiredScopes =
     authorization.provider === "GOOGLE"
       ? ["https://www.googleapis.com/auth/adwords"]
@@ -41,6 +43,11 @@ export async function withCustomerAdAccount<T>(
       externalId: credentials.externalId,
       accessToken: credentials.accessToken,
       refreshToken: credentials.refreshToken,
+      meta: {
+        connectionMode: credentials.connectionMode,
+        ...(credentials.selectedContext && typeof credentials.selectedContext === "object" && !Array.isArray(credentials.selectedContext)
+          ? credentials.selectedContext : {}),
+      },
     }),
   );
 }

@@ -20,6 +20,7 @@ export type OAuthRequest = {
   redirectUri: string;
   scopes: string[];
   pkce: boolean;
+  reconnectAuthorizationId?: string;
 };
 
 export type ProviderGrant = {
@@ -29,6 +30,7 @@ export type ProviderGrant = {
   scopes: string[];
   expiresAt?: Date | null;
   externalGrantId?: string;
+  connectionMode?: "MOCK" | "LIVE";
 };
 
 export type DestinationInput = {
@@ -45,6 +47,9 @@ export type OperationCredentials = {
   capability: ConnectionCapability;
   authorizationId: string;
   credentialVersion: number;
+  connectionMode: string;
+  destinationMetadata: Prisma.JsonValue | null;
+  selectedContext: Prisma.JsonValue | null;
   externalId: string;
   kind: DestinationKind;
   accessToken: string;
@@ -57,6 +62,8 @@ const publicAuthorization = {
   provider: true,
   providerUserId: true,
   capability: true,
+  connectionMode: true,
+  credentialVersion: true,
   scopes: true,
   status: true,
   expiresAt: true,
@@ -72,6 +79,10 @@ const publicAuthorization = {
       currency: true,
       timezone: true,
       selected: true,
+      available: true,
+      metadata: true,
+      selectedContext: true,
+      lastCheckedAt: true,
     },
   },
 } satisfies Prisma.ProviderAuthorizationSelect;
@@ -149,6 +160,11 @@ export class CustomerConnections {
         "The callback must be a registered connection route on APP_ORIGIN.",
       );
     }
+    if (input.reconnectAuthorizationId) {
+      const target = await this.get(principal, input.reconnectAuthorizationId);
+      if (target.provider !== input.provider || target.capability !== input.capability)
+        fail("INVALID_RECONNECT", 400, "Choose a connection for this provider and category.");
+    }
     const state = randomBytes(32).toString("base64url");
     const verifier = input.pkce
       ? randomBytes(32).toString("base64url")
@@ -165,6 +181,7 @@ export class CustomerConnections {
         capability: input.capability,
         redirectUri: uri.href,
         requestedScopes: scopes(input.scopes),
+        reconnectAuthorizationId: input.reconnectAuthorizationId ?? null,
         expiresAt,
         verifierCiphertext: verifier
           ? this.vault.encrypt(verifier, `oauth:${principal.userId}:${id}`)
@@ -218,6 +235,7 @@ export class CustomerConnections {
     return {
       redirectUri: attempt.redirectUri,
       requestedScopes: attempt.requestedScopes as string[],
+      reconnectAuthorizationId: attempt.reconnectAuthorizationId,
       codeVerifier: attempt.verifierCiphertext
         ? this.vault.decrypt(
             attempt.verifierCiphertext,
@@ -262,6 +280,8 @@ export class CustomerConnections {
       const existing = await tx.providerAuthorization.findUnique({
         where: { userId_provider_providerUserId_capability: unique },
       });
+      if (existing && grant.connectionMode && existing.connectionMode !== grant.connectionMode)
+        fail("CONNECTION_MODE_MISMATCH", 409, "This provider identity already belongs to another connection mode.");
       const id = existing?.id ?? randomUUID();
       const data = {
         accessCiphertext: this.vault.encrypt(
@@ -277,6 +297,7 @@ export class CustomerConnections {
             ? existing.refreshCiphertext
             : null,
         scopes: scopes(grant.scopes),
+        connectionMode: grant.connectionMode ?? existing?.connectionMode ?? "LEGACY",
         expiresAt: grant.expiresAt ?? null,
         externalGrantId:
           grant.externalGrantId ?? existing?.externalGrantId ?? null,
@@ -314,15 +335,15 @@ export class CustomerConnections {
     await this.auth.assertSession(principal);
     const grants = await this.db.providerAuthorization.findMany({
       where: { userId: principal.userId },
-      select: publicAuthorization,
+      select: { ...publicAuthorization, refreshCiphertext: true },
       orderBy: { createdAt: "asc" },
     });
-    return grants.map((grant) => ({
+    return grants.map(({ refreshCiphertext, ...grant }) => ({
       ...grant,
       status:
         grant.status === "CONNECTED" &&
         grant.expiresAt &&
-        grant.expiresAt <= this.now()
+        grant.expiresAt <= this.now() && !refreshCiphertext
           ? ("RECONNECT_REQUIRED" as const)
           : grant.status,
     }));
@@ -332,15 +353,16 @@ export class CustomerConnections {
     await this.auth.assertSession(principal);
     const authorization = await this.db.providerAuthorization.findFirst({
       where: { id, userId: principal.userId },
-      select: publicAuthorization,
+      select: { ...publicAuthorization, refreshCiphertext: true },
     });
     if (!authorization) fail("NOT_FOUND", 404, "Connection not found.");
+    const { refreshCiphertext, ...metadata } = authorization;
     return {
-      ...authorization,
+      ...metadata,
       status:
         authorization.status === "CONNECTED" &&
         authorization.expiresAt &&
-        authorization.expiresAt <= this.now()
+        authorization.expiresAt <= this.now() && !refreshCiphertext
           ? ("RECONNECT_REQUIRED" as const)
           : authorization.status,
     };
@@ -418,16 +440,20 @@ export class CustomerConnections {
     selected: boolean,
   ) {
     const destination = await this.ownedDestination(principal, id);
-    if (selected && destination.authorization.status !== "CONNECTED")
+    if (selected && (!destination.available || destination.authorization.status !== "CONNECTED"))
       fail(
         "RECONNECT_REQUIRED",
         409,
         "Reconnect before selecting destinations.",
       );
+    if (selected && destination.authorization.provider === "GOOGLE" &&
+      destination.authorization.capability === "ADS" && destination.authorization.connectionMode !== "LEGACY")
+      fail("VERIFIED_SELECTION_REQUIRED", 400, "Select Google accounts through the provider route so their manager access is rechecked.");
     return this.db.$transaction(async (tx) => {
       const updated = await tx.connectionDestination.updateMany({
         where: {
           id,
+          ...(selected ? { available: true } : {}),
           authorization: {
             userId: principal.userId,
             ...(selected ? { status: "CONNECTED" as const } : {}),
@@ -564,7 +590,7 @@ export class CustomerConnections {
         403,
         "This destination does not authorize the requested marketing category.",
       );
-    if (!destination.selected)
+    if (!destination.selected || !destination.available)
       fail(
         "DESTINATION_NOT_SELECTED",
         409,
@@ -576,6 +602,7 @@ export class CustomerConnections {
         where: {
           id: destinationId,
           selected: true,
+          available: true,
           authorization: {
             userId: principal.userId,
             status: "CONNECTED",
@@ -620,6 +647,7 @@ export class CustomerConnections {
     const authorization = destination.authorization;
     if (
       !destination.selected ||
+      !destination.available ||
       authorization.generation !== operation.generation
     )
       fail(
@@ -634,6 +662,7 @@ export class CustomerConnections {
         status: "PENDING",
         destination: {
           selected: true,
+          available: true,
           authorization: {
             status: "CONNECTED",
             generation: operation.generation,
@@ -654,7 +683,7 @@ export class CustomerConnections {
         where: { id },
         include: { destination: { include: { authorization: true } } },
       });
-      if (checked.status !== "RUNNING" || !checked.destination.selected)
+      if (checked.status !== "RUNNING" || !checked.destination.selected || !checked.destination.available)
         fail(
           "OPERATION_UNAVAILABLE",
           409,
@@ -674,6 +703,9 @@ export class CustomerConnections {
         capability: current.capability,
         authorizationId: current.id,
         credentialVersion: current.credentialVersion,
+        connectionMode: current.connectionMode,
+        destinationMetadata: checked.destination.metadata,
+        selectedContext: checked.destination.selectedContext,
         externalId: destination.externalId,
         kind: destination.kind,
         expiresAt: current.expiresAt,

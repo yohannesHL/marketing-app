@@ -288,6 +288,7 @@ model OAuthAttempt {
   capability         ConnectionCapability
   redirectUri        String
   requestedScopes    Json
+  reconnectAuthorizationId String?
   verifierCiphertext String?
   expiresAt          DateTime
   consumedAt         DateTime?
@@ -305,6 +306,7 @@ model ProviderAuthorization {
   providerUserId    String
   capability        ConnectionCapability
   externalGrantId   String?
+  connectionMode    String                  @default("LEGACY")
   accessCiphertext  String?
   refreshCiphertext String?
   expiresAt         DateTime?
@@ -333,6 +335,10 @@ model ConnectionDestination {
   currency        String?
   timezone        String?
   selected        Boolean               @default(false)
+  available       Boolean               @default(true)
+  metadata        Json?
+  selectedContext Json?
+  lastCheckedAt   DateTime?
   authorization   ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
   operations      ConnectionOperation[]
 

@@ -1,11 +1,11 @@
 # Customer marketing progress
 
-Status: prerequisite #3 validated; #4 HTTP provider implementation in progress; other issues planned.
+Status: prerequisite #3 merged in PR #19; #4 in validation; #5 provider and #7 wizard QA work in progress.
 
 | Issue | Outcome | Status | PR |
 | --- | --- | --- | --- |
-| [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Reviewed; 14 security regressions pass; fresh migrations/build pass | — |
-| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Planned | — |
+| [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Merged; 14 security regressions pass; fresh migrations/build pass | [#19](https://github.com/yohannesHL/marketing-app/pull/19) |
+| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented; 33 provider/foundation tests and build under validation | — |
 | [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Planned | — |
 | [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Planned | — |
 | [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Planned | — |
