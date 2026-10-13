@@ -49,6 +49,7 @@ dist/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+tests/.auth/
 
 # Deployment artifacts
 deploys/
@@ -57,4 +58,10 @@ deploys/
 runner-monitor.log
 actions-runner/
 
+# Storybook build output
+packages/ui/storybook-static/
 
+
+# debug
+*.db
+*.tsbuildinfo

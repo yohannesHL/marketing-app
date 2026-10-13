@@ -3,13 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "NODE_ENV=production node server.js",
+    "lint": "next lint",
+    "security:customer": "tsx scripts/customer-security.ts provision",
+    "security:migrate-legacy": "tsx scripts/customer-security.ts migrate-legacy",
+    "security:rotate-keys": "tsx scripts/customer-security.ts rotate-keys",
+    "security:prune": "tsx scripts/customer-security.ts prune"
   },
   "dependencies": {
-    "next": "14.2.3",
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^7.5.0",
+    "@prisma/client": "^7.5.0",
+    "next": "15.5.27",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -19,9 +26,10 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.27",
     "eslint": "^8",
-    "eslint-config-next": "14.2.3",
+    "eslint-config-next": "15.5.27",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "prisma": "^7.5.0"
   }
 }

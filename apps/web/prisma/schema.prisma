@@ -1,0 +1,379 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Platform {
+  GOOGLE
+  META
+  TIKTOK
+  LINKEDIN
+  X
+}
+
+model PlatformAccount {
+  id          String   @id @default(cuid())
+  platform    Platform
+  externalId  String
+  name        String?
+  currency    String?
+  timezone    String?
+  accessToken String
+  createdAt   DateTime @default(now())
+
+  campaigns PlatformCampaign[]
+}
+
+model PlatformUserAccount {
+  id          String   @id @default(cuid())
+  platform    Platform
+  userId      String
+  externalId  String
+  name        String?
+  currency    String?
+  timezone    String?
+  accessToken String
+  createdAt   DateTime @default(now())
+
+  campaigns PlatformCampaign[]
+  user      User               @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?
+  name         String
+  isBusiness   Boolean?
+  loginEmail   String?  @unique
+  passwordHash String?
+
+  platformsAccounts PlatformUserAccount[]
+  sessions          CustomerSession[]
+  authorizations    ProviderAuthorization[]
+  oauthAttempts     OAuthAttempt[]
+}
+
+model Asset {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  contentUrl String?
+  metadata   Json?
+  source     String? // AI | USER_UPLOAD
+  createdAt  DateTime @default(now())
+
+  platformAssets PlatformAsset[]
+  assetSets      AssetSetAsset[]
+}
+
+model PlatformAsset {
+  id         String   @id @default(cuid())
+  assetId    String
+  platform   Platform
+  externalId String
+
+  asset Asset @relation(fields: [assetId], references: [id])
+}
+
+model AssetSet {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  assets AssetSetAsset[]
+}
+
+model AssetSetAsset {
+  assetSetId String
+  assetId    String
+
+  assetSet AssetSet @relation(fields: [assetSetId], references: [id])
+  asset    Asset    @relation(fields: [assetId], references: [id])
+
+  @@id([assetSetId, assetId])
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  name      String
+  objective String
+  status    String
+  budget    Json
+  targeting Json
+  createdAt DateTime @default(now())
+
+  platformCampaigns PlatformCampaign[]
+  adGroups          AdGroup[]
+}
+
+model PlatformCampaign {
+  id         String   @id @default(cuid())
+  campaignId String
+  platform   Platform
+  externalId String
+  accountId  String
+
+  campaign              Campaign             @relation(fields: [campaignId], references: [id])
+  account               PlatformAccount      @relation(fields: [accountId], references: [id])
+  platformUserAccount   PlatformUserAccount? @relation(fields: [platformUserAccountId], references: [id])
+  platformUserAccountId String?
+}
+
+model AdGroup {
+  id         String  @id @default(cuid())
+  name       String
+  campaignId String
+  status     String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  ads      Ad[]
+}
+
+model Ad {
+  id        String @id @default(cuid())
+  adGroupId String
+  type      String
+  status    String
+
+  adGroup     AdGroup      @relation(fields: [adGroupId], references: [id])
+  platformAds PlatformAd[]
+}
+
+model PlatformAd {
+  id         String   @id @default(cuid())
+  adId       String
+  platform   Platform
+  externalId String
+
+  ad Ad @relation(fields: [adId], references: [id])
+}
+
+model Audience {
+  id         String   @id @default(cuid())
+  type       String
+  definition Json
+  createdAt  DateTime @default(now())
+
+  platformAudiences PlatformAudience[]
+}
+
+model PlatformAudience {
+  id         String   @id @default(cuid())
+  audienceId String
+  platform   Platform
+  externalId String
+
+  audience Audience @relation(fields: [audienceId], references: [id])
+}
+
+model ConversionEvent {
+  id        String   @id @default(cuid())
+  event     String
+  value     Float?
+  currency  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+model PerformanceMetric {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  platform   Platform
+
+  impressions Int
+  clicks      Int
+  conversions Int
+  cost        Float
+  revenue     Float
+
+  date DateTime
+}
+
+model ReachForecast {
+  id                   String   @id @default(cuid())
+  platform             Platform
+  input                Json
+  estimatedReach       Int
+  estimatedImpressions Int
+  createdAt            DateTime @default(now())
+}
+
+model AIAssetGeneration {
+  id        String   @id @default(cuid())
+  prompt    String
+  outputUrl String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model AdProxyExecution {
+  id              String    @id @default(cuid())
+  operation       String
+  source          String?
+  requestPayload  Json
+  responsePayload Json?
+  success         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+  ownerId         String?
+
+  invocations AdPlatformInvocation[]
+}
+
+enum ConnectionCapability {
+  ADS
+  SOCIAL
+}
+
+enum AuthorizationStatus {
+  CONNECTED
+  RECONNECT_REQUIRED
+  DISCONNECTED
+  REVOKED
+}
+
+enum DestinationKind {
+  AD_ACCOUNT
+  YOUTUBE_CHANNEL
+  FACEBOOK_PAGE
+  INSTAGRAM_PROFILE
+  TIKTOK_PROFILE
+  LINKEDIN_MEMBER
+  LINKEDIN_ORGANIZATION
+  X_PROFILE
+}
+
+enum ConnectionOperationStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model CustomerSession {
+  id            String         @id @default(cuid())
+  userId        String
+  tokenHash     String         @unique
+  createdAt     DateTime       @default(now())
+  expiresAt     DateTime
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthAttempts OAuthAttempt[]
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
+}
+
+model OAuthAttempt {
+  id                 String               @id @default(cuid())
+  stateHash          String               @unique
+  userId             String
+  sessionId          String
+  provider           Platform
+  capability         ConnectionCapability
+  redirectUri        String
+  requestedScopes    Json
+  verifierCiphertext String?
+  expiresAt          DateTime
+  consumedAt         DateTime?
+  createdAt          DateTime             @default(now())
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session            CustomerSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model ProviderAuthorization {
+  id                String                  @id @default(cuid())
+  userId            String
+  provider          Platform
+  providerUserId    String
+  capability        ConnectionCapability
+  externalGrantId   String?
+  accessCiphertext  String?
+  refreshCiphertext String?
+  expiresAt         DateTime?
+  scopes            Json
+  status            AuthorizationStatus     @default(CONNECTED)
+  generation        Int                     @default(1)
+  credentialVersion Int                     @default(1)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  disconnectedAt    DateTime?
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinations      ConnectionDestination[]
+  events            ConnectionAuditEvent[]
+
+  @@unique([userId, provider, providerUserId, capability])
+  @@index([userId, status])
+  @@index([provider, externalGrantId])
+}
+
+model ConnectionDestination {
+  id              String                @id @default(cuid())
+  authorizationId String
+  externalId      String
+  kind            DestinationKind
+  name            String?
+  currency        String?
+  timezone        String?
+  selected        Boolean               @default(false)
+  authorization   ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  operations      ConnectionOperation[]
+
+  @@unique([authorizationId, kind, externalId])
+}
+
+model ConnectionOperation {
+  id             String                    @id @default(cuid())
+  destinationId  String
+  generation     Int
+  requiredScopes Json
+  status         ConnectionOperationStatus @default(PENDING)
+  createdAt      DateTime                  @default(now())
+  completedAt    DateTime?
+  destination    ConnectionDestination     @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([destinationId, status])
+}
+
+model ConnectionAuditEvent {
+  id              String                @id @default(cuid())
+  authorizationId String
+  action          String
+  createdAt       DateTime              @default(now())
+  authorization   ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+}
+
+model AdPlatformInvocation {
+  id                 String    @id @default(cuid())
+  executionId        String
+  platform           Platform
+  adapterPayload     Json
+  downstreamPath     String?
+  downstreamRequest  Json?
+  downstreamResponse Json?
+  success            Boolean?
+  errorMessage       String?
+  createdAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  execution AdProxyExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+}
