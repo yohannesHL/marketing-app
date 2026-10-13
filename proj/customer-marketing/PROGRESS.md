@@ -94,3 +94,5 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - UI explicitly distinguishes FB Reel AI disclosure from IG Reel feed-sharing, clears obsolete format choices, and names an IG account by username when its display name is absent. Processing failure keeps authoritative receipts terminal without another publication attempt.
 - Browser tests caught ambiguous Page/IG fallback names and WebKit navigation-prefetch errors during OAuth/sign-out. Names now use IG usernames; authenticated account-navigation links no longer prefetch across those session/provider transitions. Current browser rerun is underway.
 - Production Meta review/business/consent and real pilot/cleanup remain owner gates; docs/meta-social-publishing-integration.md gives the exact operator/customer steps.
+
+- Exact Meta runtime310a064 plus test-only54fa4ec passed208/208 backend checks and independent35/35 Meta checks/typecheck. Existing21 browser cases passed; corrected3 new Meta cases passed in Chromium, Firefox and WebKit. Mobile/desktop screenshots reviewed. The test locator now includes its accessible description rather than assuming an exact label.
