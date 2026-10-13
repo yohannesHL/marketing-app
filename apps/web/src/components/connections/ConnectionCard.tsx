@@ -34,7 +34,9 @@ function DestinationRow({ destination, connection, busy, actionsEnabled, paid, o
         <div><dt className="font-semibold">{paid ? "Campaign management" : "Publishing permission"}</dt><dd>{metadata?.canWrite === "ALLOWED" ? "Allowed" : metadata?.canWrite === "DENIED" ? "Denied" : "Not verified"}</dd></div>
         <div><dt className="font-semibold">Availability</dt><dd>{manager ? "Manager only" : destination.available ? "Available" : "Unavailable"}</dd></div>
       </dl>
-      {metadata?.tasks?.length ? <Typography tone="muted">Account tasks: {metadata.tasks.join(", ")}</Typography> : null}
+      {metadata?.tasks?.length ? <Typography tone="muted">{connection.provider === "LINKEDIN" && metadata.tasks.includes("READ_CAPABILITY_REQUIRED")
+        ? "Approved LinkedIn read access is required to confirm delivery. Ask your administrator to enable the app's permitted member or organization workflow."
+        : `Account tasks: ${metadata.tasks.join(", ")}`}</Typography> : null}
       {google && paid && !manager ? <Select label="Google access path" aria-label={`Google access path for ${destination.name || destination.externalId}`}
         description="Choose direct access or a verified manager."
         placeholder="Choose an access path" value={context} disabled={busy || !canChoose} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"

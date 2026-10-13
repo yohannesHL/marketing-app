@@ -24,7 +24,7 @@ async function main() {
   const tokenKey = randomBytes(32).toString("base64");
   const connections = new CustomerConnections(db, auth, new CredentialVault({ test: tokenKey }, "test"));
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other", "connections", "social", "youtube", "meta-social", "tiktok"])
+    for (const prefix of ["e2e", "other", "connections", "social", "youtube", "meta-social", "tiktok", "linkedin"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",
@@ -78,8 +78,15 @@ async function main() {
     await rm(directory, { recursive: true, force: true });
     throw error;
   }
-  const cleanup = async () => {
+  let linkedin: Awaited<ReturnType<typeof startMockoon>>;
+  try { linkedin = await startMockoon("tests/mockoon/linkedin.json"); }
+  catch (error) {
     await Promise.all([google.stop(), meta.stop(), youtube.stop(), metaPublishing.stop(), tiktok.stop()]);
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+  const cleanup = async () => {
+    await Promise.all([google.stop(), meta.stop(), youtube.stop(), metaPublishing.stop(), tiktok.stop(), linkedin.stop()]);
     await rm(directory, { recursive: true, force: true });
   };
   const env = {
@@ -97,6 +104,9 @@ async function main() {
     TIKTOK_MOCKOON_URL: tiktok.origin,
     TIKTOK_VERIFIED_MEDIA_PREFIX: `${origin}/api/social/media/`,
     TIKTOK_APP_AUDITED: "false",
+    LINKEDIN_MOCKOON_URL: linkedin.origin,
+    LINKEDIN_SCOPES: JSON.stringify(["openid", "profile", "w_member_social", "r_member_social", "w_organization_social", "rw_organization_admin", "r_organization_social"]),
+    LINKEDIN_MDP_REFRESH_ENABLED: "false",
     SOCIAL_PUBLISHING_ENABLED: "false",
     SOCIAL_APPROVED_PROVIDERS: "[]",
     SOCIAL_MEDIA_DIRECTORY: join(directory, "media"),

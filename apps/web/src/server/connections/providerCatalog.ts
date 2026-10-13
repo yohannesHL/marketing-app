@@ -37,8 +37,9 @@ export async function handleProviderCatalog(request: Request) {
     const { youtubeConnectionService } = await import("./youtubeRuntime");
     const { metaPublishingConnectionService } = await import("./metaPublishingRuntime");
     const { tiktokConnectionService } = await import("./tiktokRuntime");
+    const { linkedinConnectionService } = await import("./linkedinRuntime");
     return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }, {
-      YOUTUBE: youtubeConnectionService, FACEBOOK: metaPublishingConnectionService, INSTAGRAM: metaPublishingConnectionService, TIKTOK: tiktokConnectionService,
+      YOUTUBE: youtubeConnectionService, FACEBOOK: metaPublishingConnectionService, INSTAGRAM: metaPublishingConnectionService, TIKTOK: tiktokConnectionService, LINKEDIN: linkedinConnectionService,
     }));
   } catch (error) { return securityResponse(error); }
 }

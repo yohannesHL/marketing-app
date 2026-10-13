@@ -11,7 +11,7 @@ import { ownedDestination, verifyFormat, verifyMedia } from "./validation";
 import { publicMedia } from "./mediaStore";
 
 const work = ["QUEUED", "RETRY_WAIT"] as const;
-const safeCodes = new Set(["PROVIDER_DISABLED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "MEDIA_UNAVAILABLE", "UNSUPPORTED_CONTENT", "CONNECTION_MODE_MISMATCH", "STALE_CREDENTIALS", "STALE_REVISION", "REVIEW_REQUIRED", "INVALID_PROVIDER_OPTIONS", "LEASE_LOST", "NOT_FOUND", "CREDENTIAL_UNAVAILABLE"]);
+const safeCodes = new Set(["READ_CAPABILITY_REQUIRED", "ORGANIZATION_ROLE_REQUIRED", "AUTHOR_MISMATCH", "PROVIDER_DISABLED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "MEDIA_UNAVAILABLE", "UNSUPPORTED_CONTENT", "CONNECTION_MODE_MISMATCH", "STALE_CREDENTIALS", "STALE_REVISION", "REVIEW_REQUIRED", "INVALID_PROVIDER_OPTIONS", "LEASE_LOST", "NOT_FOUND", "CREDENTIAL_UNAVAILABLE"]);
 const publicHosts: Record<string, readonly string[]> = {
   GOOGLE: ["youtube.com", "www.youtube.com", "youtu.be"], META: ["facebook.com", "www.facebook.com", "instagram.com", "www.instagram.com"],
   TIKTOK: ["tiktok.com", "www.tiktok.com"], LINKEDIN: ["linkedin.com", "www.linkedin.com"], X: ["x.com", "www.x.com", "twitter.com", "www.twitter.com"],

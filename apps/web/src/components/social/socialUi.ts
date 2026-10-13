@@ -160,6 +160,12 @@ const HELP: Record<string, string> = {
     "Publishing access needs attention. Reconnect and select the social destination in Connections.",
   MISSING_PERMISSION:
     "Restore the publishing permissions for this destination in Connections.",
+  READ_CAPABILITY_REQUIRED:
+    "Approved LinkedIn read access is required to confirm delivery. Ask your administrator to check product permissions, then reconnect and review again.",
+  ORGANIZATION_ROLE_REQUIRED:
+    "Restore organic posting and reading access to this LinkedIn organization, refresh the connection and review again.",
+  AUTHOR_MISMATCH:
+    "The LinkedIn author changed. Select the verified member or organization and approve a new revision.",
   RECONCILIATION_REQUIRED:
     "The provider outcome needs checking. Retrying could publish a duplicate, so retry is blocked.",
   DELIVERY_IN_PROGRESS:
