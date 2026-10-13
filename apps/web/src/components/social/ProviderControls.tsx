@@ -9,11 +9,13 @@ import {
 } from "@launchpad/ui";
 export function ProviderControls({
   kind,
+  format,
   options,
   onChange,
   disabled = false,
 }: {
   kind: string;
+  format?: "TEXT" | "IMAGE" | "SHORT_VIDEO";
   options: Record<string, unknown>;
   onChange: (options: Record<string, unknown>) => void;
   disabled?: boolean;
@@ -207,14 +209,9 @@ export function ProviderControls({
       </Stack>
     );
   if (kind === "FACEBOOK_PAGE")
-    return (
-      <Checkbox
-        label="Also share the Reel to the Facebook feed"
-        checked={options.shareToFeed === true}
-        disabled={disabled}
-        onChange={(e) => set("shareToFeed", e.target.checked)}
-      />
-    );
+    return format === "SHORT_VIDEO" ? boolean("isAigc", "Facebook Reel includes AI-generated content") : null;
+  if (kind === "INSTAGRAM_PROFILE")
+    return format === "SHORT_VIDEO" ? boolean("shareToFeed", "Also share the Reel to the Instagram feed") : null;
   if (kind.startsWith("LINKEDIN"))
     return (
       <Stack gap={3}>

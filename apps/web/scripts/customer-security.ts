@@ -3,6 +3,7 @@ import { prisma } from "../src/server/prisma/client";
 import { customerAuth } from "../src/server/security/runtime";
 import { CredentialVault } from "../src/server/security/credentialVault";
 import { rotateSocialProgressKeys } from "../src/server/social/rotateProgressKeys";
+import { rotateMetaPageCredentialKeys } from "../src/server/connections/metaPageCredentialStore";
 import {
   migrateLegacyCredentials,
   pruneExpiredSecurityRecords,
@@ -43,7 +44,8 @@ async function main() {
     const vault = CredentialVault.fromEnvironment();
     const credentials = await rotateCredentialKeys(prisma, vault);
     const socialProgress = await rotateSocialProgressKeys(prisma, vault);
-    console.log(JSON.stringify({ credentials, socialProgress }));
+    const metaPages = await rotateMetaPageCredentialKeys(prisma, vault);
+    console.log(JSON.stringify({ credentials, socialProgress, metaPages }));
   } else if (command === "prune") {
     await pruneExpiredSecurityRecords(prisma);
     console.log("Expired security records removed.");

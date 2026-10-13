@@ -13,6 +13,7 @@
     "test:security": "tsx --test tests/integration/*.test.ts",
     "mock:google": "mockoon-cli start --data tests/mockoon/google-ads.json --port 3910 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "mock:youtube": "mockoon-cli start --data tests/mockoon/youtube.json --port 3912 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
+    "mock:meta-publishing": "mockoon-cli start --data tests/mockoon/meta-publishing.json --port 3913 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "mock:meta": "mockoon-cli start --data tests/mockoon/meta-ads.json --port 3911 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "pilot:ads:read": "tsx apps/web/scripts/ads-pilot-read.ts",
     "social:worker": "tsx apps/web/scripts/social-worker.ts"

@@ -29,3 +29,5 @@ Social publishing owner setup, permissions, costs and review requirements: [soci
 Social review, scheduling, trusted media storage and worker operations: [delivery foundation](docs/social-delivery.md).
 
 YouTube connection, delivery and owner pilot steps: [YouTube Shorts integration](docs/youtube-shorts-integration.md).
+
+Facebook/Instagram connection, delivery and owner pilot steps: [Meta social publishing integration](docs/meta-social-publishing-integration.md).

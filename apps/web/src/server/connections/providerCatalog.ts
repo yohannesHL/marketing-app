@@ -35,6 +35,9 @@ export async function handleProviderCatalog(request: Request) {
     const { googleConnectionService } = await import("./googleRuntime");
     const { metaConnectionService } = await import("./metaRuntime");
     const { youtubeConnectionService } = await import("./youtubeRuntime");
-    return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }, { YOUTUBE: youtubeConnectionService }));
+    const { metaPublishingConnectionService } = await import("./metaPublishingRuntime");
+    return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }, {
+      YOUTUBE: youtubeConnectionService, FACEBOOK: metaPublishingConnectionService, INSTAGRAM: metaPublishingConnectionService,
+    }));
   } catch (error) { return securityResponse(error); }
 }

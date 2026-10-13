@@ -1,0 +1,5917 @@
+{
+  "uuid": "d7def670-97e2-46e1-9dba-684871ceb7b7",
+  "lastMigration": 33,
+  "name": "Meta SOCIAL publishing contracts",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3096,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "c50fc538-04ac-4840-b56d-3fd7cf870d96",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "health",
+      "responses": [
+        {
+          "uuid": "b8c60e9e-efca-4faa-a47a-dce0cc264471",
+          "body": "{\"ready\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "932f6ea7-9179-40d0-961c-7edfd8600da5",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/dialog/oauth",
+      "responses": [
+        {
+          "uuid": "c694ca74-f363-41ba-a8f9-7392d4910346",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?state={{queryParam 'state'}}&code=success"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "56d995f1-f026-4de0-ba61-f8bd196302ec",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/oauth/access_token",
+      "responses": [
+        {
+          "uuid": "c36b20e9-21a4-4573-b3b7-fcc9cea3ced6",
+          "body": "{\"access_token\":\"short_social\",\"expires_in\":7200}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "code",
+              "value": "success",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2294382b-10c0-4173-969e-ccebcac1908b",
+          "body": "{\"access_token\":\"social\",\"expires_in\":3600}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fb_exchange_token",
+              "value": "short_social",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ea13fdeb-aa39-4f18-8fce-a71681bd0a11",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "926514ee-ed4c-4ba7-a9ed-6a29d1a54ed2",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/debug_token",
+      "responses": [
+        {
+          "uuid": "b20841a6-0e72-422c-9b2e-fda9282d672b",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "social",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ed1df170-a758-4479-8eca-7dace5b3d15c",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "role-denied",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0e539cdb-91e6-49be-9030-a2b2e312a21b",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "unsafe-next",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "11bb4c23-17dd-4f53-a062-4bbd10bfedff",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "37af353b-9de8-44d4-98e2-ae3ac0845d51",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "34cee228-d0ca-48b1-8e65-a2c4f5340e23",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "592859be-e7fa-4962-aabe-77b858cb5825",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d4ba18c1-b72c-4ad8-9335-d34ddd929de4",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8f9c5918-e578-424f-9587-3850a3533a7f",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ab9dd137-c53f-4fe2-b971-8b7ab9533a92",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "654620b8-c141-4bae-95dc-f581cb04ac51",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f9670e1e-f2fe-4592-a40d-cf8fa497d430",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c43ebd23-75a1-47c0-abaa-4791b2ecb05a",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "page-mismatch",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "417619b9-ea65-4851-9e89-1fbd6037dd51",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"ads_management\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "ads-only",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fe0118c7-ad6a-4b25-ab9d-c578c0931471",
+          "body": "{\"data\":{\"app_id\":\"999\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "wrong-app",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "21780215-4097-41b4-8778-f09312b565be",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"PAGE\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "wrong-type",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "648039aa-9a40-4cdb-932e-324ea827d1ae",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":1,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "expired",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c988b4bf-03f7-49f0-8c6e-b6f16806790a",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":false,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "invalid",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c954595b-78d0-43c7-b271-d431e0a4d1e4",
+          "body": "{\"data\":{\"app_id\":\"123\",\"user_id\":\"1001\",\"type\":\"USER\",\"is_valid\":true,\"scopes\":[\"public_profile\",\"pages_show_list\",\"pages_read_engagement\",\"pages_manage_posts\",\"instagram_basic\",\"instagram_content_publish\"],\"expires_at\":2000000000,\"data_access_expires_at\":2000000000}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "input_token",
+              "value": "wrong-me",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer 123|fixture-app-secret",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "288e043e-309a-43e8-a598-88f5b7445159",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "d5c09699-c8b6-4e06-94ce-b78f252d3010",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/me",
+      "responses": [
+        {
+          "uuid": "71da99a1-d82c-4f38-a3e5-b7f725f13477",
+          "body": "{\"id\":\"1001\",\"name\":\"Verified customer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer social",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "13916628-b7d3-4f44-942a-cf83bc7d9923",
+          "body": "{\"id\":\"1001\",\"name\":\"Verified customer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer role-denied",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a6effe50-a27d-44c1-85bf-f7c334b4c5b2",
+          "body": "{\"id\":\"1001\",\"name\":\"Verified customer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer unsafe-next",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "01fe3a49-6028-4966-af4d-b08a06603d24",
+          "body": "{\"id\":\"1001\",\"name\":\"Verified customer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer ads-only",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0b2600c7-a73e-4a61-8149-5fcd82a3414f",
+          "body": "{\"id\":\"9999\",\"name\":\"Verified customer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer wrong-me",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7a3d4dac-eae0-4202-9938-5a57f10057dd",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "99388337-49e4-493a-b4c9-bfebc3bdf295",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3eaf3608-6822-469c-9da7-e2c9c0b550d0",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1c634b5e-d225-44cc-8a9d-f34e969b65bc",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fd6912e4-1319-496c-af4f-86fc23277384",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fd86c3f7-5e8d-4197-9a1e-1912078c4852",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7d57e0f4-35b7-4abc-9a77-1317e007781c",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "432f49f8-b4e3-486e-9df9-ec734e0c6ca0",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "68fcd9f9-a7e3-412c-ae85-5edef921fb53",
+          "body": "{\"id\":\"111\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "cdbea489-8311-4491-ac29-1c6ab24c6783",
+          "body": "{\"id\":\"222\",\"name\":\"Customer Page\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-mismatch",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d50bb01a-dd5c-4fe1-91be-676488699033",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "0d058ee7-57f3-4560-b9ea-5dcb1e78b632",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/me/accounts",
+      "responses": [
+        {
+          "uuid": "ba0610af-37a0-47e0-a3fc-15957afeaf0f",
+          "body": "{\"data\":[],\"paging\":{\"next\":\"http://{{header 'host'}}/v26.0/me/accounts?after=empty\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer social",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "after",
+              "value": "first",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4196e485-443c-4430-95ea-71fed2a4c68b",
+          "body": "{\"data\":[{\"id\":\"112\",\"name\":\"Read-only Page\",\"tasks\":[\"ANALYZE\"],\"access_token\":\"unused-private\",\"instagram_business_account\":{\"id\":\"212\",\"username\":\"readonly_ig\"}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer social",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "after",
+              "value": "empty",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "166ab866-9791-4c45-9af1-0bd00a8e10a6",
+          "body": "{\"data\":[{\"id\":\"111\",\"name\":\"Customer Page\",\"tasks\":[\"CREATE_CONTENT\",\"ANALYZE\"],\"access_token\":\"page\",\"instagram_business_account\":{\"id\":\"211\",\"name\":\"Customer Instagram\",\"username\":\"customer_ig\"}}],\"paging\":{\"next\":\"http://{{header 'host'}}/v26.0/me/accounts?after=first\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer social",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fe3c656a-b4cf-4f28-92f6-4b9de47d3bd4",
+          "body": "{\"data\":[{\"id\":\"111\",\"name\":\"Customer Page\",\"tasks\":[\"ANALYZE\"],\"access_token\":\"page\",\"instagram_business_account\":{\"id\":\"211\",\"name\":\"Customer Instagram\",\"username\":\"customer_ig\"}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer role-denied",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "57956f72-d4ff-45f0-81c2-463d92f522ed",
+          "body": "{\"data\":[{\"id\":\"111\",\"name\":\"Customer Page\",\"tasks\":[\"CREATE_CONTENT\",\"ANALYZE\"],\"access_token\":\"page\",\"instagram_business_account\":{\"id\":\"211\",\"name\":\"Customer Instagram\",\"username\":\"customer_ig\"}}],\"paging\":{\"next\":\"https://attacker.test/v26.0/me/accounts?after=token-leak\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer unsafe-next",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d35e339b-860a-4f15-9e73-e0a01aab82c2",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "cba9e67f-8f06-460f-803d-a28ebb16e90f",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/211/content_publishing_limit",
+      "responses": [
+        {
+          "uuid": "a2a29464-f50b-4c69-b0fa-ffc56f537550",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":2,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a3eeed75-2241-437e-8256-eb5060af6c5b",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ab2be769-9f4b-40c5-9918-c005139e23ca",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "57759fab-8869-4f26-ac9e-808369608e9c",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e6a1b589-9652-4845-bc0c-775949c7f216",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "41bc6709-f084-4d1a-aee3-9f20c1a63bc3",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c9e8d609-2be3-48b1-a48e-0b2d7f7a1931",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "96d66c8c-996c-487b-8701-0b0c7471d550",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "95f3cd35-6d09-46d6-b171-d9a83b3fd8bf",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ea3d1926-5dc5-490f-82ca-961ecfda0579",
+          "body": "{\"data\":[{\"quota_usage\":2,\"config\":{\"quota_total\":50,\"quota_duration\":86400}}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5e9d4144-49b9-4ad9-8f6e-97b950f4ef19",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "ae322597-e007-4222-904b-b93bdb6e30c3",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "v26.0/111/photos",
+      "responses": [
+        {
+          "uuid": "6a462844-7011-48b6-8e6e-ddb02fd0dfa1",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a700ab84-3a45-44a4-8ff6-43895adc9fb6",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d5aca23a-b51e-4ae9-ae74-4daff14a3ac3",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f2dbeb85-d4b0-43a6-8cad-98308ce80c45",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5d1a915a-37d6-4354-a7f3-7b87c0ddb70c",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2958b93c-fbac-4e1b-9fb8-ab56e3840ca4",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ff1cef51-3039-4bcb-9141-9a886cc0e8e6",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "12aaf72e-7e85-4119-8470-89d5d69fd8c1",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "26c88d82-969a-4d32-b4d6-18614dabcb84",
+          "body": "{{setGlobalVar 'photos' (add (getGlobalVar 'photos' '' 0) 1)}}{\"id\":\"301\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "44765483-e637-4c49-8b57-6ddce4585872",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "c76998b0-ce08-4af7-8978-037e6b9aedc4",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "v26.0/111/feed",
+      "responses": [
+        {
+          "uuid": "c9a1bff2-80dd-4c30-a215-9e6a13285fef",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a0195a2b-64b0-4e4b-8c21-30e171a6a482",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "969864c7-4eb8-4fb3-96f3-03da0771b2e8",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9e792039-d594-42fb-a2f5-e37e8b1ed237",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9eefd3f3-48ca-4b51-bbbc-c1ddc7444b4f",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d04747e4-b4ba-46a8-8734-beda2b7f92e3",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "49b5b8ff-b668-4e66-85b1-e1c1db7cb627",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "cba8efbc-854b-4c0c-b166-29bd38eda658",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0deb801f-2960-4a90-9446-184b222fe320",
+          "body": "{{setGlobalVar 'feeds' (add (getGlobalVar 'feeds' '' 0) 1)}}{\"id\":\"111_401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "published",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b04aab4b-0e9b-4151-9b84-762530b47473",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "806c4d07-002a-4165-86ec-86f5b6ac0273",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/111_401",
+      "responses": [
+        {
+          "uuid": "0c9c7000-e0e7-4056-9031-99283d93e32f",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d7a7992f-80f9-43f2-9b83-1be3ef681c5e",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "77d76fd8-7d16-4012-af07-0c4589c80eb6",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d46c3653-edfe-4a7a-a58b-5d8de80822cc",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "cad4ac37-a56d-4ae6-9591-038247ddd2f7",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "769d7940-23f9-451f-97e1-8d7a12a0992b",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6508d380-81fa-4b0e-9ced-94d260b7ef6c",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3a999eba-f2c9-4f54-ab52-e678335df504",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "14917951-30c1-4a02-a176-4aaf8646fff2",
+          "body": "{\"id\":\"111_401\",\"is_published\":true,\"from\":{\"id\":\"111\"},\"permalink_url\":\"https://www.facebook.com/111/posts/401\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "939d8868-58bc-4e93-9462-72c42064923f",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "702b4b97-2f47-4b23-b148-39852a06c87a",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "v26.0/111/video_reels",
+      "responses": [
+        {
+          "uuid": "8062ac5f-aaba-4a85-96be-5907270cfbe2",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a6fd4150-5a95-446d-8e6e-33d04d1ce91c",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7a0a2d30-7c22-4df7-ac6c-3d0cceb15d80",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "108c3632-1a61-453c-8a22-d2f1f42fe861",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f3030826-19ab-4cb2-b343-b25add4eb6b9",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "32c5102a-f6a4-4024-87c0-615ab145f34f",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "afc2d148-e4e8-4806-ba07-09320c3ca135",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1a4bb73f-dfd8-4657-8f18-521eecd009e0",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "787c8294-5a27-459b-bac2-eea42f708a0a",
+          "body": "{{setGlobalVar 'reelStarts' (add (getGlobalVar 'reelStarts' '' 0) 1)}}{\"video_id\":\"501\",\"upload_url\":\"http://{{header 'host'}}/video-upload/v26.0/501\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "start",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c74d5343-f3d8-42d0-aa45-e238e49b2f82",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5d90b03a-19f3-4c90-a4b1-82ae6a2ff0a3",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "05111685-8a1d-4c98-a77c-99b14d8940f0",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3731de56-418f-4d1d-9d09-84e052209f38",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e0cbcf25-b47c-44b8-97f6-fb8d42aafcf6",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "55ce6e56-e091-4d21-8f12-0fd7843433e6",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "be8735e5-a9ff-48eb-89d7-d653df5da87c",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "012f0f92-5c47-4868-84ef-dcf0ecde709a",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f25651b1-68f2-40ab-a555-127c49792bac",
+          "body": "{{setGlobalVar 'reelFinishes' (add (getGlobalVar 'reelFinishes' '' 0) 1)}}{{setGlobalVar 'reelPublished' true}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "upload_phase",
+              "value": "finish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "video_state",
+              "value": "PUBLISHED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "280a65bf-db48-4196-be0e-7ac8870ba3a3",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "562dde84-95f1-400f-89f1-619570292f1f",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "video-upload/v26.0/501",
+      "responses": [
+        {
+          "uuid": "1db6bf97-70ee-47d4-a55b-f79a204fdf52",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5e15ad7f-ea9e-4623-9f26-4a31b6b08e12",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d4adc4ed-8bd7-41a2-9cb5-483d9a321809",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "195e34b2-7bc7-4efc-8b03-59ca1f4d24c9",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a1831588-2290-4458-8e3b-cf56cc076cbd",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8a7c6dac-ccae-4ed3-8111-bb0df5d6e917",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8e02bafd-8422-4670-8d71-47d422be1c4a",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d3864b39-7a82-4a5b-b043-0a2e81fe4a9e",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b748e71a-7b50-4797-aa4f-cc7f06a82a08",
+          "body": "{{setGlobalVar 'uploads' (add (getGlobalVar 'uploads' '' 0) 1)}}{\"success\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "OAuth page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "file_url",
+              "value": "https://media.test/api/social/media/video/content?expires=2000000000&signature=fixture",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "70638510-0367-4b3a-a3e5-7b416d1b71ff",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "38b05d14-e9a7-48c7-af7e-beaa52be3001",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/501",
+      "responses": [
+        {
+          "uuid": "4873683f-935b-4a18-a868-75931f39830e",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"processing\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"in_progress\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fdde4dbb-bedc-4554-9167-abf17d658397",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a66ca844-642f-43af-9605-ae85691c2f25",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3288fe46-8c20-4779-92f4-366c16c91e99",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4440b805-8b63-4b65-8428-03ddea70303f",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d95ae1f7-aac2-4183-aa3a-4fc10d0fbbf0",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "43039716-58ef-405b-8cc6-88d359743652",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c50def17-efe4-4f74-b64e-f2505d897942",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1534f820-cf98-42a1-b7c1-98b777c081f2",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f9530b69-1fa2-4e76-acf5-aa482aaa7906",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"501\",\"status\":{\"video_status\":\"error\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"error\"},\"publishing_phase\":{\"status\":\"not_started\"}}}{{else}}{\"id\":\"501\",\"status\":{\"video_status\":\"ready\",\"uploading_phase\":{\"status\":\"complete\"},\"processing_phase\":{\"status\":\"complete\"},\"publishing_phase\":{\"status\":\"{{#if (getGlobalVar 'reelPublished')}}complete{{else}}not_started{{/if}}\"}}}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fb59c7fd-066c-4b44-85dc-330d439749b4",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "99c5362b-444a-4893-a59d-916c0e9550e3",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "v26.0/211/media",
+      "responses": [
+        {
+          "uuid": "64492027-d021-4641-8892-87ec132229b4",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "baa4b9cb-cf15-4063-9758-c76f9dec702e",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5fd6c610-b7a1-48f6-999d-cd6cd372675b",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4ce979a7-1d6e-47a6-994a-b2a1c1aaf167",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6bf5e661-f9bd-40de-b6c2-58972d17692d",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7a081d56-dc29-40d6-b909-5bb279100238",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8acc2db7-48f4-4876-911c-b73429b5a87f",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aeb6262f-c010-4b2c-89e1-cec2cf0afbfc",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "70bb6566-c808-40a7-b5b6-d10eddf0c8d3",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "REELS",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1639f199-7612-4463-b585-4f70940128dc",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5865a9e4-00ff-4547-9f23-47d471cf4d41",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9f0a6a2c-caef-45d0-a1cc-98619efa6ef5",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "41fef37f-e6ac-46be-ba9f-a4a15caf8698",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "606089bc-d887-440b-ba3c-0fb69560fac0",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "94029603-3c07-4243-940e-827d264e11c4",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "62018b1b-cf60-4519-b58f-b516a36e81f9",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b04912e3-ce54-4196-ad9f-91adfad04c2f",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "dd8df4b3-ca76-4bce-9de2-a1dfac6b2bd8",
+          "body": "{{setGlobalVar 'containers' (add (getGlobalVar 'containers' '' 0) 1)}}{\"id\":\"601\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "image_url",
+              "value": "^https://media.test/",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "858f492d-f20b-4985-941f-ced3e2709a29",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "87df7808-0a0f-49b9-92db-b5a0a33d2fca",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/601",
+      "responses": [
+        {
+          "uuid": "32d26b7f-abc2-4a13-8d2d-abc8bd436e96",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"IN_PROGRESS\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "dc85f607-f9f5-4a63-81b4-b9efaa2c1489",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"EXPIRED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "cf3a92f8-dbfd-4192-a229-abf3a37367ca",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"PUBLISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f5e29bd4-eed7-4d5d-b944-6c4d78cd623a",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "99d96a14-d8ba-45e0-9fc1-0f1b0e809b62",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "91a758d7-295a-4a90-85b9-ad354f0f6b82",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "23308e03-8d0c-425a-ac73-f75c4df8f03a",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "602fe52a-843d-49ba-b54f-ddc79bf475a0",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b99c91ee-7e2d-482d-a59b-aba5159f1d7c",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "896ff482-de12-479c-a097-fead7946d724",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "714e2b20-edac-4928-9669-0f9d61867bbd",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c6da2749-fb16-4641-accd-3a1d822651c4",
+          "body": "{{#if (getGlobalVar 'processingError')}}{\"id\":\"601\",\"status_code\":\"ERROR\"}{{else}}{\"id\":\"601\",\"status_code\":\"FINISHED\"}{{/if}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c2752d72-e81b-4981-aef4-c8e29706701e",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "ca1917bd-2809-48e8-867a-9b5320d691aa",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "v26.0/211/media_publish",
+      "responses": [
+        {
+          "uuid": "c51b46e9-edb6-4a39-b70a-d73fff3569f9",
+          "body": "{\"error\":{\"code\":2,\"is_transient\":true,\"message\":\"private potentially accepted submission\"}}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3754aae7-cb06-4b38-98cd-b016ba835639",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"broken\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "daef4092-3b36-4223-a3ec-1047f050ddb1",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "02bf7241-e4ad-4571-bca3-955cc5e51c01",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5fe45d45-5003-4d34-bb3f-84dbcbfbcf68",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9307fead-09fd-4164-b5ac-cca0f3613a2a",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ee1de0b1-86c8-49dc-9fc6-54326dbaf78e",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "134e5128-9ffa-4ac9-979b-2e4610e8ae0d",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3c4e80ef-bc21-4d9c-95e8-ae72f4695a34",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "09d129c1-cda1-4600-8551-8c512bdbd5a6",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b569cf69-48db-49c1-a9d2-846783d6060d",
+          "body": "{{setGlobalVar 'igPublishes' (add (getGlobalVar 'igPublishes' '' 0) 1)}}{\"id\":\"701\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "creation_id",
+              "value": "601",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d684a99d-35c7-4b7d-9c2f-bf8b3fbee10b",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "6acf4886-8e35-441a-b2a0-bc2ce36be2ea",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "v26.0/701",
+      "responses": [
+        {
+          "uuid": "6acb13f0-4296-44d6-9316-c709e5a541b8",
+          "body": "{\"error\":{\"code\":4,\"message\":\"private processing secret\"}}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f3e116a7-9b78-4f99-943e-bf28e5da6058",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"999\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3b1ddd2a-4c23-432a-82d7-caff89d176f4",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "56521185-7797-4fec-9af0-2456805192eb",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b02324ef-195e-4a78-baec-3073d130d163",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-post-processing",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "666f8d6f-0d0e-46ba-b14e-fef2ed3da0f4",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-server-error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "31706fc9-d7fe-4c87-a19f-8250c64d0d44",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aacd34fe-4f4c-4726-9cbf-9da59eddaa13",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-expired-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d06718ea-6895-41c0-9df4-969688887925",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-published-container",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "71ed6938-4058-479d-bb5c-1ff7f466606a",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-unknown-publish",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "af5dc7ca-8a78-4c06-956d-08694d23ebd9",
+          "body": "{\"id\":\"701\",\"owner\":{\"id\":\"211\"},\"permalink\":\"https://www.instagram.com/p/fixture/\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer page-wrong-owner",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "183a3676-a86e-48f9-b7fd-c4a078dfe3cf",
+          "body": "{\"error\":{\"code\":200,\"message\":\"private fixture token secret payload\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "077254e6-7596-480b-a24f-b1234ed98f8e",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "fixture/counts",
+      "responses": [
+        {
+          "uuid": "7a086795-45f4-4b45-b885-df46737d0ccd",
+          "body": "{\"photos\":{{getGlobalVar 'photos' '' 0}},\"feeds\":{{getGlobalVar 'feeds' '' 0}},\"reelStarts\":{{getGlobalVar 'reelStarts' '' 0}},\"reelFinishes\":{{getGlobalVar 'reelFinishes' '' 0}},\"uploads\":{{getGlobalVar 'uploads' '' 0}},\"containers\":{{getGlobalVar 'containers' '' 0}},\"igPublishes\":{{getGlobalVar 'igPublishes' '' 0}} }",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "5de037a0-acd7-4f6c-b831-c85f30987fd3",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "fixture/reset",
+      "responses": [
+        {
+          "uuid": "797e4f5c-bc4c-4280-bb62-172f19c2a089",
+          "body": "{{setGlobalVar 'processingError' false}}{{setGlobalVar 'photos' 0}}{{setGlobalVar 'feeds' 0}}{{setGlobalVar 'reelStarts' 0}}{{setGlobalVar 'reelFinishes' 0}}{{setGlobalVar 'uploads' 0}}{{setGlobalVar 'containers' 0}}{{setGlobalVar 'igPublishes' 0}}{{setGlobalVar 'reelPublished' false}}{\"ok\":true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "df617b84-63de-4f6c-864b-862aaa83e197",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "fixture/processing-error",
+      "responses": [
+        {
+          "uuid": "f65de7dd-580d-4b43-a424-887aea2891ed",
+          "body": "{{setGlobalVar 'processingError' true}}{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "92bc30ba-bc4e-4b1d-95d7-1070236ef99d"
+    },
+    {
+      "type": "route",
+      "uuid": "60baeb01-2925-4221-a2e1-3a245c467caa"
+    },
+    {
+      "type": "route",
+      "uuid": "5ca74644-1600-4660-9a33-61ad198d8161"
+    },
+    {
+      "type": "route",
+      "uuid": "a48c508f-1cd1-4196-9ea1-39fb9b406660"
+    },
+    {
+      "type": "route",
+      "uuid": "1eedb462-b4e1-4f4e-8ed5-4953bb00987c"
+    },
+    {
+      "type": "route",
+      "uuid": "d2a582a1-0236-4999-94e8-76604e7f5380"
+    },
+    {
+      "type": "route",
+      "uuid": "f7d8e193-d7c3-497f-9aa4-36e9907c4ae2"
+    },
+    {
+      "type": "route",
+      "uuid": "6654e021-8eef-4482-9c84-276d033ec9c9"
+    },
+    {
+      "type": "route",
+      "uuid": "c7c97c65-e2e8-4f3a-a3c5-24320ee671cf"
+    },
+    {
+      "type": "route",
+      "uuid": "4050ddab-4bc1-47c4-913c-728fc019a881"
+    },
+    {
+      "type": "route",
+      "uuid": "ff7cb7da-ae8e-44d4-90fd-acf64e7023ae"
+    },
+    {
+      "type": "route",
+      "uuid": "a73a0534-3e9e-479e-aa21-d2f6dc33fd67"
+    },
+    {
+      "type": "route",
+      "uuid": "efd6ad89-aac3-488a-bbea-402e64dc7e73"
+    },
+    {
+      "type": "route",
+      "uuid": "084bc889-c492-4f17-8a7a-c9c8e40d59d1"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": false,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}
