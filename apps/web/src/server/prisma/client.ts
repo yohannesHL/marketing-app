@@ -1,4 +1,4 @@
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { LocalSqliteAdapter } from "./localSqliteAdapter";
 
 import { PrismaClient } from "../../generated/prisma/client";
 
@@ -10,7 +10,7 @@ declare global {
 export const prisma =
   globalThis.__launchpadPrisma__ ??
   new PrismaClient({
-    adapter: new PrismaLibSql({
+    adapter: new LocalSqliteAdapter({
       url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
     }),
     // Prisma query errors can include credential fields; handlers expose safe errors.

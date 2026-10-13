@@ -22,7 +22,8 @@ async function main() {
     process.once("SIGINT", stop); process.once("SIGTERM", stop);
     try {
       while (!stopped) {
-        const result = await worker.runOnce() ?? await worker.reconcileNext();
+        let result = await worker.runOnce();
+        if (!result && !stopped) result = await worker.reconcileNext();
         report(result);
         if (!result && !stopped) await setTimeout(1000);
       }
@@ -32,7 +33,11 @@ async function main() {
   }
 }
 
-main().catch(() => {
+main().catch((error: unknown) => {
+  // Never log provider payloads, SQL arguments, tokens or exception messages.
+  const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" &&
+    /^(?:P[0-9]{4}|[A-Z][A-Z_]{0,63})$/.test(error.code) ? error.code : "INTERNAL_ERROR";
+  console.error(JSON.stringify({ status: "STOPPED", code }));
   console.error("Social delivery stopped. Check configuration, migrations and the server keyring.");
   process.exitCode = 1;
 }).finally(() => prisma.$disconnect());

@@ -5,6 +5,7 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: "**/social-all-destinations.spec.ts",
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,

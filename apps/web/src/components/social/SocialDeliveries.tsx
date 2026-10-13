@@ -109,7 +109,7 @@ export function SocialDeliveries({
             >
               <Stack gap={2}>
                 <Checkbox
-                  label={`Select delivery for ${name} (${d.id.slice(-8)})`}
+                  label={<span className="whitespace-normal break-words [overflow-wrap:anywhere]">{`Select delivery for ${name} (${d.id.slice(-8)})`}</span>}
                   checked={selected.includes(d.id)}
                   disabled={
                     busy ||

@@ -65,3 +65,6 @@ packages/ui/storybook-static/
 # debug
 *.db
 *.tsbuildinfo
+
+# Dedicated Mockoon delivery browser evidence
+social-delivery-report/
