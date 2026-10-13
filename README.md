@@ -21,3 +21,5 @@
 Customer account settings and environment behavior: [connection settings](docs/customer-connection-settings.md).
 
 Controlled connection-only rollout, read-only pilot checks and rollback: [operator guide](docs/paid-ads-rollout.md).
+
+Google/Meta implementation evidence and remaining public-release gates: [paid advertising readiness](docs/paid-advertising-readiness.md).
