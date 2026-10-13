@@ -37,7 +37,7 @@ export class GoogleConnectionService {
   }
 
   async complete(principal: CustomerPrincipal, state: string, code?: string, denied = false, authorizationFailed = false) {
-    const context = await this.connections.getOAuthExchangeContext(principal, state, this.oauth);
+    const context = await this.connections.claimOAuthExchange(principal, state, this.oauth);
     try {
       if (authorizationFailed) fail("PROVIDER_AUTHORIZATION_FAILED", 502, "Google could not authorize this request. Start the connection again.");
       if (denied) fail("CONSENT_DENIED", 400, "Google permission was declined. Connect again when ready.");
@@ -55,11 +55,11 @@ export class GoogleConnectionService {
       // Do discovery before consuming/persisting the verified grant. A disconnect
       // during either provider call invalidates state and prevents reconnection.
       const discovered = await this.client.discoverAccounts(grant.accessToken);
-      const connection = await this.connections.completeAuthorization(principal, state, this.oauth, { ...grant, connectionMode: this.mode === "mock" ? "MOCK" : "LIVE" });
+      const connection = await this.connections.completeAuthorization(principal, state, this.oauth, { ...grant, connectionMode: this.mode === "mock" ? "MOCK" : "LIVE" }, context.exchangeClaimToken);
       await this.state.synchronize(principal, connection.id, connection.credentialVersion, accounts(discovered));
       return { connection: await this.connections.get(principal, connection.id), mode: this.mode };
     } catch (error) {
-      await this.state.cancelOAuth(principal, state, this.oauth);
+      await this.state.cancelOAuth(principal, state, this.oauth, context.exchangeClaimToken);
       throw error;
     }
   }
@@ -119,8 +119,8 @@ export class GoogleConnectionService {
       const metadata = destination.metadata as { contexts?: { loginCustomerId: string | null }[] } | null;
       if (!metadata?.contexts?.some((c) => c.loginCustomerId === loginCustomerId))
         fail("INVALID_ACCOUNT_CONTEXT", 403, "Choose a manager context discovered for this account.");
-      await this.client.verifyAccount(snapshot.accessToken!, { customerId: destination.externalId, loginCustomerId });
-      await this.state.selectGoogleContext(principal, id, snapshot.credentialVersion, destinationId, loginCustomerId);
+      const verified = await this.client.verifyAccount(snapshot.accessToken!, { customerId: destination.externalId, loginCustomerId });
+      await this.state.selectGoogleContext(principal, id, snapshot.credentialVersion, destinationId, loginCustomerId, accounts([verified])[0]);
       return { connection: await this.connections.get(principal, id), mode: this.mode };
     });
   }
@@ -129,9 +129,11 @@ export class GoogleConnectionService {
     return this.readWithCredentials(principal, id, async (snapshot) => {
       const connection = await this.connections.get(principal, id);
       const destination = connection.destinations.find((d) => d.id === destinationId);
-      if (!destination || !destination.available || destination.kind !== "AD_ACCOUNT")
+      if (!destination || destination.kind !== "AD_ACCOUNT")
         fail("NOT_FOUND", 404, "Choose an accessible advertiser account in this connection.");
       const metadata = destination.metadata as { contexts?: { loginCustomerId: string | null }[] } | null;
+      if ((destination.metadata as { manager?: boolean } | null)?.manager)
+        fail("NOT_FOUND", 404, "Choose an advertiser account for this check.");
       const selectedContext = destination.selectedContext as { loginCustomerId: string | null } | null;
       if (!metadata?.contexts?.length) fail("INVALID_ACCOUNT_CONTEXT", 409, "Refresh account discovery before checking this account.");
       const context = { customerId: destination.externalId, loginCustomerId: selectedContext ? selectedContext.loginCustomerId : metadata.contexts[0].loginCustomerId };

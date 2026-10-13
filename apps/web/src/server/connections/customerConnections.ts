@@ -202,6 +202,7 @@ export class CustomerConnections {
     principal: CustomerPrincipal,
     state: string,
     expected: OAuthRequest,
+    exchangeClaimToken?: string,
   ) {
     await this.auth.assertSession(principal);
     const attempt = await this.db.oAuthAttempt.findFirst({
@@ -213,6 +214,7 @@ export class CustomerConnections {
         capability: expected.capability,
         redirectUri: expected.redirectUri,
         consumedAt: null,
+        exchangeClaimHash: exchangeClaimToken === undefined ? null : digest(exchangeClaimToken),
         expiresAt: { gt: this.now() },
       },
     });
@@ -245,25 +247,57 @@ export class CustomerConnections {
     };
   }
 
+  // Atomically reserve external exchange work before contacting the provider.
+  // The private token authorizes only this callback's final completion/cancellation.
+  async claimOAuthExchange(
+    principal: CustomerPrincipal,
+    state: string,
+    expected: OAuthRequest,
+  ) {
+    const context = await this.getOAuthExchangeContext(principal, state, expected);
+    const exchangeClaimToken = randomBytes(32).toString("base64url");
+    const now = this.now();
+    const claimed = await this.db.oAuthAttempt.updateMany({
+      where: {
+        stateHash: digest(state),
+        userId: principal.userId,
+        sessionId: principal.sessionId,
+        provider: expected.provider,
+        capability: expected.capability,
+        redirectUri: expected.redirectUri,
+        consumedAt: null,
+        exchangeClaimHash: null,
+        expiresAt: { gt: now },
+        session: { userId: principal.userId, expiresAt: { gt: now } },
+      },
+      data: { exchangeClaimHash: digest(exchangeClaimToken) },
+    });
+    if (claimed.count !== 1)
+      fail("INVALID_OAUTH_STATE", 400, "The connection attempt is invalid or expired. Start again.");
+    return { ...context, exchangeClaimToken };
+  }
+
   // grant must be the verified provider response, never a client-supplied token body.
   async completeAuthorization(
     principal: CustomerPrincipal,
     state: string,
     expected: OAuthRequest,
     grant: ProviderGrant,
+    exchangeClaimToken?: string,
   ) {
     validateGrant(grant);
-    const attempt = await this.oauthAttempt(principal, state, expected);
+    const attempt = await this.oauthAttempt(principal, state, expected, exchangeClaimToken);
     const now = this.now();
     return this.db.$transaction(async (tx) => {
       const consumed = await tx.oAuthAttempt.updateMany({
         where: {
           id: attempt.id,
           consumedAt: null,
+          exchangeClaimHash: exchangeClaimToken === undefined ? null : digest(exchangeClaimToken),
           expiresAt: { gt: now },
           session: { userId: principal.userId, expiresAt: { gt: now } },
         },
-        data: { consumedAt: now, verifierCiphertext: null },
+        data: { consumedAt: now, verifierCiphertext: null, exchangeClaimHash: null },
       });
       if (consumed.count !== 1)
         fail(
@@ -515,7 +549,7 @@ export class CustomerConnections {
       if (grants.length)
         await tx.oAuthAttempt.updateMany({
           where: { consumedAt: null, OR: grants },
-          data: { consumedAt: this.now(), verifierCiphertext: null },
+          data: { consumedAt: this.now(), verifierCiphertext: null, exchangeClaimHash: null },
         });
       await tx.providerAuthorization.updateMany({
         where: { id: { in: ids } },

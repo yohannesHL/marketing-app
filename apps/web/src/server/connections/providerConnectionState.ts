@@ -44,13 +44,14 @@ export class ProviderConnectionState {
     };
   }
 
-  async cancelOAuth(principal: CustomerPrincipal, state: string, expected: OAuthRequest) {
+  async cancelOAuth(principal: CustomerPrincipal, state: string, expected: OAuthRequest, exchangeClaimToken?: string) {
     await this.auth.assertSession(principal);
     await this.db.oAuthAttempt.updateMany({ where: {
       stateHash: digest(state), userId: principal.userId, sessionId: principal.sessionId,
       provider: expected.provider, capability: expected.capability,
       redirectUri: expected.redirectUri, consumedAt: null,
-    }, data: { consumedAt: this.now(), verifierCiphertext: null } });
+      exchangeClaimHash: exchangeClaimToken === undefined ? null : digest(exchangeClaimToken),
+    }, data: { consumedAt: this.now(), verifierCiphertext: null, exchangeClaimHash: null } });
   }
 
   async requireReconnect(principal: CustomerPrincipal, id: string, version: number) {
@@ -66,7 +67,7 @@ export class ProviderConnectionState {
       } });
       await tx.oAuthAttempt.updateMany({ where: {
         userId: current.userId, provider: current.provider, capability: current.capability, consumedAt: null,
-      }, data: { consumedAt: this.now(), verifierCiphertext: null } });
+      }, data: { consumedAt: this.now(), verifierCiphertext: null, exchangeClaimHash: null } });
       await tx.connectionDestination.updateMany({ where: { authorizationId: id }, data: { selected: false } });
       await tx.connectionOperation.updateMany({ where: {
         destination: { authorizationId: id }, status: { in: ["PENDING", "RUNNING"] },
@@ -76,9 +77,9 @@ export class ProviderConnectionState {
   }
 
   async selectGoogleContext(principal: CustomerPrincipal, id: string, version: number,
-    destinationId: string, loginCustomerId: string | null) {
+    destinationId: string, loginCustomerId: string | null, verified: DiscoveredAccount) {
     await this.auth.assertSession(principal);
-    await this.db.$transaction(async (tx) => {
+    const available = await this.db.$transaction(async (tx) => {
       const destination = await tx.connectionDestination.findFirst({ where: {
         id: destinationId, authorizationId: id, available: true, kind: "AD_ACCOUNT",
         authorization: { userId: principal.userId, provider: "GOOGLE", capability: "ADS",
@@ -88,11 +89,29 @@ export class ProviderConnectionState {
       const metadata = destination.metadata as { contexts?: { loginCustomerId: string | null }[] } | null;
       if (!metadata?.contexts?.some((c) => c.loginCustomerId === loginCustomerId))
         fail("INVALID_ACCOUNT_CONTEXT", 403, "This manager context does not belong to the connected account.");
+      if (verified.externalId !== destination.externalId ||
+        !verified.metadata.contexts?.some((c) => c.loginCustomerId === loginCustomerId))
+        fail("INVALID_ACCOUNT_CONTEXT", 403, "The verified account or manager context changed during selection.");
+      const available = verified.available && verified.metadata.manager !== true && verified.metadata.status === "ENABLED";
+      const freshMetadata: Prisma.InputJsonObject = {
+        canRead: verified.metadata.canRead,
+        canWrite: verified.metadata.canWrite,
+        manager: verified.metadata.manager ?? false,
+        ...(verified.metadata.status ? { status: verified.metadata.status } : {}),
+        contexts: verified.metadata.contexts.map((context) => ({ loginCustomerId: context.loginCustomerId })),
+      };
       await tx.connectionDestination.update({ where: { id: destinationId },
-        data: { selected: true, selectedContext: { loginCustomerId } } });
+        data: { selected: available, available, selectedContext: { loginCustomerId },
+          name: verified.name, currency: verified.currency, timezone: verified.timezone,
+          metadata: freshMetadata, lastCheckedAt: this.now() } });
       await tx.connectionOperation.updateMany({ where: { destinationId, status: { in: ["PENDING", "RUNNING"] } },
         data: { status: "CANCELLED", completedAt: this.now() } });
+      return available;
     });
+    // Commit fresh unavailability and cancellation before returning the error;
+    // throwing inside the transaction would resurrect the cached enabled state.
+    if (!available)
+      fail("ACCOUNT_NOT_AVAILABLE", 409, "Google reports this advertiser is not enabled. Review its status and refresh accounts before selecting it.");
   }
 
   async synchronize(principal: CustomerPrincipal, id: string, version: number, accounts: DiscoveredAccount[]) {

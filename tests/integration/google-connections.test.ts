@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
@@ -12,6 +12,7 @@ import { CustomerConnections } from "../../apps/web/src/server/connections/custo
 import { ProviderConnectionState } from "../../apps/web/src/server/connections/providerConnectionState";
 import { GoogleConnectionService, createGoogleConnectionApi } from "../../apps/web/src/server/connections/googleConnectionApi";
 import { GoogleAdsClient } from "../../apps/web/src/server/providers/googleAds";
+import { ProviderHttpError } from "../../apps/web/src/server/providers/providerHttp";
 import { applyConnectionMigrations } from "../support/test-database";
 import { startMockoon } from "../support/mockoon";
 
@@ -112,6 +113,92 @@ test("reconnect state belongs to an owned Google Ads connection and declined con
   assert.equal(same.connection.id, result.connection.id);
 });
 
+test("a duplicate callback cannot exchange again or cancel the winning authorization", async () => {
+  const owner = await customer("google-duplicate-callback");
+  let signal!: () => void;
+  let release!: () => void;
+  let exchanges = 0;
+  const reached = new Promise<void>((resolve) => { signal = resolve; });
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const singleUse = new Proxy(client, { get(target, key) {
+    if (key === "exchangeCode") return async (input: Parameters<GoogleAdsClient["exchangeCode"]>[0]) => {
+      if (++exchanges > 1)
+        throw new ProviderHttpError("RECONNECT_REQUIRED", 409, "The authorization code was already exchanged.");
+      const grant = await target.exchangeCode(input);
+      signal();
+      await held;
+      return grant;
+    };
+    const value = Reflect.get(target, key);
+    return typeof value === "function" ? value.bind(target) : value;
+  } });
+  const concurrent = new GoogleConnectionService(auth, connections, state, singleUse, "mock", () => clock);
+  const attempt = await concurrent.start(owner.principal);
+  const nonce = new URL(attempt.authorizationUrl).searchParams.get("state")!;
+  const winner = concurrent.complete(owner.principal, nonce, "success")
+    .then(() => ({ succeeded: true }), (error: { code: string }) => ({ succeeded: false, code: error.code }));
+  await reached;
+  let duplicateCode: string | undefined;
+  try { await concurrent.complete(owner.principal, nonce, "success"); }
+  catch (error) { duplicateCode = (error as { code: string }).code; }
+  finally { release(); }
+  assert.deepEqual(await winner, { succeeded: true });
+  assert.equal(duplicateCode, "INVALID_OAUTH_STATE");
+  assert.equal(exchanges, 1);
+  assert.equal((await connections.list(owner.principal)).length, 1);
+});
+
+test("simultaneous OAuth claims reserve the same attempt only once", { timeout: 10_000 }, async () => {
+  const owner = await customer("google-concurrent-claim");
+  const attempt = await service.start(owner.principal);
+  const nonce = new URL(attempt.authorizationUrl).searchParams.get("state")!;
+  let reads = 0;
+  let release!: () => void;
+  const bothRead = new Promise<void>((resolve) => { release = resolve; });
+  const delayedDb = new Proxy(db, { get(target, key) {
+    if (key === "oAuthAttempt") return new Proxy(target.oAuthAttempt, { get(model, method) {
+      if (method === "findFirst") return async (args: Parameters<typeof model.findFirst>[0]) => {
+        const snapshot = await model.findFirst(args);
+        if (++reads === 2) release();
+        await bothRead;
+        return snapshot;
+      };
+      return Reflect.get(model, method);
+    } });
+    return Reflect.get(target, key);
+  } });
+  const concurrent = new CustomerConnections(delayedDb, auth,
+    new CredentialVault({ test: Buffer.alloc(32, 17).toString("base64") }, "test"), () => clock);
+  const claims = await Promise.allSettled([
+    concurrent.claimOAuthExchange(owner.principal, nonce, service.oauth),
+    concurrent.claimOAuthExchange(owner.principal, nonce, service.oauth),
+  ]);
+  assert.equal(claims.filter((claim) => claim.status === "fulfilled").length, 1);
+  const loser = claims.find((claim) => claim.status === "rejected");
+  assert.equal(loser?.reason.code, "INVALID_OAUTH_STATE");
+  const winner = claims.find((claim) => claim.status === "fulfilled")!;
+  await state.cancelOAuth(owner.principal, nonce, service.oauth, winner.value.exchangeClaimToken);
+});
+
+test("claimed OAuth work requires the matching private token for completion or cancellation", async () => {
+  const owner = await customer("google-claim-owner");
+  const attempt = await service.start(owner.principal);
+  const nonce = new URL(attempt.authorizationUrl).searchParams.get("state")!;
+  const claim = await connections.claimOAuthExchange(owner.principal, nonce, service.oauth);
+  const grant = await client.exchangeCode({ code: "success", codeVerifier: claim.codeVerifier! });
+  await assert.rejects(connections.getOAuthExchangeContext(owner.principal, nonce, service.oauth), { code: "INVALID_OAUTH_STATE" });
+  await assert.rejects(connections.completeAuthorization(owner.principal, nonce, service.oauth, grant), { code: "INVALID_OAUTH_STATE" });
+  await assert.rejects(connections.completeAuthorization(owner.principal, nonce, service.oauth, grant, "wrong-token"), { code: "INVALID_OAUTH_STATE" });
+  await state.cancelOAuth(owner.principal, nonce, service.oauth);
+  await state.cancelOAuth(owner.principal, nonce, service.oauth, "wrong-token");
+  await connections.completeAuthorization(owner.principal, nonce, service.oauth, grant, claim.exchangeClaimToken);
+  const next = await service.start(owner.principal);
+  const nextNonce = new URL(next.authorizationUrl).searchParams.get("state")!;
+  const nextClaim = await connections.claimOAuthExchange(owner.principal, nextNonce, service.oauth);
+  await state.cancelOAuth(owner.principal, nextNonce, service.oauth, nextClaim.exchangeClaimToken);
+  await assert.rejects(connections.completeAuthorization(owner.principal, nextNonce, service.oauth, grant, nextClaim.exchangeClaimToken), { code: "INVALID_OAUTH_STATE" });
+});
+
 test("disconnect while provider discovery is in flight cannot restore authorization", async () => {
   const { owner, result } = await connected("google-disconnect");
   let signal!: () => void;
@@ -196,6 +283,38 @@ test("discovery from an older callback cannot attach to a newer reconnect versio
   } finally { release(); }
   await rejected;
   assert.equal((await connections.list(owner.principal))[0].credentialVersion, 2);
+});
+
+test("freshly suspended accounts become unavailable and cancel queued work while read diagnostics remain possible", async () => {
+  const { owner, result } = await connected("google-suspended-selection");
+  const account = result.connection.destinations.find((d) => d.externalId === "400")!;
+  await service.selectAccount(owner.principal, result.connection.id, account.id, "100");
+  const job = await connections.queueOperation(owner.principal, account.id, "ADS", ["https://www.googleapis.com/auth/adwords"]);
+  const fixture = JSON.parse(await readFile("tests/mockoon/google-ads.json", "utf8")) as {
+    routes: { responses: { body: string }[] }[];
+  };
+  for (const route of fixture.routes) for (const response of route.responses)
+    response.body = response.body.replace(/("customer(?:Client)?"\s*:\s*\{[^{}]*"status"\s*:\s*)"ENABLED"/g, '$1"SUSPENDED"');
+  const fixturePath = join(directory, "suspended-google.json");
+  await writeFile(fixturePath, JSON.stringify(fixture));
+  const suspended = await startMockoon(fixturePath);
+  try {
+    const changedClient = new GoogleAdsClient({ clientId: "mock-google-client", clientSecret: "mock-client-secret",
+      redirectUri: `${origin}/api/connections/google/callback`, mockoonEnabled: true, mockoonBaseUrl: suspended.origin }, () => clock);
+    const changedService = new GoogleConnectionService(auth, connections, state, changedClient, "mock", () => clock);
+    const fresh = await changedClient.verifyAccount("mock-access", { customerId: "400", loginCustomerId: "100" });
+    assert.equal(fresh.status, "SUSPENDED");
+    await assert.rejects(changedService.selectAccount(owner.principal, result.connection.id, account.id, "100"), { code: "ACCOUNT_NOT_AVAILABLE" });
+    const destination = (await connections.get(owner.principal, result.connection.id)).destinations.find((d) => d.id === account.id)!;
+    assert.equal(destination.available, false);
+    assert.equal(destination.selected, false);
+    assert.equal((destination.metadata as { status: string }).status, "SUSPENDED");
+    await assert.rejects(connections.runOperation(job.id, async () => assert.fail("suspended account received queued work")), { code: "OPERATION_UNAVAILABLE" });
+    const diagnostic = await changedService.readSmoke(owner.principal, result.connection.id, account.id);
+    assert.equal(diagnostic.account.status, "SUSPENDED");
+    assert.equal(diagnostic.canRead, true);
+    assert.equal(diagnostic.canWrite, "UNKNOWN");
+  } finally { await suspended.stop(); }
 });
 
 test("manager selection is reverified and retained through queued operation context", async () => {

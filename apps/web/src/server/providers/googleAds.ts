@@ -223,7 +223,9 @@ export class GoogleAdsClient {
     if (rows.length !== 1) malformed();
     const verified = this.destination(record(rows[0].customer), context.loginCustomerId);
     if (verified.externalId !== context.customerId || verified.manager) malformed();
-    return verified;
+    // Keep every freshly discovered root context while reporting the metadata
+    // read through the customer's explicitly chosen context.
+    return { ...verified, contexts: permitted.contexts };
   }
 
   async readCampaigns(accessToken: string, context: GoogleAdsContext): Promise<GoogleAdsCampaign[]> {
