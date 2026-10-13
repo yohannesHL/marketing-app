@@ -80,15 +80,17 @@ function renewed(request: Parameters<SocialCredentialRenewal>[0], now: Date, acc
     scopes: request.scopes, expiresAt: new Date(now.getTime() + 3600_000) };
 }
 
-test("parallel scheduled renewals of one Google grant adopt the verified winner and both publish once", async () => {
+for (const race of ["guard", "persist"] as const) {
+test(`parallel Google renewals adopt the verified winner after a ${race} race and both publish once`, async () => {
   const q = await setup(2), enteredFirst = gate(), enteredSecond = gate(), finishFirst = gate(), finishSecond = gate();
   let renewals = 0;
   try {
     const renew: SocialCredentialRenewal = async (request) => {
       const index = ++renewals;
+      if (race === "persist") await request.verifyCurrent();
       if (index === 1) { enteredFirst.release(); await finishFirst.promise; }
       else { enteredSecond.release(); await finishSecond.promise; }
-      await request.verifyCurrent();
+      if (race === "guard") await request.verifyCurrent();
       return renewed(request, q.now(), `fresh-${index}`);
     };
     const first = q.worker(renew).runOnce(); await enteredFirst.promise;
@@ -100,6 +102,7 @@ test("parallel scheduled renewals of one Google grant adopt the verified winner 
     assert.equal(vaultPlain(q, row.accessCiphertext!), "fresh-1");
   } finally { finishFirst.release(); finishSecond.release(); await q.close(); }
 });
+}
 function vaultPlain(q: Awaited<ReturnType<typeof setup>>, envelope: string) {
   return q.vault.decrypt(envelope, credentialContext(q.principal.userId, q.grant.id, "access"));
 }
