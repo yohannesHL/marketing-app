@@ -41,13 +41,13 @@ function DestinationRow({ destination, connection, busy, actionsEnabled, paid, o
         onChange={(event) => setContext(event.target.value)} options={contexts.map((item) => ({
           value: item.loginCustomerId ?? "direct", label: item.loginCustomerId ? `Via manager ${item.loginCustomerId}` : "Direct access",
         }))} /> : null}
-      {destination.selectedContext && google && destination.selected ? <Typography tone="muted">Selected access: {destination.selectedContext.loginCustomerId ? `manager ${destination.selectedContext.loginCustomerId}` : "direct"}</Typography> : null}
+      {destination.selectedContext && google && paid && destination.selected ? <Typography tone="muted">Selected access: {destination.selectedContext.loginCustomerId ? `manager ${destination.selectedContext.loginCustomerId}` : "direct"}</Typography> : null}
       {manager ? <Typography tone="muted">Select a child advertising account to use this manager’s access.</Typography>
-        : paid ? <div className="flex flex-wrap gap-3">
+        : paid || actionsEnabled ? <div className="flex flex-wrap gap-3">
           <Button variant="secondary" className="min-h-11" disabled={busy || !actionsEnabled || !destination.available} onClick={() => onAction(connection, "check", destination)}>Check read access</Button>
           {destination.selected ? <><Button variant="secondary" className="min-h-11" disabled={busy} onClick={() => onAction(connection, "deselect", destination)}>Deselect account</Button>
             {google && context !== contextValue ? <Button className="min-h-11" disabled={busy || !canChoose || !context || !contexts.some((item) => (item.loginCustomerId ?? "direct") === context)} onClick={() => onAction(connection, "select", destination, context === "direct" ? null : context)}>Save access path</Button> : null}</>
-            : <Button className="min-h-11" disabled={busy || !canChoose || (google && (!context || !contexts.some((item) => (item.loginCustomerId ?? "direct") === context)))}
+            : <Button className="min-h-11" disabled={busy || !canChoose || (google && paid && (!context || !contexts.some((item) => (item.loginCustomerId ?? "direct") === context)))}
               onClick={() => onAction(connection, "select", destination, context === "direct" ? null : context)}>Select account</Button>}
         </div> : <Typography tone="muted">Publishing controls become available when this platform’s publishing integration is enabled.</Typography>}
       {!destination.available && !manager ? <Typography tone="muted">Refresh discovery or reconnect to check whether this account is available again.</Typography> : null}
@@ -73,8 +73,8 @@ export function ConnectionCard({ connection, mode, enabled, busy, paid, onAction
       <Badge className="h-auto min-h-6 py-1">{connection.connectionMode === "MOCK" ? "Mockoon test connection" : connection.connectionMode === "LIVE" ? "Live connection" : "Legacy connection"}</Badge></div></div>
     {connection.status !== "CONNECTED" ? <Typography tone="muted">{connection.status === "DISCONNECTED" ? "Access has been removed. Reconnect to discover accounts again." : "Approve access again before using accounts from this connection."}</Typography> : null}
     {!modeMatches ? <Typography tone="muted">This connection belongs to a different environment and cannot be used in the current mode.</Typography> : null}
-    {paid ? <div className="flex flex-wrap gap-3">
-      <Button variant="secondary" className="min-h-11" disabled={busy || !enabled || !modeMatches} onClick={() => onAction(connection, "reconnect")}>Reconnect {providerLabel(connection.provider)}</Button>
+    {enabled || paid ? <div className="flex flex-wrap gap-3">
+      <Button variant="secondary" className="min-h-11" disabled={busy || !enabled || !modeMatches} onClick={() => onAction(connection, "reconnect")}>Reconnect {label}</Button>
       <Button variant="secondary" className="min-h-11" disabled={busy || !usable} onClick={() => onAction(connection, "refresh")}>Refresh accounts</Button>
     </div> : null}
     {connection.destinations.length ? <ul className="grid gap-4" aria-label={`${label} ${paid ? "advertising accounts" : "publishing destinations"}`}>

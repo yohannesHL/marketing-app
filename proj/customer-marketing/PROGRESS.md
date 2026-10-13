@@ -76,3 +76,13 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - All three social journeys pass in Chromium, Firefox and WebKit. Mobile captions and desktop calendars were visually inspected; the captured fixture evidence is in `docs/evidence/social-ui`.
 - CI now includes the social journey with the existing paid/customer journeys. The empty provider registry prevents enqueue and TikTok controls await fresh creator capabilities from its integration.
 - Exact foundation revision `8c88ba1` contains no UI or YouTube SDK changes. All 135 foundation/backend checks and seven fresh migrations pass; independent findings have dedicated recovery regressions.
+
+### YouTube integration — 13 October 2026
+
+- PR #26 exact-head migration/security and all three browser jobs passed; independent review passed. PR #27 UI fixes also passed exact-head CI in all three browsers and independent review. Second batch remains unmerged until #12/#13 are ready.
+- YouTube now has separate SOCIAL consent, verified single-channel discovery and fresh selection, encrypted resumable delivery, app-side scheduling and verified offline renewal after logout/expiry.
+- Shared deselection immediately cancels only affected unsent social jobs. Authoritative known processing rejection retains its receipt and blocks another send. Targeted shared/YouTube suite: 67 tests passed, zero skips.
+- Mockoon is the agreed testing environment. Production credentials, provider verification/quota and live pilot/cleanup remain owner gates; no live approval or publication is claimed.
+
+- Full current #12 backend selection passed 164/164 (before new independent renewal-race tests). The connection and social browser selection passed21/21 across Chromium, Firefox and WebKit; fresh app build and typecheck passed. Mobile/desktop YouTube screenshots were inspected.
+- Independent review reproduced concurrent renewal loser and retryable429 bugs; fixes passed both reviewer reproductions. The final regression suite also covers reconsent/disconnect/scope-loss and reusable-Google503 backoff.

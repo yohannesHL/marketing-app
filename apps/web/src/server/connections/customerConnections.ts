@@ -513,6 +513,8 @@ export class CustomerConnections {
           "Reconnect before selecting destinations.",
         );
       if (!selected)
+        await cancelSocialDeliveries(tx, [destination.authorizationId], "DESTINATION_DESELECTED", this.now(), [id]);
+      if (!selected)
         await tx.connectionOperation.updateMany({
           where: { destinationId: id, status: { in: ["PENDING", "RUNNING"] } },
           data: { status: "CANCELLED", completedAt: this.now() },

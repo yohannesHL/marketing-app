@@ -561,3 +561,32 @@ test("an unclassified empty rejection at the publish boundary remains uncertain"
 });
 
 after(async () => { await db?.$disconnect(); if (dir) await rm(dir, { recursive: true, force: true }); });
+
+
+test("authoritative known processing failure keeps the receipt and blocks every resend", async () => {
+  let calls = 0;
+  const q = await queued("known-processing-failure", {
+    publish: async (context) => context.rpc("PUBLISH", async () => {
+      calls++; await context.checkpoint({ receipt: "known-processing-receipt" });
+      throw new SocialProviderFailure("TRANSIENT", false);
+    }),
+    status: async (context) => context.rpc("PROCESS", async () => ({ status: "FAILED", result: { externalId: "known-processing-receipt" } })),
+  });
+  const w = worker(q.r.providers);
+  assert.equal((await w.runOnce())?.status, "UNCERTAIN");
+  const id = q.post.deliveries[0].id; clock = new Date(clock.getTime() + 5000);
+  assert.equal((await w.reconcileOnce(id))?.status, "FAILED");
+  const row = await db.socialDelivery.findUniqueOrThrow({ where: { id }, include: { progress: true } });
+  assert.equal(row.externalId, "known-processing-receipt"); assert.equal(row.errorCode, "PROVIDER_PROCESSING_FAILED");
+  assert.ok(row.publishStartedAt); assert.ok(row.completedAt); assert.ok(row.progress?.encryptedState);
+  await assert.rejects(q.s.retry(q.owner.principal, q.post.id, [id]));
+  assert.equal(await w.runOnce(), null); assert.equal(await w.reconcileOnce(id), null); assert.equal(calls, 1);
+});
+
+test("deselecting one publishing destination cancels only its unsent jobs immediately", async () => {
+  const q = await queued("deselect-social-now", {}, 2);
+  await connections.selectDestination(q.owner.principal, q.destinations[0].dest.id, false);
+  const rows = await db.socialDelivery.findMany({ where: { postId: q.post.id } });
+  assert.equal(rows.find((r) => r.destinationId === q.destinations[0].dest.id)?.status, "CANCELLED");
+  assert.equal(rows.find((r) => r.destinationId === q.destinations[1].dest.id)?.status, "QUEUED");
+});

@@ -3,9 +3,11 @@ import { aggregateSocialPostStatus } from "./aggregate";
 
 /** Cancelling local work cannot withdraw a provider request already sent. */
 export async function cancelSocialDeliveries(tx: Prisma.TransactionClient, authorizationIds: string[],
-  reason: string, now: Date) {
+  reason: string, now: Date, destinationIds?: string[]) {
   if (!authorizationIds.length) return;
+  if (destinationIds && !destinationIds.length) return;
   const where: Prisma.SocialDeliveryWhereInput = { destination: { authorizationId: { in: authorizationIds } },
+    ...(destinationIds ? { destinationId: { in: destinationIds } } : {}),
     status: { in: ["QUEUED", "LEASED", "RETRY_WAIT", "FAILED", "BLOCKED", "UNCERTAIN"] } };
   const affected = await tx.socialDelivery.findMany({ where, select: { id: true, postId: true } });
   await tx.socialDelivery.updateMany({ where: { ...where,

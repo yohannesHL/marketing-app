@@ -27,3 +27,5 @@ Google/Meta implementation evidence and remaining public-release gates: [paid ad
 Social publishing owner setup, permissions, costs and review requirements: [social setup](docs/social-publishing-setup.md) and [social readiness tracker](docs/social-publishing-readiness.md).
 
 Social review, scheduling, trusted media storage and worker operations: [delivery foundation](docs/social-delivery.md).
+
+YouTube connection, delivery and owner pilot steps: [YouTube Shorts integration](docs/youtube-shorts-integration.md).

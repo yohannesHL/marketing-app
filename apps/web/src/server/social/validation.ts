@@ -59,7 +59,7 @@ export function verifyFormat(format: SocialFormat, kind: DestinationKind, media:
   if (format === "SHORT_VIDEO" && (media.length !== 1 || media[0].type !== "VIDEO"))
     fail("UNSUPPORTED_CONTENT", 400, "Short-video variants require one verified video.");
 }
-export async function ownedDestination(tx: Prisma.TransactionClient, ownerId: string, id: string, mode: SocialMode, now: Date, requiredScopes: readonly string[] = []) {
+export async function ownedDestination(tx: Prisma.TransactionClient, ownerId: string, id: string, mode: SocialMode, now: Date, requiredScopes: readonly string[] = [], allowExpiredForRenewal = false) {
   const destination = await tx.connectionDestination.findFirst({ where: { id, authorization: { userId: ownerId } }, include: { authorization: true } });
   if (!destination) fail("NOT_FOUND", 404, "Social destination not found.");
   const grant = destination.authorization;
@@ -67,7 +67,7 @@ export async function ownedDestination(tx: Prisma.TransactionClient, ownerId: st
     fail("INVALID_DESTINATION", 400, "Choose an owned social publishing destination.");
   if (grant.connectionMode !== mode.toUpperCase()) fail("CONNECTION_MODE_MISMATCH", 409, "Choose a destination belonging to this provider mode.");
   const metadata = destination.metadata as { canWrite?: unknown } | null;
-  if (grant.status !== "CONNECTED" || !grant.accessCiphertext || (grant.expiresAt && grant.expiresAt <= now) ||
+  if (grant.status !== "CONNECTED" || !grant.accessCiphertext || (!allowExpiredForRenewal && grant.expiresAt && grant.expiresAt <= now) ||
     !destination.selected || !destination.available || metadata?.canWrite !== "ALLOWED")
     fail("RECONNECT_REQUIRED", 409, "Reconnect or restore publishing access and select this social destination.");
   if (!Array.isArray(grant.scopes) || requiredScopes.some((scope) => !(grant.scopes as string[]).includes(scope)))

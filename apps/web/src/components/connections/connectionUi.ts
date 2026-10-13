@@ -1,4 +1,5 @@
 export type Provider = "GOOGLE" | "META";
+export type SocialProvider = "YOUTUBE" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "LINKEDIN" | "X";
 export type ProviderMode = "mock" | "live" | "disabled";
 export interface Destination {
   id: string; externalId: string; kind: string; name: string | null;
@@ -16,7 +17,7 @@ export interface Connection {
 export interface ProviderSettings {
   mode: ProviderMode;
   paid: { provider: Provider; enabled: boolean; reason?: string; liveWritesEnabled: boolean }[];
-  social: { provider: string; label: string; enabled: boolean }[];
+  social: { provider: SocialProvider; label: string; enabled: boolean }[];
 }
 
 export class ConnectionUiError extends Error {
@@ -40,6 +41,7 @@ const HELP: Record<string, string> = {
   ACCOUNT_NOT_ACCESSIBLE: "This account is no longer accessible. Refresh accounts and select an available account.",
   INVALID_ACCOUNT_CONTEXT: "Refresh accounts and choose a verified Google access path before selecting this account.",
   INVALID_SELECTION: "Choose an available account and its verified access path.",
+  CHANNEL_MISMATCH: "Reconnect and choose the intended YouTube channel or Brand Account during Google consent.",
   STALE_CREDENTIALS: "This connection changed during the request. Refresh this page and try again.",
   CONNECTION_MODE_MISMATCH: "This connection belongs to another environment. Use a connection for the current mode.",
   PROVIDER_RATE_LIMITED: "The provider is receiving too many requests. Wait a moment, then try again.",
@@ -80,14 +82,24 @@ export function checkedAt(value: string | null) {
   if (!value || Number.isNaN(Date.parse(value))) return "Not checked yet";
   return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
-export function authorizationTarget(url: string, provider: Provider, mode: ProviderMode) {
+export function authorizationTarget(url: string, provider: Provider | SocialProvider, mode: ProviderMode) {
   const target = new URL(url);
-  const trustedLive = target.protocol === "https:" && (provider === "GOOGLE"
-    ? target.hostname === "accounts.google.com" : target.hostname === "www.facebook.com");
+  const hosts: Record<Provider | SocialProvider, string> = { GOOGLE: "accounts.google.com", YOUTUBE: "accounts.google.com",
+    META: "www.facebook.com", FACEBOOK: "www.facebook.com", INSTAGRAM: "www.facebook.com", TIKTOK: "www.tiktok.com", LINKEDIN: "www.linkedin.com", X: "x.com" };
+  const trustedLive = target.protocol === "https:" && target.hostname === hosts[provider];
   const trustedMock = mode === "mock" && target.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(target.hostname);
   if (target.username || target.password || !(mode === "live" ? trustedLive : trustedMock))
     throw new ConnectionUiError("INVALID_CONFIG", 503);
   return target.href;
+}
+
+export function connectionEndpoint(provider: string, capability: string) {
+  if (capability === "ADS" && (provider === "GOOGLE" || provider === "META")) return provider.toLowerCase();
+  if (capability === "SOCIAL") return ({ GOOGLE: "youtube", META: "meta-publishing", TIKTOK: "tiktok", LINKEDIN: "linkedin", X: "x" } as Record<string, string>)[provider];
+  return undefined;
+}
+export function socialPlatform(provider: string): SocialProvider | undefined {
+  return ({ GOOGLE: "YOUTUBE", META: "FACEBOOK", TIKTOK: "TIKTOK", LINKEDIN: "LINKEDIN", X: "X" } as Record<string, SocialProvider>)[provider];
 }
 
 export interface SelectedAccountReadiness {

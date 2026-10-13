@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Card, Container, Stack, Typography } from "@launchpad/ui";
 import { AccountNavigation } from "./AccountNavigation";
 import { ConnectionCard, type OnConnectionAction } from "./ConnectionCard";
-import { authorizationTarget, connectionRequest, ConnectionUiError, errorHelp, providerLabel,
-  type Connection, type Provider, type ProviderSettings, type SelectedAccountReadiness } from "./connectionUi";
+import { authorizationTarget, connectionEndpoint, connectionRequest, ConnectionUiError, errorHelp, providerLabel, socialPlatform,
+  type Connection, type Provider, type SocialProvider, type ProviderSettings, type SelectedAccountReadiness } from "./connectionUi";
 
 const SOCIAL_PLATFORMS = [
   { provider: "FACEBOOK", label: "Facebook Pages" }, { provider: "INSTAGRAM", label: "Instagram" },
@@ -47,7 +47,7 @@ export function ConnectionsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const provider = params.get("provider");
-    const label = provider === "google" ? "Google Ads" : provider === "meta" ? "Meta Ads" : "Provider";
+    const label = ({ google: "Google Ads", meta: "Meta Ads", youtube: "YouTube Shorts", "meta-publishing": "Meta social publishing", tiktok: "TikTok", linkedin: "LinkedIn", x: "X" } as Record<string, string>)[provider ?? ""] ?? "Provider";
     if (params.get("result") === "connected") setNotice(`${label} connected. Review the discovered accounts and select the ones you want to use.`);
     if (params.get("result") === "failed" || params.has("error")) setError(errorHelp(params.get("error") ?? undefined));
     load().catch((failure) => setError(failure instanceof ConnectionUiError ? failure.message : errorHelp()));
@@ -71,34 +71,37 @@ export function ConnectionsPage() {
       }
     } finally { actionPending.current = false; setBusy(null); }
   }
-  async function start(provider: Provider, authorizationId?: string) {
+  async function start(provider: Provider | SocialProvider, authorizationId?: string) {
     await run(authorizationId ?? provider, async () => {
       const result = await connectionRequest<{ authorizationUrl: string; mode: ProviderSettings["mode"] }>(
-        `/api/connections/${provider.toLowerCase()}/start`, "POST", authorizationId ? { authorizationId } : {});
+        `/api/connections/${provider === "FACEBOOK" || provider === "INSTAGRAM" ? "meta-publishing" : provider.toLowerCase()}/start`, "POST", authorizationId ? { authorizationId } : {});
       if (!settings || settings.mode !== result.mode) throw new ConnectionUiError("CONNECTION_MODE_MISMATCH", 409);
       window.location.assign(authorizationTarget(result.authorizationUrl, provider, result.mode));
     });
   }
   const onAction: OnConnectionAction = async (connection, action, destination, loginCustomerId) => {
     if (action === "reconnect") {
-      if (connection.provider === "GOOGLE" || connection.provider === "META") await start(connection.provider, connection.id);
+      const provider = connection.capability === "SOCIAL" ? socialPlatform(connection.provider) : connection.provider as Provider;
+      if (provider) await start(provider, connection.id);
       return;
     }
     await run(connection.id, async () => {
-      const base = `/api/connections/${connection.provider.toLowerCase()}/${encodeURIComponent(connection.id)}`;
+      const endpoint = connectionEndpoint(connection.provider, connection.capability);
+      if (!endpoint) throw new ConnectionUiError("PROVIDER_DISABLED", 503);
+      const base = `/api/connections/${endpoint}/${encodeURIComponent(connection.id)}`;
       if (action === "disconnect") await connectionRequest(`/api/connections/${encodeURIComponent(connection.id)}`, "DELETE");
       else if (action === "deselect" && destination) await connectionRequest(`/api/connections/destinations/${encodeURIComponent(destination.id)}`, "PATCH", { selected: false });
       else if (action === "refresh") await connectionRequest(`${base}/refresh`, "POST", {});
       else if (action === "check" && destination) await connectionRequest(`${base}/check`, "POST", { destinationId: destination.id });
       else if (action === "select" && destination) await connectionRequest(`${base}/select`, "POST", {
-        destinationId: destination.id, ...(connection.provider === "GOOGLE" ? { loginCustomerId: loginCustomerId ?? null } : {}),
+        destinationId: destination.id, ...(connection.provider === "GOOGLE" && connection.capability === "ADS" ? { loginCustomerId: loginCustomerId ?? null } : {}),
       });
       await load();
       setNotice(({ disconnect: "Connection removed. Its accounts are deselected and queued work is stopped.",
-        deselect: "Account deselected. It will no longer be offered for new campaigns.",
+        deselect: "Destination deselected. Queued work for it is stopped.",
         refresh: "Accounts refreshed. Review their current availability and permissions.",
         check: "Read access checked. This check does not publish or spend money.",
-        select: "Account selected for campaign planning.", reconnect: "" })[action]);
+        select: connection.capability === "SOCIAL" ? "Publishing destination selected. Review and approve content before scheduling a post." : "Account selected for campaign planning.", reconnect: "" })[action]);
     });
   };
   const paid = connections.filter((connection) => connection.capability === "ADS");
@@ -174,11 +177,18 @@ export function ConnectionsPage() {
         <section aria-labelledby="social-connections-heading" data-testid="social-connections"><Stack gap={5}>
           <div><Typography as="h2" id="social-connections-heading" variant="heading-2">Social publishing</Typography>
             <Typography tone="muted">Publishing permissions are separate from advertising. A Google Ads or Meta Ads connection does not authorize social posts.</Typography></div>
-          {social.map((connection) => <ConnectionCard key={connection.id} connection={connection} mode={settings?.mode ?? "disabled"} enabled={false} paid={false} busy={Boolean(busy)} onAction={onAction} />)}
+          {social.map((connection) => <ConnectionCard key={connection.id} connection={connection} mode={settings?.mode ?? "disabled"}
+            enabled={settings?.social.some((item) => item.provider === socialPlatform(connection.provider) && item.enabled) ?? false} paid={false} busy={Boolean(busy)} onAction={onAction} />)}
           {!social.length ? <Typography tone="muted">No social publishing permissions connected yet.</Typography> : null}
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Planned social publishing platforms">{SOCIAL_PLATFORMS.map((platform) => <li key={platform.provider} className="rounded-box border border-base-300 p-4">
-            <Typography className="font-semibold">{platform.label}</Typography><Typography tone="muted" variant="caption">Publishing connection setup is coming soon.</Typography>
-          </li>)}</ul>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Social publishing platforms">{SOCIAL_PLATFORMS.map((platform) => {
+            const config = settings?.social.find((item) => item.provider === platform.provider);
+            return <li key={platform.provider} className="rounded-box border border-base-300 p-4"><Stack gap={3}>
+              <Typography className="font-semibold">{platform.label}</Typography>
+              <Typography tone="muted" variant="caption">{config?.enabled ? "Connect and choose a verified publishing destination. Selection does not publish content." : "Publishing connection setup is unavailable in this environment."}</Typography>
+              {config?.enabled ? <Button className="min-h-11" disabled={Boolean(busy)} loading={busy === platform.provider}
+                onClick={() => start(platform.provider as SocialProvider)}>Connect {platform.label}</Button> : null}
+            </Stack></li>;
+          })}</ul>
         </Stack></section>
       </>}
     <Typography tone="muted" variant="caption">Credentials stay on the server. Disconnect a provider to remove this app’s access and stop queued work.</Typography>

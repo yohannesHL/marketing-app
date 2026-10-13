@@ -1,5 +1,6 @@
 import { fail } from "../security/errors";
 import type { Platform, DestinationKind, SocialMediaAsset, SocialDeliveryPhase } from "../../generated/prisma/client";
+import type { ProviderGrant } from "../connections/customerConnections";
 
 export type SocialMode = "mock" | "live";
 export type SocialFormat = "TEXT" | "IMAGE" | "SHORT_VIDEO";
@@ -15,10 +16,14 @@ export type SocialMediaResolver = (request: {
 /** Credentials and ephemeral media URLs exist only inside the checked RPC callback. */
 export type SocialProviderCall = {
   mode: SocialMode; accessToken: string; refreshToken?: string;
+  authorizationId?: string;
+  providerUserId?: string;
+  authorizationGeneration?: number;
+  authorizeApiCost?(input: { operation: string; costMicros: number; maxApiCostMicros: number }): Promise<void>;
   /** SDK methods that perform multiple requests must guard every HTTP boundary. */
   verifyCurrent(): Promise<void>;
   destination: { externalId: string; kind: DestinationKind; metadata: unknown };
-  media: ReadonlyArray<{ id: string; url: string; mime: string; bytes: number; width: number; height: number; durationMs: number | null }>;
+  media: ReadonlyArray<{ id: string; url: string; mime: string; bytes: number; width: number; height: number; durationMs: number | null; metadata?: Record<string, string | number> }>;
 };
 export type SocialProviderContext = {
   deliveryId: string; revisionId: string;
@@ -29,6 +34,8 @@ export type SocialProviderContext = {
 export type SocialPublished = { externalId: string; publishUrl?: string };
 export type SocialStatusResult =
   | { status: "PUBLISHED"; result: SocialPublished }
+  /** A verified known receipt failed processing; retaining it prevents another create. */
+  | { status: "FAILED"; result: SocialPublished }
   | { status: "NOT_PUBLISHED" }
   | { status: "PENDING" | "UNKNOWN" };
 
@@ -44,6 +51,7 @@ export type SocialProviderRegistration = {
   platform: Platform; kind: DestinationKind; modes: readonly SocialMode[];
   requiredScopes: readonly string[]; formats: readonly SocialFormat[];
   mediaFetchWindowMs?: number;
+  renewableCredentials?: boolean;
   validateContent?: (content: SocialProviderContext["content"], media: readonly SocialMediaAsset[]) => void;
   factory: () => SocialProvider;
 };
@@ -78,3 +86,7 @@ export type SocialWorkerConfig = {
   mode: SocialMode; writesEnabled: boolean; approvedProviders: readonly string[];
   leaseMs?: number; maxAttempts?: number; maxBackoffMs?: number;
 };
+export type SocialCredentialRenewal = (request: {
+  provider: Platform; providerUserId: string; refreshToken: string; scopes: string[];
+  verifyCurrent(): Promise<void>;
+}) => Promise<ProviderGrant>;
