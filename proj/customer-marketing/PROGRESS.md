@@ -1,18 +1,18 @@
 # Customer marketing progress
 
-Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 reviewed in PR #21; #6 connection UI/routing validated; #7 controlled rollout QA prepared.
+Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff #9 ready, durable delivery #10 and social UI #11 in progress.
 
 | Issue | Outcome | Status | PR |
 | --- | --- | --- | --- |
 | [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Merged; 14 security regressions pass; fresh migrations/build pass | [#19](https://github.com/yohannesHL/marketing-app/pull/19) |
-| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented and independently reviewed; 37 tests and build pass | [#20](https://github.com/yohannesHL/marketing-app/pull/20) |
-| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Implemented and reviewed; 60 exact-snapshot tests/build pass | [#21](https://github.com/yohannesHL/marketing-app/pull/21) |
-| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Implemented; 82 provider/security tests, build and three-browser journey pass; independently reviewed | [#22](https://github.com/yohannesHL/marketing-app/pull/22) |
-| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Implemented; 88 backend tests and 27 app-browser cases pass; live checks remain unavailable | [#23](https://github.com/yohannesHL/marketing-app/pull/23) |
-| [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Integration/readiness handoff prepared; public/live gates remain open | Pending |
-| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Planned | — |
-| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | Planned | — |
-| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | Planned | — |
+| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Merged; 37 exact-snapshot tests/build pass | [#20](https://github.com/yohannesHL/marketing-app/pull/20) |
+| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Merged; 60 exact-snapshot tests/build pass | [#21](https://github.com/yohannesHL/marketing-app/pull/21) |
+| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Merged; 82 exact-snapshot provider/security tests/build/browser review pass | [#22](https://github.com/yohannesHL/marketing-app/pull/22) |
+| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Merged; 88 backend tests and 27 app-browser cases pass; live checks unavailable | [#23](https://github.com/yohannesHL/marketing-app/pull/23) |
+| [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Handoff merged; public/live gates remain open | [#24](https://github.com/yohannesHL/marketing-app/pull/24) |
+| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Primary-source handoff verified; review/recording/live gates tracked separately | Pending |
+| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | In progress | — |
+| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | In progress | — |
 | [12](https://github.com/yohannesHL/marketing-app/issues/12) | feat: Connect YouTube channels and publish scheduled Shorts | Planned | — |
 | [13](https://github.com/yohannesHL/marketing-app/issues/13) | feat: Publish scheduled Facebook Page posts and Instagram content | Planned | — |
 | [14](https://github.com/yohannesHL/marketing-app/issues/14) | feat: Connect TikTok creators and schedule approved Direct Post videos | Planned | — |
@@ -55,3 +55,10 @@ Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 reviewed i
 - Individual PRs #20–#23 contain Google, Meta, selected-account UI/routing and controlled rollout QA. PR #22 exact-commit independent review passes all 82 tests, build/migrations and selected browser checks.
 - The #8 handoff maps engineering evidence to owner-side prerequisites and records live/public/paused-write blockers explicitly.
 - GitHub CI is running on the reviewed QA branch. This first five-issue batch remains unmerged until reviews and final CI checks pass.
+
+## First batch merged
+
+- PRs #20–#24 merged in dependency order; remote main revision `597ef390db07542fb34dd98815c58530f61c9c08`.
+- Exact QA CI is green: [QA run](https://github.com/yohannesHL/marketing-app/actions/runs/38339210069). Final handoff CI is green: [release packet run](https://github.com/yohannesHL/marketing-app/actions/runs/38339508018). All four jobs pass, including three browser suites.
+- Epic #8 remains open for owner/provider live and public-release gates. The original checkout and customer database remain untouched.
+- Social owner guide freezes callback/configuration contracts while clearly marking provider implementations, actual recordings, public approvals and live publication pending.
