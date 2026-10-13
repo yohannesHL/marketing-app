@@ -92,8 +92,10 @@ test.describe("campaign creation wizard", () => {
       await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.editedHeadline);
       await expect(campaignWizardPage.reviewSummary).toContainText("Google");
       await expect(campaignWizardPage.reviewSummary).toContainText("Meta");
+      const reviewScreenshot = testInfo.outputPath("wizard-review.png");
+      await page.screenshot({ path: reviewScreenshot, fullPage: true });
       await testInfo.attach("wizard-review", {
-        body: await page.screenshot({ fullPage: true }),
+        path: reviewScreenshot,
         contentType: "image/png",
       });
       const launchRequest = page.waitForRequest((request) =>
@@ -116,8 +118,10 @@ test.describe("campaign creation wizard", () => {
       });
       await expect(campaignWizardPage.launchResult).toContainText("Campaign demo saved");
       await expect(campaignWizardPage.launchResult).toContainText("Uniform payload: confirmed");
+      const receiptScreenshot = testInfo.outputPath("wizard-launch-receipt.png");
+      await page.screenshot({ path: receiptScreenshot, fullPage: true });
       await testInfo.attach("wizard-launch-receipt", {
-        body: await page.screenshot({ fullPage: true }),
+        path: receiptScreenshot,
         contentType: "image/png",
       });
     });
