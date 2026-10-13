@@ -37,3 +37,5 @@ TikTok creator connection, explicit posting controls, audit gates and delivery r
 LinkedIn member/organization setup and approval gates: [integration guide](docs/linkedin-publishing-integration.md).
 
 X customer publishing, explicit API allocations and owner pilot gates: [X integration guide](docs/x-publishing-integration.md).
+
+Integrated engineering evidence, deployment and remaining owner/live gates: [social release packet](docs/social-release-packet.md).
