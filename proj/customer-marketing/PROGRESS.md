@@ -1,13 +1,13 @@
 # Customer marketing progress
 
-Status: prerequisite #3 merged in PR #19; #4 in validation; #5 provider and #7 wizard QA work in progress.
+Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 ready for review; connection UI #6 and controlled rollout QA #7 in progress.
 
 | Issue | Outcome | Status | PR |
 | --- | --- | --- | --- |
 | [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Merged; 14 security regressions pass; fresh migrations/build pass | [#19](https://github.com/yohannesHL/marketing-app/pull/19) |
-| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented; 33 provider/foundation tests and build under validation | — |
-| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Planned | — |
-| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Planned | — |
+| [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented and independently reviewed; 37 tests and build pass | [#20](https://github.com/yohannesHL/marketing-app/pull/20) |
+| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Implemented; 59 combined backend tests pass; awaiting independent review | Pending |
+| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | UI implemented; routing and browser validation in progress | — |
 | [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Planned | — |
 | [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Planned | — |
 | [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Planned | — |
@@ -28,3 +28,9 @@ Status: prerequisite #3 merged in PR #19; #4 in validation; #5 provider and #7 w
 - Keep ADS and SOCIAL grants separate and distinguish paid campaigns from social posts in the UI.
 - Include all requested social platforms in the first release; surface provider approval blockers.
 - Record mock and live evidence separately; no claim of actual customer/provider validation.
+
+## 13 October validation
+
+- Meta adds verified Business Login, paginated ad account discovery, fresh role checks and signed deauthorization/data deletion callbacks.
+- Deletion preserves unrelated provider/mode history; replay fences protect consent started before revocation, including same-second timestamps.
+- 59 backend tests pass against real local Mockoon HTTP services. No live provider pilot has been performed.

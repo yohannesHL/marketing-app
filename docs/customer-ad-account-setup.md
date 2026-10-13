@@ -2,7 +2,7 @@
 
 This guide covers the business setup Yohannes needs to complete and the engineering work required before customers can connect Google Ads and Meta ad accounts to LaunchPad. Customers keep ownership and billing of their ad accounts. Connecting an account must not start advertising or spend money.
 
-Status: the shared security foundation is implemented, and Google connection endpoints are implemented with Mockoon validation. Meta connection integration, the connection UI and live campaign execution are tracked separately. The current campaign launch flow uses simulated accounts. Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
+Status: the shared security foundation is implemented, and Google connection endpoints are implemented with Mockoon validation. Meta endpoints are implemented with Mockoon validation; the connection UI and live campaign execution are tracked separately. The current campaign launch flow uses simulated accounts. Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
 
 ## What you can set up now
 
@@ -37,7 +37,7 @@ Sources: [Cloud project setup](https://developers.google.com/google-ads/api/docs
 2. Configure Marketing API access and the supported business login flow for external customers. Register app domains and the exact OAuth redirect URLs agreed with engineering.
 3. Enter the privacy policy, terms, contact details, and data deletion/deauthorization details requested in the developer console. Engineering supplies the working endpoints and pages.
 4. Complete the business verification steps the console requires. Keep verification documents with Meta rather than in the repository.
-5. Request the permissions needed by the implemented flow: `ads_management` for management and `ads_read` where required for reporting. Managing other businesses' accounts requires the appropriate reviewed access. Request `business_management`, Page, or Instagram permissions only when the implemented account/identity discovery or creative workflow needs them; document the reason for each.
+5. Request the permissions needed by the implemented flow: `ads_management` for management and `ads_read` where required for reporting. Managing other businesses' accounts requires the appropriate reviewed access. Current `ads_management` depends on `pages_read_engagement` and `pages_show_list`; include those reviewed dependencies in the Business Login USER-token configuration. External customer login additionally needs Advanced Access to `public_profile`. Request `business_management` and publishing permissions only when their separate implemented flows need them.
 6. Add designated app testers and select a pilot ad account. For creative tests, also provide the relevant Facebook Page and Instagram identity with the necessary roles. An ad account connection alone does not grant access to every Page or Instagram account.
 7. When engineering provides a working staging flow, submit App Review with precise test instructions, a reviewer login where required, and a recording demonstrating each requested permission. Enable customer production access only after the required approvals are granted.
 8. Supply the app ID, business portfolio ID, secret-store reference for the app secret, any login configuration ID required by the selected flow, pilot asset IDs, and approval status.
@@ -59,7 +59,7 @@ Source: [Meta's official Marketing API collection and permissions guidance](http
 
 ## Configuration contract
 
-Google names and its callback below are implemented. Meta settings remain planned until #5. Keep this table synchronized with the example environment file. Replace `APP_ORIGIN` with each agreed HTTPS app origin; it is not a literal hostname.
+Google and Meta names and callbacks below are implemented. Keep this table synchronized with the example environment file. Replace `APP_ORIGIN` with each agreed HTTPS app origin; it is not a literal hostname.
 
 | Setting | Value or responsibility |
 | --- | --- |
@@ -69,17 +69,17 @@ Google names and its callback below are implemented. Meta settings remain planne
 | Google callback (derived) | `APP_ORIGIN/api/connections/google/callback`; register this exact URL |
 | `META_APP_ID` | You create the Meta application; engineering installs its ID |
 | `META_APP_SECRET` | You place the app secret in the agreed secret store |
-| `META_LOGIN_CONFIG_ID` | Only if required by the chosen Meta business login flow |
-| `META_REDIRECT_URI` | Proposed: `APP_ORIGIN/api/connections/meta/callback` |
+| `META_LOGIN_CONFIG_ID` | Required USER-token Business Login configuration for this Ads flow |
+| Meta callback (derived) | `APP_ORIGIN/api/connections/meta/callback` |
 | `CONNECTION_TOKEN_KEYS` | Implemented foundation: server keyring JSON mapping IDs to base64 32-byte keys |
 | `CONNECTION_ACTIVE_KEY_ID` | Implemented foundation: ID of the key used for new credential encryption |
 | `CONNECTION_MODE` | `mock` or `live` for provider OAuth/discovery; no fallback |
 | `GOOGLE_ADS_MOCKOON_URL` | Loopback Mockoon origin, used only in explicit mock mode |
 | `ADS_MODE` | Existing campaign execution: mock; live execution remains gated for #6/#7 |
 
-Engineering also provides exact Meta data deletion and deauthorization callback URLs before you register them. Separate test and production credentials wherever supported. No secret setting may use a browser-exposed `NEXT_PUBLIC_` variable.
+Register `APP_ORIGIN/api/connections/meta/data-deletion` and `APP_ORIGIN/api/connections/meta/deauthorize` as Meta callbacks. Separate test and production credentials wherever supported. No secret setting may use a browser-exposed `NEXT_PUBLIC_` variable.
 
-The shared session/credential foundation is documented in [Customer sessions and secure connections](customer-connection-foundation.md). That guide supplies the implemented configuration and migration commands; [Google connection setup](google-ads-connection.md) documents implemented endpoints, manager selection and local Mockoon commands. Meta paths remain planned until its integration issue is completed.
+The shared session/credential foundation is documented in [Customer sessions and secure connections](customer-connection-foundation.md). That guide supplies the implemented configuration and migration commands; [Google connection setup](google-ads-connection.md) documents implemented endpoints, manager selection and local Mockoon commands. [Meta connection setup](meta-ads-connection.md) documents Business Login, signed callbacks and actual deletion receipts.
 
 ## What each pilot customer needs
 
