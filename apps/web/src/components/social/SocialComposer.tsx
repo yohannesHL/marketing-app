@@ -561,6 +561,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
       </form>
       {post && review && !dirty ? (
         <SocialReview
+          key={post.revision.id}
           post={post}
           busy={busy}
           onAction={(work) => action(work)}

@@ -84,6 +84,48 @@ test("creating another social post starts a separate empty draft", async ({ page
   expect((await readPost(page, first)).revision.body).toBe("Keep this saved caption.");
 });
 
+test("a refreshed content revision requires a fresh review acknowledgment", async ({ page }, testInfo) => {
+  await page.goto("/sign-in?returnTo=%2Fsocial%2Fcreate");
+  await page.getByLabel(/^Email/).fill(`social-${testInfo.project.name}@example.test`);
+  await page.getByLabel(/^Password/).fill("isolated-test-password-for-fixtures");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/create$/);
+  await page.getByLabel("Draft title", { exact: true }).fill("Review revision fixture");
+  await page.getByLabel("Caption or post text", { exact: true }).fill("Original reviewed caption.");
+  await page.getByRole("checkbox", { name: /^Fixture LinkedIn member/ }).check();
+  await page.getByRole("button", { name: "Save and review", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/posts\/[A-Za-z0-9_-]+$/);
+  const id = new URL(page.url()).pathname.split("/").at(-1)!;
+  // A read-only cancelled delivery fixture exposes the status-refresh UI.
+  // Content revisions and approvals still use the real authenticated API.
+  await page.route(`**/api/social/posts/${id}`, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const value = await response.json();
+    value.deliveries = [{ id: "review_refresh_fixture", revisionId: value.revision.id,
+      destinationId: value.revision.variants[0].destinationId, status: "CANCELLED", phase: "PREPARE",
+      dueAt: "2026-10-13T12:00:00Z", timeZone: "UTC", attempts: 0, cancellationRequested: true }];
+    await route.fulfill({ response, json: value });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Save and review", exact: true }).click();
+  await page.getByRole("checkbox", { name: "I reviewed revision 1 and every destination variant", exact: true }).check();
+  await page.getByRole("button", { name: "Approve saved revision", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Revision reviewed", exact: true })).toBeDisabled();
+  const saved = await readPost(page, id);
+  const response = await page.request.patch(`/api/social/posts/${id}`, {
+    headers: { Origin: new URL(page.url()).origin }, data: {
+      revisionId: saved.revision.id, title: saved.title, body: "Changed in another tab.", mediaIds: [],
+      variants: saved.revision.variants.map((variant) => ({ destinationId: variant.destinationId,
+        format: variant.format, body: "Changed in another tab.", mediaIds: [], providerOptions: variant.providerOptions })),
+    },
+  });
+  expect(response.ok()).toBe(true);
+  await page.getByRole("button", { name: "Refresh delivery status", exact: true }).click();
+  await expect(page.getByRole("checkbox", { name: "I reviewed revision 2 and every destination variant", exact: true })).not.toBeChecked();
+  await expect(page.getByRole("button", { name: "Approve saved revision", exact: true })).toBeDisabled();
+});
+
 test("scheduling resolves daylight-saving gaps, repeated times, and half-hour zones", () => {
   expect(scheduleInstants("2026-03-29T01:30", "Europe/London")).toEqual([]);
   expect(scheduleInstants("2026-10-25T01:30", "Europe/London")).toEqual([
