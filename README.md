@@ -33,3 +33,5 @@ YouTube connection, delivery and owner pilot steps: [YouTube Shorts integration]
 Facebook/Instagram connection, delivery and owner pilot steps: [Meta social publishing integration](docs/meta-social-publishing-integration.md).
 
 TikTok creator connection, explicit posting controls, audit gates and delivery recovery: [TikTok publishing integration](docs/tiktok-publishing-integration.md).
+
+LinkedIn member/organization setup and approval gates: [integration guide](docs/linkedin-publishing-integration.md).

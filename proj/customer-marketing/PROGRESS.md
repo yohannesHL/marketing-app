@@ -104,3 +104,11 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - TikTok now has separate SOCIAL consent, verified creator capabilities, explicit privacy/interactions/disclosures/music/posting consent, verified owned-media delivery and app-side scheduling. Mockoon remains the agreed external test environment.
 - Rotating refresh credentials use a durable shared lease, actual refresh expiry, per-request ownership/generation checks and a single persisted winner. Two independent SQLite clients proved writer coordination; ambiguous rotation requires reconnect rather than reusing an uncertain refresh token.
 - Targeted tests cover actual TikTok SDK renewal after logout/expiry, safe first-request rate-limit retries, actual refresh lifetime during scheduling, scope/subject loss and concurrent worker adoption. Exact isolated app/browser validation follows; no unrun journey is counted as passed.
+
+
+### LinkedIn integration — 13 October 2026
+
+- Separate member and organization SOCIAL authors use explicit approved scopes, actual token introspection and current organic author actions. Existing approved restricted member read access is required; new permission requests are closed according to the current provider FAQ.
+- Preliminary isolated LinkedIn application passed315/315 backend checks and its3 member/organization browser cases without advertising requests or enqueue. Desktop/mobile screenshots were inspected.
+- Independent review reproduced asynchronous media processing being terminalized before publication. Safe bounded polling now preserves the exact upload/parts/finalization plan and prevents re-upload; four real Mockoon/SQLite regressions pass. Existing unknown-finalization coverage now asserts read polling without another mutation.
+- Approved MDP renewal uses the shared coordinator and real refresh expiry; a new guarded-request regression requires reconnect after a successful token exchange followed by a local429 failure. Owner approvals, real member/organization pilot evidence and external cleanup remain unperformed.

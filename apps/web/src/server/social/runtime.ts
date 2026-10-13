@@ -18,6 +18,11 @@ import { renewTikTokPublishing } from "../connections/tiktokRenewal";
 import { TikTokClient } from "../providers/tiktok";
 import { tiktokSocialRegistration } from "./providers/tiktok";
 
+import { linkedinProviderConfig } from "../connections/linkedinRuntime";
+import { renewLinkedInPublishing } from "../connections/linkedinRenewal";
+import { LinkedInClient } from "../providers/linkedin";
+import { linkedinSocialRegistration } from "./providers/linkedin";
+
 /** Providers are added only by their separately validated implementation slices. */
 export function socialProviders() {
   const registry = new SocialProviderRegistry();
@@ -39,6 +44,14 @@ export function socialProviders() {
     registry.register({ ...tiktokSocialRegistration(config, { verifiedMediaPrefix: process.env.TIKTOK_VERIFIED_MEDIA_PREFIX ?? "",
       audited: process.env.TIKTOK_APP_AUDITED === "true" }), renewableCredentials: true });
   } catch { /* Missing verified media ownership leaves this provider unavailable. */ }
+  try {
+    const config = linkedinProviderConfig(); new LinkedInClient(config);
+    const media = { mediaOrigin: process.env.SOCIAL_MEDIA_PUBLIC_ORIGIN ?? customerAuth().origin };
+    for (const kind of ["LINKEDIN_MEMBER", "LINKEDIN_ORGANIZATION"] as const) {
+      const registration = linkedinSocialRegistration(config, media, kind);
+      if (registration.requiredScopes.every(scope => config.scopes.includes(scope))) registry.register(registration);
+    }
+  } catch { /* Actual approved member/organization read permissions are independently required. */ }
   return registry;
 }
 
@@ -60,6 +73,10 @@ export function socialDeliveryWorker() {
   return new SocialDeliveryWorker(prisma, CredentialVault.fromEnvironment(), socialProviders(), socialConfiguration(),
     (request) => socialMediaStore().resolve(request), () => new Date(), async (request) => {
       if (request.provider === "TIKTOK") return renewTikTokPublishing(prisma, CredentialVault.fromEnvironment(), tiktokProviderConfig(), {
+        ownerId: request.ownerId, authorizationId: request.authorizationId, generation: request.authorizationGeneration,
+        credentialVersion: request.credentialVersion, verifyCurrent: request.verifyCurrent,
+      });
+      if (request.provider === "LINKEDIN") return renewLinkedInPublishing(prisma, CredentialVault.fromEnvironment(), linkedinProviderConfig(), {
         ownerId: request.ownerId, authorizationId: request.authorizationId, generation: request.authorizationGeneration,
         credentialVersion: request.credentialVersion, verifyCurrent: request.verifyCurrent,
       });
