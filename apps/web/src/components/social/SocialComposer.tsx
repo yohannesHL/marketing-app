@@ -573,6 +573,8 @@ export function SocialComposer({ postId }: { postId?: string }) {
                     creator={kind === "TIKTOK_PROFILE" && row?.ready && tikTokChecks[v.destinationId]?.status === "fresh" &&
                       tikTokChecks[v.destinationId]?.key === tikTokCheckKey(row.connection, row.destination.id) && row.destination.metadata?.tiktokCreator?.authorizationId === row.connection.id &&
                       row.destination.metadata.tiktokCreator.openId === row.destination.externalId ? row.destination.metadata.tiktokCreator : undefined}
+                    xQuoteInput={kind === "X_PROFILE" && row?.ready ? { destinationId: v.destinationId, body: v.body ?? draft.body,
+                      format: v.format, mediaIds: v.mediaIds ?? draft.mediaIds } : undefined}
                     audited={tikTokAudited}
                     video={kind === "TIKTOK_PROFILE" && (v.mediaIds ?? []).length === 1 ? media.find((item) => item.id === v.mediaIds![0] && item.type === "VIDEO") : undefined}
                     onRefresh={kind === "TIKTOK_PROFILE" && row && tikTokChecks[v.destinationId]?.status !== "checking" ? () => { void refreshTikTok(row.connection, row.destination.id); } : undefined}

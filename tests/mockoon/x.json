@@ -1,0 +1,3747 @@
+{
+  "uuid": "ed8dd3ba-d6d6-4b1c-be41-fb8527f8e821",
+  "lastMigration": 33,
+  "name": "X pay-per-use publishing synthetic HTTP fixtures",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3916,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "99546ac1-76c0-49a6-b0fc-0d78def855ff",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "health",
+      "responses": [
+        {
+          "uuid": "7a3d9389-c889-4905-9b46-3d27a671dc27",
+          "body": "{\"ok\": true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "c8f4eff1-c284-4d25-9823-2eab028782ce",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "i/oauth2/authorize",
+      "responses": [
+        {
+          "uuid": "8dba1aaf-59a9-488d-aada-e869aaf231dc",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?error=access_denied&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fixture_consent",
+              "value": "denied",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e6ade863-e673-4587-ab48-dcfb5443447c",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?code=success&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3eb6e2cf-b252-4164-8257-4c272d615dda",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/oauth2/token",
+      "responses": [
+        {
+          "uuid": "4c050808-d40e-4aad-8c2c-0948f1ac4111",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-access\", \"refresh_token\": \"x-refresh\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Isolated browser consent and bound PKCE",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "success",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/connections/x/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b135b5e2-fa68-4af5-903f-416942382cc7",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-access\", \"refresh_token\": \"x-refresh\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "success",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "https://launchpad.test/api/connections/x/callback",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4ab99c91-062a-44af-a3f3-4fbde470454a",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-access\", \"refresh_token\": \"x-refresh\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "missing-scope",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "https://launchpad.test/api/connections/x/callback",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9ca78fa8-b436-428f-9006-d9e8c29891cb",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-other\", \"refresh_token\": \"x-refresh\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "wrong-user",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "https://launchpad.test/api/connections/x/callback",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ce0b5899-5eb1-4967-a8a3-9968c928cb05",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-access\", \"refresh_token\": null, \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "no-refresh",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "https://launchpad.test/api/connections/x/callback",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b09e90a0-7320-4d8c-be3a-7098d52a57d0",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-access\", \"refresh_token\": \"x-refresh\", \"expires_in\": 0, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "bad-expiry",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "https://launchpad.test/api/connections/x/callback",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code_verifier",
+              "value": "^[-A-Za-z0-9._~]{43,128}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "bf982d57-c7e0-4252-8f43-6f7a7eb80ec3",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-rotated\", \"refresh_token\": \"x-refresh-rotated\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "x-refresh",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "92997a33-98de-4e4d-9be5-ec295ce47e42",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-rotated\", \"refresh_token\": \"x-refresh-rotated\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "x-refresh-rotated",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f7f839a6-f536-491e-8a82-fed24f5a15ca",
+          "body": "{\"token_type\": \"bearer\", \"access_token\": \"x-other\", \"refresh_token\": \"x-refresh\", \"expires_in\": 7200, \"scope\": \"tweet.read users.read tweet.write media.write offline.access\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "x-refresh-other",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "794c52e3-74de-4497-90cd-45689b865e41",
+          "body": "{\"error\": \"invalid_grant\", \"error_description\": \"fixture-upstream-secret\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Basic eC1jbGllbnQ6Zml4dHVyZS14LXNlY3JldA==",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "revoked",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3c70c30c-e18b-4104-90d6-ce9fe1ac14ba",
+          "body": "{\"error\": \"invalid_request\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "73edfcf7-f766-475b-87e8-571233fbece5",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "2/users/me",
+      "responses": [
+        {
+          "uuid": "a0003fd7-81de-4fcf-8f5c-02feaf2ed913",
+          "body": "{\"title\": \"Unauthorized\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 401}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer x-expired",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "63f866d6-f49c-4b01-a858-1fd5fd285ecb",
+          "body": "{\"data\": {\"id\": \"2002\", \"name\": \"Other user\", \"username\": \"other\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer x-other",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e8de6710-2931-4f0f-89cf-1838f570be17",
+          "body": "{\"data\": {\"id\": \"1001\", \"name\": \"Fixture X user\", \"username\": \"fixture_x\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "930328ed-8ee4-4768-b48d-b47aaa928f18",
+          "body": "{\"title\": \"Unauthorized\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 401}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "0aa8b426-659e-40bc-b440-8176d91365b3",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/media/upload",
+      "responses": [
+        {
+          "uuid": "10169186-d917-42d4-91de-c1eef8db2eb6",
+          "body": "{\"data\": {\"id\": \"5004\", \"expires_after_secs\": 86400}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer x-nokey",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_category",
+              "value": "tweet_image",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media",
+              "value": "eHh4eHh4eHg=",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3324177a-5dc6-43e2-9f91-18b2020b28fe",
+          "body": "{\"data\": {\"id\": \"5001\", \"media_key\": \"3_5001\", \"expires_after_secs\": 86400}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "media_category",
+              "value": "tweet_image",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media",
+              "value": "eHh4eHh4eHg=",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "95b3ed6f-fd4f-4947-b2b0-7bf2503da528",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "5742c559-9052-4184-9c80-5c931d620845",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/media/upload/initialize",
+      "responses": [
+        {
+          "uuid": "bc9460ce-6039-49a4-941a-99de5f8f44b5",
+          "body": "{\"data\": {\"id\": \"5002\", \"media_key\": \"13_5002\", \"expires_after_secs\": 86400}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "media_type",
+              "value": "video/mp4",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media_category",
+              "value": "tweet_video",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "total_bytes",
+              "value": "8",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3f400a97-580b-4e05-82a6-df7c15680134",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "e48ce15e-f4f0-4361-a341-ec881fcee915",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/media/upload/:id/append",
+      "responses": [
+        {
+          "uuid": "da649b18-63e0-42c3-a1e5-6e912932f288",
+          "body": "{\"data\": {}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "segment_index",
+              "value": "0",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "^multipart/form-data; boundary=",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "39e4a37d-8daf-460d-865a-c3e2df817476",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "106df6b7-e292-4ad9-ad34-a029c89d1b73",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/media/upload/:id/finalize",
+      "responses": [
+        {
+          "uuid": "796723f9-c1c0-4cfa-8e18-3154e24dc71d",
+          "body": "{\"data\": {\"id\": \"5002\", \"media_key\": \"13_5002\", \"expires_after_secs\": 86400, \"processing_info\": {\"state\": \"pending\", \"check_after_secs\": 2}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "434d765d-bfc7-4434-9a02-bd05bb1c7324",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "21f2a2e4-328b-4746-bbc4-db0fbcfc550b",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "2/media/upload",
+      "responses": [
+        {
+          "uuid": "bb188522-60a5-441f-8412-24bc30f217f2",
+          "body": "{\"data\": {\"id\": \"5002\", \"media_key\": \"13_5002\", \"expires_after_secs\": 86400, \"processing_info\": {\"state\": \"succeeded\", \"check_after_secs\": 0}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "query",
+              "modifier": "command",
+              "value": "STATUS",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "media_id",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "video-ready",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "25595b5e-0d5b-494a-a325-4c10876f07cd",
+          "body": "{\"data\": {\"id\": \"5002\", \"media_key\": \"13_5002\", \"expires_after_secs\": 86400, \"processing_info\": {\"state\": \"in_progress\", \"check_after_secs\": 2}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "query",
+              "modifier": "command",
+              "value": "STATUS",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "media_id",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "eab26b8d-1857-4b5c-a3b7-a6cf90669ba5",
+          "body": "{\"data\": {\"id\": \"5003\", \"expires_after_secs\": 1, \"processing_info\": {\"state\": \"failed\", \"check_after_secs\": 0}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "query",
+              "modifier": "command",
+              "value": "STATUS",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "media_id",
+              "value": "5003",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fc3e7805-720b-4a41-8d36-55dc34ec5d5e",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "a06fe85b-39ca-4956-8c42-5fd37486750c",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "2/tweets",
+      "responses": [
+        {
+          "uuid": "ca5665f1-1dad-4f23-bbce-041066409370",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture text",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6001",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "35d08f4e-72dd-49f5-93f0-b175ea35b115",
+          "body": "{{setGlobalVar 'create-6001' 'yes'}}{\"data\": {\"id\": \"6001\", \"text\": \"Fixture text\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture text",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a2a5ba97-b41b-4b2e-b47a-fc3d3e48b687",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture image",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5001",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6002",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0735fbfb-95ba-46c6-b15f-96d6ef774c6a",
+          "body": "{{setGlobalVar 'create-6002' 'yes'}}{\"data\": {\"id\": \"6002\", \"text\": \"Fixture image\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture image",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5001",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "701f7e8d-da43-4651-9b5e-6bdfe0ff9e6c",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture video",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6003",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "abf978a5-62bd-40e0-b8f9-81d86936b9d1",
+          "body": "{{setGlobalVar 'create-6003' 'yes'}}{\"data\": {\"id\": \"6003\", \"text\": \"Fixture video\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture video",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5002",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b108760f-b242-4565-82e2-47d4d3d719c3",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture disclosure",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6004",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "21cdff78-3ac7-404a-a48a-434a4e2e11cb",
+          "body": "{{setGlobalVar 'create-6004' 'yes'}}{\"data\": {\"id\": \"6004\", \"text\": \"Fixture disclosure\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture disclosure",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aea00ae4-f76f-484a-8a84-d9f0933a2006",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture worker",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6005",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b8e074bd-c8ff-44f1-bd16-cbf56f524ce2",
+          "body": "{{setGlobalVar 'create-6005' 'yes'}}{\"data\": {\"id\": \"6005\", \"text\": \"Fixture worker\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture worker",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f2799698-4ca5-45aa-a2d8-5a028955f0dc",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture no-key",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5004",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6007",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "daffdd61-0da7-48f5-9182-397f0670023d",
+          "body": "{{setGlobalVar 'create-6007' 'yes'}}{\"data\": {\"id\": \"6007\", \"text\": \"Fixture no-key\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture no-key",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5004",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7b3c3f47-0433-4341-9ff3-6b93019a470f",
+          "body": "{\"title\": \"Duplicate\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 403}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5001",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "create-6008",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e98bd104-36a7-401d-b6a9-26dfcd3a8278",
+          "body": "{{setGlobalVar 'create-6008' 'yes'}}{\"data\": {\"id\": \"6008\", \"text\": \"\"}}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "made_with_ai",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "paid_partnership",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "media.media_ids.0",
+              "value": "5001",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3285e931-1a18-469d-86ea-b9d582be522b",
+          "body": "{\"title\": \"CreditsDepleted\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"https://api.x.com/2/problems/credits-depleted\", \"status\": 402}",
+          "latency": 0,
+          "statusCode": 402,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture credits",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e8e79c94-2cc2-4a03-a4d9-b3d4931a58e1",
+          "body": "{\"title\": \"TooManyRequests\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 429}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "x-rate-limit-reset",
+              "value": "1791892860"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture rate",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9c9e7c9b-70aa-4c3d-9e50-2c1d4b8f1194",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture ambiguous",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "56496389-092a-4810-a038-986049a4047e",
+          "body": "{\"title\": \"InternalError\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 500}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture server",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1b361862-8d72-4841-be85-b5afe39fc813",
+          "body": "{\"data\": {\"id\": \"6006\"}, \"errors\": [{\"title\": \"Partial\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 200}]}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "text",
+              "value": "Fixture partial",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "16755c21-c2e1-4d18-88ad-75286794c82e",
+          "body": "{\"title\": \"BadRequest\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 400}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "c72109f9-4579-42ee-8f8f-c14808f8de51",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "2/tweets/:id",
+      "responses": [
+        {
+          "uuid": "d36bc3cc-4275-4f56-83aa-f0a204753375",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6001",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6001",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "25354dc9-a979-4df4-85d9-a9c862ccfa0a",
+          "body": "{\"data\": {\"id\": \"6001\", \"author_id\": \"1001\", \"text\": \"Fixture text\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6001",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8032012f-a48a-45d1-bd3f-0d168b1b2abe",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6002",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6002",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "239a6c22-cbfb-459d-a783-7531574a729d",
+          "body": "{\"data\": {\"id\": \"6002\", \"author_id\": \"1001\", \"text\": \"Fixture image\", \"attachments\": {\"media_keys\": [\"3_5001\"]}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6002",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "abfee7e2-078e-4ae7-97d4-c32bc60c550c",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6003",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6003",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "124c40b6-6c11-43ae-89db-a1052709dcd3",
+          "body": "{\"data\": {\"id\": \"6003\", \"author_id\": \"1001\", \"text\": \"Fixture video\", \"attachments\": {\"media_keys\": [\"13_5002\"]}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6003",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "66f5b6d8-e042-4df0-97d7-89e22aa11f93",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6004",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6004",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ce8963f9-3140-4d3f-b602-1d6baabc5872",
+          "body": "{\"data\": {\"id\": \"6004\", \"author_id\": \"1001\", \"text\": \"Fixture disclosure\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6004",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d7783c14-98f1-4b9e-b9f3-efb4e81238f7",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6005",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6005",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5af5c32a-c2cd-4056-980d-4eff6e551248",
+          "body": "{\"data\": {\"id\": \"6005\", \"author_id\": \"1001\", \"text\": \"Fixture worker\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6005",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2e7ae620-1957-4b86-8d82-810ac80a0869",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6007",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6007",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7c1c72a9-06fb-412a-9362-d10adb25f568",
+          "body": "{\"data\": {\"id\": \"6007\", \"author_id\": \"1001\", \"text\": \"Fixture no-key\", \"attachments\": {\"media_keys\": [\"3_5004\"]}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6007",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "08a120dc-665f-46e3-b98f-4fa1965949d2",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6008",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "deleted-6008",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "99d664cc-04e1-4af6-b64b-86e74ec4d95b",
+          "body": "{\"data\": {\"id\": \"6008\", \"author_id\": \"1001\", \"text\": \"\", \"attachments\": {\"media_keys\": [\"3_5001\"]}}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6008",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "tweet\\.fields",
+              "value": "author_id,attachments",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2d56dd25-3b24-4305-a177-d3d396b89f13",
+          "body": "{\"data\": {\"id\": \"6999\", \"author_id\": \"2002\", \"text\": \"foreign\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6999",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "64699bd4-4df3-441d-86bc-de3fb03f19e1",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "e0124484-2400-4891-9a98-1e6945111ae0",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "delete",
+      "endpoint": "2/tweets/:id",
+      "responses": [
+        {
+          "uuid": "cc552b84-4b37-411d-ae2d-6d0ba0049210",
+          "body": "{{setGlobalVar 'deleted-6001' 'yes'}}{\"data\": {\"deleted\": true}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6001",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e2e08525-1236-4b04-a146-9dc14314e8fe",
+          "body": "{{setGlobalVar 'deleted-6002' 'yes'}}{\"data\": {\"deleted\": true}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6002",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e0519c9c-7aa9-416d-ad9f-f0383407893c",
+          "body": "{{setGlobalVar 'deleted-6003' 'yes'}}{\"data\": {\"deleted\": true}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6003",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8b505b93-64e8-4b4a-b875-84108c732dff",
+          "body": "{{setGlobalVar 'deleted-6004' 'yes'}}{\"data\": {\"deleted\": true}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6004",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e37ac87f-d25e-4d42-a9da-71d744f28194",
+          "body": "{{setGlobalVar 'deleted-6005' 'yes'}}{\"data\": {\"deleted\": true}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer x-[-a-z]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "6005",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "af402bd3-02c5-4981-8ba2-e36b6d165c30",
+          "body": "{\"title\": \"NotFound\", \"detail\": \"Never expose fixture-upstream-secret\", \"type\": \"about:blank\", \"status\": 404}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "7e0c5fe8-dbf3-4ba8-9375-3099e3118fac",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "api/social/media/:id/content",
+      "responses": [
+        {
+          "uuid": "8ba7e4c9-2c52-4960-9e16-319a1291d43a",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "https://untrusted.test/media"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-redirect",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "745eb24a-a0c8-483b-ab20-9fd832357bd9",
+          "body": "short",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "image/png"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-short",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1aa792c4-d7ed-4f59-ab57-c68a8c0380d0",
+          "body": "xxxxxxxx",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "video/mp4"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-video",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "query",
+              "modifier": "signature",
+              "value": "^[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "bc4b595c-4a82-4718-97b9-f307ace2ea1c",
+          "body": "xxxxxxxx",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "image/png"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "signature",
+              "value": "^[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "54534aa5-61d3-4240-a736-dca4abb6183f",
+          "body": "",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3ff51bf1-b6e4-43da-9c5d-64a989d78c7d",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "post",
+      "endpoint": "fixture/video-ready",
+      "responses": [
+        {
+          "uuid": "52b2660b-ee4b-419c-82e9-5ba54e24786c",
+          "body": "{{setGlobalVar 'video-ready' 'yes'}}{\"ok\": true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "639597bf-5973-4e1e-a8b5-4421b8239ee9",
+      "type": "http",
+      "documentation": "Synthetic local API contract; not live approval.",
+      "method": "get",
+      "endpoint": "fixture/metrics",
+      "responses": [
+        {
+          "uuid": "50f8d216-c31f-4583-8029-66d66df77e08",
+          "body": "{\"worker\":\"{{getGlobalVar 'create-6005'}}\",\"text\":\"{{getGlobalVar 'create-6001'}}\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic X contract fixture; no credits spent",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "proxyMode": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": false,
+  "headers": [],
+  "data": [],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "451609a3-3709-46b6-bea3-6e1f9e303868"
+    },
+    {
+      "type": "route",
+      "uuid": "37abc69b-767f-4fa9-bb33-73d1b3add482"
+    },
+    {
+      "type": "route",
+      "uuid": "ff830ee3-b692-45ac-81e2-6b625d82aa08"
+    },
+    {
+      "type": "route",
+      "uuid": "089b6af8-4cb0-49f8-a2f4-f0f2e9fb832c"
+    },
+    {
+      "type": "route",
+      "uuid": "d8f3b77a-d17b-4206-a153-4217afceb93c"
+    },
+    {
+      "type": "route",
+      "uuid": "399ab750-61c6-4f78-8907-27bb02e11f81"
+    }
+  ],
+  "callbacks": []
+}

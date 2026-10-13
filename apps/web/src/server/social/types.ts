@@ -89,5 +89,8 @@ export type SocialWorkerConfig = {
 export type SocialCredentialRenewal = (request: {
   authorizationId: string; ownerId: string; authorizationGeneration: number; credentialVersion: number; mode: SocialMode;
   provider: Platform; providerUserId: string; refreshToken: string; scopes: string[];
+  /** X renewal must reserve its billable identity read before rotating the token. */
+  maxApiCostMicros?: number;
+  authorizeApiCost?(input: { operation: string; costMicros: number; maxApiCostMicros: number }): Promise<void>;
   verifyCurrent(): Promise<void>;
 }) => Promise<ProviderGrant>;

@@ -166,6 +166,14 @@ const HELP: Record<string, string> = {
     "Restore organic posting and reading access to this LinkedIn organization, refresh the connection and review again.",
   AUTHOR_MISMATCH:
     "The LinkedIn author changed. Select the verified member or organization and approve a new revision.",
+  API_COST_LIMIT:
+    "The X API allowance is exhausted. Ask your administrator to check the daily limit. A higher publishing ceiling requires a newly reviewed revision; check any existing receipt before another post.",
+  API_COST_APPROVAL_REQUIRED:
+    "Ask your administrator to configure this customer's X API allowance and verified operation rates before trying again.",
+  PROVIDER_CREDITS_REQUIRED:
+    "X API credits or the provider spending limit need attention. Ask the app owner to check the Developer Console before retrying.",
+  INVALID_API_COST:
+    "Choose an explicit supported API allowance before continuing.",
   RECONCILIATION_REQUIRED:
     "The provider outcome needs checking. Retrying could publish a duplicate, so retry is blocked.",
   DELIVERY_IN_PROGRESS:
@@ -181,6 +189,9 @@ const HELP: Record<string, string> = {
   INVALID_MEDIA_TYPE: "Choose a supported image or video file.",
   MEDIA_TOO_LARGE: "This file is too large. Choose a smaller file.",
 };
+export function socialErrorHelp(code: string) {
+  return HELP[code] ?? "Delivery needs attention. Check access, media availability, and provider readiness before retrying.";
+}
 export class SocialUiError extends Error {
   constructor(
     readonly code: string,

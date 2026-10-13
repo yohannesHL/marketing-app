@@ -24,7 +24,7 @@ async function main() {
   const tokenKey = randomBytes(32).toString("base64");
   const connections = new CustomerConnections(db, auth, new CredentialVault({ test: tokenKey }, "test"));
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other", "connections", "social", "youtube", "meta-social", "tiktok", "linkedin"])
+    for (const prefix of ["e2e", "other", "connections", "social", "youtube", "meta-social", "tiktok", "linkedin", "x"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",
@@ -48,6 +48,12 @@ async function main() {
       selected: true, available: true, metadata: { canRead: true, canWrite: "ALLOWED" }, lastCheckedAt: new Date(),
     } });
   }
+  const xPrices = { USER_READ: 10000, POST_READ: 5000, POST_CREATE: 15000, POST_CREATE_URL: 200000, POST_DELETE: 10000,
+    MEDIA_UPLOAD: 1000, MEDIA_INIT: 1000, MEDIA_APPEND: 1000, MEDIA_FINALIZE: 1000, MEDIA_STATUS: 1000 };
+  // Synthetic allocations exercise cost fences. They are not live rates or actual bills.
+  const xPolicies = (await db.user.findMany({ where: { loginEmail: { startsWith: "x-" } }, select: { id: true } })).map(user => ({
+    ownerId: user.id, mode: "mock", dailyLimitMicros: 1000000, deliveryLimitMicros: 500000, operationCeilings: xPrices,
+  }));
   await db.$disconnect();
   const google = await startMockoon("tests/mockoon/google-ads.json");
   let meta: Awaited<ReturnType<typeof startMockoon>>;
@@ -85,8 +91,15 @@ async function main() {
     await rm(directory, { recursive: true, force: true });
     throw error;
   }
-  const cleanup = async () => {
+  let x: Awaited<ReturnType<typeof startMockoon>>;
+  try { x = await startMockoon("tests/mockoon/x.json"); }
+  catch (error) {
     await Promise.all([google.stop(), meta.stop(), youtube.stop(), metaPublishing.stop(), tiktok.stop(), linkedin.stop()]);
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+  const cleanup = async () => {
+    await Promise.all([google.stop(), meta.stop(), youtube.stop(), metaPublishing.stop(), tiktok.stop(), linkedin.stop(), x.stop()]);
     await rm(directory, { recursive: true, force: true });
   };
   const env = {
@@ -107,6 +120,9 @@ async function main() {
     LINKEDIN_MOCKOON_URL: linkedin.origin,
     LINKEDIN_SCOPES: JSON.stringify(["openid", "profile", "w_member_social", "r_member_social", "w_organization_social", "rw_organization_admin", "r_organization_social"]),
     LINKEDIN_MDP_REFRESH_ENABLED: "false",
+    X_MOCKOON_URL: x.origin,
+    X_API_PRICES: JSON.stringify(xPrices),
+    X_API_OWNER_BUDGETS: JSON.stringify(xPolicies),
     SOCIAL_PUBLISHING_ENABLED: "false",
     SOCIAL_APPROVED_PROVIDERS: "[]",
     SOCIAL_MEDIA_DIRECTORY: join(directory, "media"),

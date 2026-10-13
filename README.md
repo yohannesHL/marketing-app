@@ -35,3 +35,5 @@ Facebook/Instagram connection, delivery and owner pilot steps: [Meta social publ
 TikTok creator connection, explicit posting controls, audit gates and delivery recovery: [TikTok publishing integration](docs/tiktok-publishing-integration.md).
 
 LinkedIn member/organization setup and approval gates: [integration guide](docs/linkedin-publishing-integration.md).
+
+X customer publishing, explicit API allocations and owner pilot gates: [X integration guide](docs/x-publishing-integration.md).

@@ -9,9 +9,11 @@ import { SocialProviderFailure, SocialProviderRegistry, type SocialCredentialRen
 import { aggregateSocialPostStatus } from "./aggregate";
 import { ownedDestination, verifyFormat, verifyMedia } from "./validation";
 import { publicMedia } from "./mediaStore";
+import { SocialApiBudget } from "./apiBudget";
+import { XError } from "../providers/x";
 
 const work = ["QUEUED", "RETRY_WAIT"] as const;
-const safeCodes = new Set(["READ_CAPABILITY_REQUIRED", "ORGANIZATION_ROLE_REQUIRED", "AUTHOR_MISMATCH", "PROVIDER_DISABLED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "MEDIA_UNAVAILABLE", "UNSUPPORTED_CONTENT", "CONNECTION_MODE_MISMATCH", "STALE_CREDENTIALS", "STALE_REVISION", "REVIEW_REQUIRED", "INVALID_PROVIDER_OPTIONS", "LEASE_LOST", "NOT_FOUND", "CREDENTIAL_UNAVAILABLE"]);
+const safeCodes = new Set(["PROVIDER_DISABLED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "MEDIA_UNAVAILABLE", "UNSUPPORTED_CONTENT", "CONNECTION_MODE_MISMATCH", "STALE_CREDENTIALS", "STALE_REVISION", "REVIEW_REQUIRED", "INVALID_PROVIDER_OPTIONS", "LEASE_LOST", "NOT_FOUND", "CREDENTIAL_UNAVAILABLE", "API_COST_APPROVAL_REQUIRED", "API_COST_LIMIT", "INVALID_API_COST", "PROVIDER_CREDITS_REQUIRED", "READ_CAPABILITY_REQUIRED", "ORGANIZATION_ROLE_REQUIRED", "AUTHOR_MISMATCH"]);
 const publicHosts: Record<string, readonly string[]> = {
   GOOGLE: ["youtube.com", "www.youtube.com", "youtu.be"], META: ["facebook.com", "www.facebook.com", "instagram.com", "www.instagram.com"],
   TIKTOK: ["tiktok.com", "www.tiktok.com"], LINKEDIN: ["linkedin.com", "www.linkedin.com"], X: ["x.com", "www.x.com", "twitter.com", "www.twitter.com"],
@@ -26,7 +28,7 @@ export class SocialDeliveryWorker {
   constructor(private readonly db: PrismaClient, private readonly vault: CredentialVault,
     private readonly registry: SocialProviderRegistry, config: SocialWorkerConfig,
     private readonly mediaResolver?: SocialMediaResolver, private readonly now = () => new Date(),
-    private readonly renewCredentials?: SocialCredentialRenewal) {
+    private readonly renewCredentials?: SocialCredentialRenewal, private readonly apiBudget?: SocialApiBudget) {
     if (!["mock", "live"].includes(config.mode)) fail("PROVIDER_DISABLED", 503, "Configure an explicit social provider mode.");
     this.config = Object.freeze({ ...config, approvedProviders: Object.freeze([...config.approvedProviders]) });
     this.leaseMs = Math.min(900_000, Math.max(1000, config.leaseMs ?? 120_000));
@@ -102,6 +104,26 @@ export class SocialDeliveryWorker {
     }
     return { delivery, destination, grant, registration, media, minimumValidUntil };
   }
+  private reviewedApiCap(value: unknown) {
+    const cap = typeof value === "string" && /^\d{1,15}$/.test(value) ? Number(value) : value;
+    if (typeof cap !== "number" || !Number.isSafeInteger(cap) || cap < 0)
+      fail("API_COST_APPROVAL_REQUIRED", 409, "Review an explicit X API allocation ceiling before delivery.");
+    return cap;
+  }
+  private async authorizeApiCost(lease: Lease, reconciliation: boolean, credentialVersion: number,
+    input: { operation: string; costMicros: number; maxApiCostMicros: number }, allowExpiredForRenewal = false) {
+    if (!this.apiBudget) fail("API_COST_APPROVAL_REQUIRED", 503, "Configure the durable X API allocation ledger.");
+    await this.apiBudget.reserve({ ...input, deliveryId: lease.id, mode: this.config.mode }, async tx => {
+      const current = await this.verified(tx, lease, reconciliation, credentialVersion, allowExpiredForRenewal), { delivery, grant } = current;
+      if (grant.provider !== "X" || !delivery.revision.reviewedAt || delivery.revision.reviewedById !== delivery.post.ownerId ||
+        !(delivery.revision.approvedDestinations as string[] | null)?.includes(delivery.destinationId))
+        fail("API_COST_APPROVAL_REQUIRED", 409, "Verify the immutable owned X review before allocating API cost.");
+      const options = delivery.variant.providerOptions as Record<string, unknown>;
+      return { ownerId: delivery.post.ownerId, deliveryId: delivery.id, revisionId: delivery.revisionId, provider: "X", mode: this.config.mode,
+        authorizationId: grant.id, authorizationGeneration: grant.generation, credentialVersion: grant.credentialVersion,
+        leaseHash: lease.hash, reviewedMaxApiCostMicros: this.reviewedApiCap(options.maxApiCostMicros) };
+    });
+  }
   private async ensureCredentials(lease: Lease, reconciliation: boolean) {
     const snapshot = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, undefined, true));
     const old = snapshot.grant;
@@ -119,7 +141,11 @@ export class SocialDeliveryWorker {
       renewed = await this.renewCredentials({ authorizationId: old.id, ownerId: old.userId, authorizationGeneration: old.generation,
         credentialVersion: old.credentialVersion, mode: this.config.mode, provider: old.provider, providerUserId: old.providerUserId,
         refreshToken: this.vault.decrypt(old.refreshCiphertext, credentialContext(old.userId, old.id, "refresh")),
-        scopes: old.scopes as string[], verifyCurrent });
+        scopes: old.scopes as string[], verifyCurrent, ...(old.provider === "X" ? {
+          maxApiCostMicros: this.reviewedApiCap((snapshot.delivery.variant.providerOptions as Record<string, unknown>).maxApiCostMicros),
+          authorizeApiCost: (input: { operation: string; costMicros: number; maxApiCostMicros: number }) =>
+            this.authorizeApiCost(lease, reconciliation, old.credentialVersion, input, true),
+        } : {}) });
     } catch (error) {
       // Concurrent renewals may adopt a winner only after the complete lease,
       // owner, scope, mode and authorization-generation fences still pass.
@@ -202,13 +228,20 @@ export class SocialDeliveryWorker {
       return { deliveryId: lease.id, status: outcome, ...(publication ?? {}), reconciled: reconciliation };
     });
   }
-  private async failed(lease: Lease, error: unknown, reconciliation = false, definitivePublishRejection = false) {
+  private async failed(lease: Lease, error: unknown, reconciliation = false, definitivePublishRejection = false, provedNoXCreate = false) {
     return this.db.$transaction(async (tx) => {
       const delivery = await tx.socialDelivery.findUnique({ where: { id: lease.id } });
       if (!delivery || delivery.leaseTokenHash !== lease.hash) return { deliveryId: lease.id, status: "LEASE_LOST" };
       const uncertain = Boolean(delivery.publishStartedAt) && (reconciliation || !definitivePublishRejection);
       const guard = error instanceof SecurityError && safeCodes.has(error.code);
       const blocked = guard || (error instanceof SocialProviderFailure && ["EXPIRED", "TERMINAL"].includes(error.kind));
+      if (provedNoXCreate && !uncertain) {
+        const saved = await tx.socialDeliveryProgress.findUnique({ where: { deliveryId: lease.id } });
+        const progress = this.decode(lease.id, saved?.encryptedState);
+        if (saved && progress.provider === "x" && !progress.postId && progress.createAttempted === true)
+          await tx.socialDeliveryProgress.update({ where: { deliveryId: lease.id }, data: {
+            encryptedState: this.vault.encrypt(JSON.stringify({ ...progress, createAttempted: false }), this.progressContext(lease.id)), version: { increment: 1 } } });
+      }
       const retryable = !uncertain && !blocked && error instanceof SocialProviderFailure && error.definitive &&
         ["RATE_LIMIT", "TRANSIENT"].includes(error.kind) && lease.attempt < this.maximum;
       const code = uncertain ? "PUBLISH_OUTCOME_UNKNOWN" : guard ? error.code : error instanceof SocialProviderFailure ?
@@ -228,9 +261,13 @@ export class SocialDeliveryWorker {
     let stage: "VALIDATE" | "PREPARE" | "PUBLISH" | "STATUS" = reconciliation ? "STATUS" : "VALIDATE";
     let publishCalls = 0;
     let definitivePublishFailure: SocialProviderFailure | undefined;
+    let isX = false, xCreateAuthorized = false, xPublicationPossibleAtStart = false, xSubmissionRejected = false;
     try {
       await this.ensureCredentials(lease, reconciliation);
       const initial = await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation));
+      const initialProgress = this.decode(lease.id, initial.delivery.progress?.encryptedState);
+      isX = initial.grant.provider === "X";
+      xPublicationPossibleAtStart = isX && (reconciliation || !!initialProgress.postId || initialProgress.createAttempted === true);
       const provider = this.registry.create(initial.destination.authorization.provider, initial.destination.kind);
       const context: SocialProviderContext = {
         deliveryId: lease.id, revisionId: initial.delivery.revisionId,
@@ -260,6 +297,10 @@ export class SocialDeliveryWorker {
             refreshToken: snapshot.grant.refreshCiphertext ? this.vault.decrypt(snapshot.grant.refreshCiphertext,
               credentialContext(snapshot.grant.userId, snapshot.grant.id, "refresh")) : undefined,
             verifyCurrent: async () => { await this.db.$transaction((tx) => this.verified(tx, lease, reconciliation, snapshot.grant.credentialVersion)); },
+            ...(snapshot.grant.provider === "X" ? { authorizeApiCost: async (input: { operation: string; costMicros: number; maxApiCostMicros: number }) => {
+              await this.authorizeApiCost(lease, reconciliation, snapshot.grant.credentialVersion, input);
+              if (["POST_CREATE", "POST_CREATE_URL"].includes(input.operation)) xCreateAuthorized = true;
+            } } : {}),
             destination: { externalId: snapshot.destination.externalId, kind: snapshot.destination.kind, metadata: snapshot.destination.metadata },
             media: snapshot.media.map((m) => ({ id: m.id, url: urls?.find((u) => u.id === m.id)?.url ?? "", mime: m.mime,
               bytes: m.bytes, width: m.width, height: m.height, durationMs: m.durationMs, metadata: publicMedia(m).metadata })),
@@ -269,6 +310,9 @@ export class SocialDeliveryWorker {
             // accepted submission and make another publish eligible.
             if (phase === "PUBLISH" && error instanceof SocialProviderFailure && error.definitive)
               definitivePublishFailure = error;
+            if (phase === "PUBLISH" && snapshot.grant.provider === "X" && error instanceof XError && !error.outcomeUnknown &&
+              ["PROVIDER_CREDITS_REQUIRED", "RECONNECT_REQUIRED", "MISSING_PERMISSION", "PROVIDER_PERMISSION_DENIED"].includes(error.code))
+              xSubmissionRejected = true;
             throw error;
           }
         },
@@ -288,7 +332,12 @@ export class SocialDeliveryWorker {
       stage = "PUBLISH";
       const result = await provider.publish(context, progress);
       return await this.finish(lease, "SUCCEEDED", result);
-    } catch (error) { return this.failed(lease, error, reconciliation, definitivePublishFailure !== undefined && error === definitivePublishFailure); }
+    } catch (error) {
+      const noXCreate = isX && !xPublicationPossibleAtStart && (xSubmissionRejected || (!xCreateAuthorized && error instanceof SecurityError &&
+        ["API_COST_APPROVAL_REQUIRED", "API_COST_LIMIT", "INVALID_API_COST", "PROVIDER_CREDITS_REQUIRED"].includes(error.code)));
+      return this.failed(lease, error, reconciliation,
+        (definitivePublishFailure !== undefined && error === definitivePublishFailure) || noXCreate, noXCreate);
+    }
   }
   async runOnce() { if (!this.config.writesEnabled) return null; const lease = await this.claim(); return lease ? this.execute(lease, false) : null; }
   async reconcileNext() { if (!this.config.writesEnabled) return null; const lease = await this.claim(undefined, true); return lease ? this.execute(lease, true) : null; }

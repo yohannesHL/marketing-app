@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, Select, Stack, Typography } from "@launchpad/ui";
-import { checkedAt, providerLabel, statusLabel, type Connection, type Destination, type ProviderMode } from "./connectionUi";
+import { Badge, Button, Card, Input, Select, Stack, Typography } from "@launchpad/ui";
+import { checkedAt, providerLabel, statusLabel, usdToMicros, microsToUsd, type Connection, type Destination, type ProviderMode } from "./connectionUi";
 
 export type ConnectionAction = "reconnect" | "refresh" | "check" | "select" | "deselect" | "disconnect";
-export type OnConnectionAction = (connection: Connection, action: ConnectionAction, destination?: Destination, loginCustomerId?: string | null) => Promise<void>;
+export type OnConnectionAction = (connection: Connection, action: ConnectionAction, destination?: Destination, loginCustomerId?: string | null, maxApiCostMicros?: number) => Promise<void>;
 
-function DestinationRow({ destination, connection, busy, actionsEnabled, paid, onAction }: {
-  destination: Destination; connection: Connection; busy: boolean; actionsEnabled: boolean; paid: boolean; onAction: OnConnectionAction;
+function DestinationRow({ destination, connection, busy, actionsEnabled, paid, onAction, xCap, onXAction }: {
+  destination: Destination; connection: Connection; busy: boolean; actionsEnabled: boolean; paid: boolean; onAction: OnConnectionAction; xCap?: number; onXAction?: (action: ConnectionAction, destination?: Destination) => void;
 }) {
   const contextValue = destination.selected && destination.selectedContext && "loginCustomerId" in destination.selectedContext
     ? destination.selectedContext.loginCustomerId ?? "direct" : "";
@@ -46,7 +46,7 @@ function DestinationRow({ destination, connection, busy, actionsEnabled, paid, o
       {destination.selectedContext && google && paid && destination.selected ? <Typography tone="muted">Selected access: {destination.selectedContext.loginCustomerId ? `manager ${destination.selectedContext.loginCustomerId}` : "direct"}</Typography> : null}
       {manager ? <Typography tone="muted">Select a child advertising account to use this manager’s access.</Typography>
         : paid || actionsEnabled ? <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" className="min-h-11" disabled={busy || !actionsEnabled || !destination.available} onClick={() => onAction(connection, "check", destination)}>Check read access</Button>
+          <Button variant="secondary" className="min-h-11" disabled={busy || !actionsEnabled || !destination.available || (connection.provider === "X" && xCap === undefined)} onClick={() => onXAction ? onXAction("check", destination) : onAction(connection, "check", destination)}>Check read access</Button>
           {destination.selected ? <><Button variant="secondary" className="min-h-11" disabled={busy} onClick={() => onAction(connection, "deselect", destination)}>Deselect account</Button>
             {google && context !== contextValue ? <Button className="min-h-11" disabled={busy || !canChoose || !context || !contexts.some((item) => (item.loginCustomerId ?? "direct") === context)} onClick={() => onAction(connection, "select", destination, context === "direct" ? null : context)}>Save access path</Button> : null}</>
             : <Button className="min-h-11" disabled={busy || !canChoose || (google && paid && (!context || !contexts.some((item) => (item.loginCustomerId ?? "direct") === context)))}
@@ -57,9 +57,15 @@ function DestinationRow({ destination, connection, busy, actionsEnabled, paid, o
   </li>;
 }
 
-export function ConnectionCard({ connection, mode, enabled, busy, paid, onAction }: {
-  connection: Connection; mode: ProviderMode; enabled: boolean; busy: boolean; paid: boolean; onAction: OnConnectionAction;
+export function ConnectionCard({ connection, mode, enabled, busy, paid, onAction, connectionReadCostMicros }: {
+  connection: Connection; mode: ProviderMode; enabled: boolean; busy: boolean; paid: boolean; onAction: OnConnectionAction; connectionReadCostMicros?: number;
 }) {
+  const [xLimit, setXLimit] = useState("");
+  const x = connection.provider === "X" && !paid, xCap = usdToMicros(xLimit);
+  const xAction = (action: ConnectionAction, destination?: Destination) => {
+    if (xCap === undefined) return;
+    setXLimit(""); void onAction(connection, action, destination, undefined, xCap);
+  };
   const [confirm, setConfirm] = useState(false);
   const label = paid ? providerLabel(connection.provider) : connection.provider === "META" ? "Meta social publishing" : connection.provider === "GOOGLE" ? "YouTube publishing" : providerLabel(connection.provider);
   const confirmRef = useRef<HTMLDivElement>(null);
@@ -75,12 +81,17 @@ export function ConnectionCard({ connection, mode, enabled, busy, paid, onAction
       <Badge className="h-auto min-h-6 py-1">{connection.connectionMode === "MOCK" ? "Mockoon test connection" : connection.connectionMode === "LIVE" ? "Live connection" : "Legacy connection"}</Badge></div></div>
     {connection.status !== "CONNECTED" ? <Typography tone="muted">{connection.status === "DISCONNECTED" ? "Access has been removed. Reconnect to discover accounts again." : "Approve access again before using accounts from this connection."}</Typography> : null}
     {!modeMatches ? <Typography tone="muted">This connection belongs to a different environment and cannot be used in the current mode.</Typography> : null}
+    {x ? <Stack gap={2}><Input label="Maximum X API cost for this action (USD)" inputMode="decimal" value={xLimit}
+      disabled={busy} placeholder="Enter your limit" onChange={(event) => setXLimit(event.target.value)}
+      description="Approve a limit explicitly for reconnect, refresh or a read check. Up to six decimal places; each action clears this field." />
+      <Typography variant="caption">{connectionReadCostMicros !== undefined ? `Configured allocation for one identity read: US$${microsToUsd(connectionReadCostMicros)}. Renewal may need a second read.` : "The identity-read allocation is unavailable. Ask your administrator to configure X costs."} {mode === "mock" ? "These are synthetic fixture allocations, with no real API charges." : "Identity reads may incur X API charges; no post is created by these actions."}</Typography>
+      <Typography variant="caption">Selecting this cached verified identity makes no new X API request and does not authorize API spending.</Typography></Stack> : null}
     {enabled || paid ? <div className="flex flex-wrap gap-3">
-      <Button variant="secondary" className="min-h-11" disabled={busy || !enabled || !modeMatches} onClick={() => onAction(connection, "reconnect")}>Reconnect {label}</Button>
-      <Button variant="secondary" className="min-h-11" disabled={busy || !usable} onClick={() => onAction(connection, "refresh")}>Refresh accounts</Button>
+      <Button variant="secondary" className="min-h-11" disabled={busy || !enabled || !modeMatches || (x && xCap === undefined)} onClick={() => x ? xAction("reconnect") : onAction(connection, "reconnect")}>Reconnect {label}</Button>
+      <Button variant="secondary" className="min-h-11" disabled={busy || !usable || (x && xCap === undefined)} onClick={() => x ? xAction("refresh") : onAction(connection, "refresh")}>Refresh accounts</Button>
     </div> : null}
     {connection.destinations.length ? <ul className="grid gap-4" aria-label={`${label} ${paid ? "advertising accounts" : "publishing destinations"}`}>
-      {connection.destinations.map((destination) => <DestinationRow key={destination.id} destination={destination} connection={connection} paid={paid} busy={busy} actionsEnabled={usable} onAction={onAction} />)}
+      {connection.destinations.map((destination) => <DestinationRow key={destination.id} destination={destination} connection={connection} paid={paid} busy={busy} actionsEnabled={usable} onAction={onAction} xCap={xCap} onXAction={x ? xAction : undefined} />)}
     </ul> : <Typography tone="muted">{paid ? "No advertising accounts were discovered. Check permissions, then refresh accounts." : "No publishing destinations have been discovered for this permission grant."}</Typography>}
     {connection.status !== "DISCONNECTED" ? confirm ? <div ref={confirmRef} tabIndex={-1} className="rounded-box border border-warning p-4 focus:outline focus:outline-2 focus:outline-primary">
       <Stack gap={3}><Typography className="font-semibold">Disconnect {label}?</Typography>

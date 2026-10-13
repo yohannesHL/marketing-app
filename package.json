@@ -18,7 +18,8 @@
     "mock:meta": "mockoon-cli start --data tests/mockoon/meta-ads.json --port 3911 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "pilot:ads:read": "tsx apps/web/scripts/ads-pilot-read.ts",
     "social:worker": "tsx apps/web/scripts/social-worker.ts",
-    "mock:linkedin": "mockoon-cli start --data tests/mockoon/linkedin.json --port 3915 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file"
+    "mock:linkedin": "mockoon-cli start --data tests/mockoon/linkedin.json --port 3915 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
+    "mock:x": "mockoon-cli start --data tests/mockoon/x.json --port 3916 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",

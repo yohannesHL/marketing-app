@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, Container, Stack, Typography } from "@launchpad/ui";
+import { Alert, Badge, Button, Card, Container, Input, Stack, Typography } from "@launchpad/ui";
 import { AccountNavigation } from "./AccountNavigation";
 import { ConnectionCard, type OnConnectionAction } from "./ConnectionCard";
-import { authorizationTarget, connectionEndpoint, connectionRequest, ConnectionUiError, errorHelp, providerLabel, socialPlatform,
+import { usdToMicros, microsToUsd, authorizationTarget, connectionEndpoint, connectionRequest, ConnectionUiError, errorHelp, providerLabel, socialPlatform,
   type Connection, type Provider, type SocialProvider, type ProviderSettings, type SelectedAccountReadiness } from "./connectionUi";
 
 const SOCIAL_PLATFORMS = [
@@ -15,6 +15,7 @@ const SOCIAL_PLATFORMS = [
 ];
 
 export function ConnectionsPage() {
+  const [xLimit, setXLimit] = useState("");
   const [connections, setConnections] = useState<Connection[]>([]);
   const [settings, setSettings] = useState<ProviderSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,18 +72,18 @@ export function ConnectionsPage() {
       }
     } finally { actionPending.current = false; setBusy(null); }
   }
-  async function start(provider: Provider | SocialProvider, authorizationId?: string) {
+  async function start(provider: Provider | SocialProvider, authorizationId?: string, maxApiCostMicros?: number) {
     await run(authorizationId ?? provider, async () => {
       const result = await connectionRequest<{ authorizationUrl: string; mode: ProviderSettings["mode"] }>(
-        `/api/connections/${provider === "FACEBOOK" || provider === "INSTAGRAM" ? "meta-publishing" : provider.toLowerCase()}/start`, "POST", authorizationId ? { authorizationId } : {});
+        `/api/connections/${provider === "FACEBOOK" || provider === "INSTAGRAM" ? "meta-publishing" : provider.toLowerCase()}/start`, "POST", { ...(authorizationId ? { authorizationId } : {}), ...(provider === "X" ? { maxApiCostMicros } : {}) });
       if (!settings || settings.mode !== result.mode) throw new ConnectionUiError("CONNECTION_MODE_MISMATCH", 409);
       window.location.assign(authorizationTarget(result.authorizationUrl, provider, result.mode));
     });
   }
-  const onAction: OnConnectionAction = async (connection, action, destination, loginCustomerId) => {
+  const onAction: OnConnectionAction = async (connection, action, destination, loginCustomerId, maxApiCostMicros) => {
     if (action === "reconnect") {
       const provider = connection.capability === "SOCIAL" ? socialPlatform(connection.provider) : connection.provider as Provider;
-      if (provider) await start(provider, connection.id);
+      if (provider) await start(provider, connection.id, maxApiCostMicros);
       return;
     }
     await run(connection.id, async () => {
@@ -91,8 +92,8 @@ export function ConnectionsPage() {
       const base = `/api/connections/${endpoint}/${encodeURIComponent(connection.id)}`;
       if (action === "disconnect") await connectionRequest(`/api/connections/${encodeURIComponent(connection.id)}`, "DELETE");
       else if (action === "deselect" && destination) await connectionRequest(`/api/connections/destinations/${encodeURIComponent(destination.id)}`, "PATCH", { selected: false });
-      else if (action === "refresh") await connectionRequest(`${base}/refresh`, "POST", {});
-      else if (action === "check" && destination) await connectionRequest(`${base}/check`, "POST", { destinationId: destination.id });
+      else if (action === "refresh") await connectionRequest(`${base}/refresh`, "POST", connection.provider === "X" ? { maxApiCostMicros } : {});
+      else if (action === "check" && destination) await connectionRequest(`${base}/check`, "POST", { destinationId: destination.id, ...(connection.provider === "X" ? { maxApiCostMicros } : {}) });
       else if (action === "select" && destination) await connectionRequest(`${base}/select`, "POST", {
         destinationId: destination.id, ...(connection.provider === "GOOGLE" && connection.capability === "ADS" ? { loginCustomerId: loginCustomerId ?? null } : {}),
       });
@@ -100,8 +101,8 @@ export function ConnectionsPage() {
       setNotice(({ disconnect: "Connection removed. Its accounts are deselected and queued work is stopped.",
         deselect: "Destination deselected. Queued work for it is stopped.",
         refresh: "Accounts refreshed. Review their current availability and permissions.",
-        check: "Read access checked. This check does not publish or spend money.",
-        select: connection.capability === "SOCIAL" ? "Publishing destination selected. Review and approve content before scheduling a post." : "Account selected for campaign planning.", reconnect: "" })[action]);
+        check: connection.provider === "X" ? "X identity read checked within your approved API allocation. This check does not create a post; live API reads may incur charges." : "Read access checked. This check does not publish or spend money.",
+        select: connection.provider === "X" ? "Cached verified X identity selected without a new provider request or API allocation. Review and approve content and costs before scheduling." : connection.capability === "SOCIAL" ? "Publishing destination selected. Review and approve content before scheduling a post." : "Account selected for campaign planning.", reconnect: "" })[action]);
     });
   };
   const paid = connections.filter((connection) => connection.capability === "ADS");
@@ -132,7 +133,7 @@ export function ConnectionsPage() {
     {notice ? <Alert title="Connection update" tone="success" role="status">{notice}</Alert> : null}
     {settings ? <Alert tone={settings.mode === "mock" ? "warning" : "info"} title={settings.mode === "mock" ? "Mockoon test mode" : settings.mode === "live" ? "Live provider mode" : "Provider connections disabled"} role="note">
       {settings.mode === "mock" ? "Connections and checks use local test providers. No live accounts are authorized, no real ads are launched, and no money is spent."
-        : settings.mode === "live" ? "Connections authorize real provider accounts. Read checks do not create campaigns. Live launch availability is shown for each provider."
+        : settings.mode === "live" ? "Connections authorize real provider accounts. Read checks do not create campaigns. X identity checks may incur API charges. Live launch availability is shown for each provider."
         : "Provider setup is needed before you can connect an account. Contact your workspace administrator."}
     </Alert> : null}
     {loading ? <div role="status" aria-live="polite" className="rounded-box border border-base-300 p-6">Loading your connections…</div>
@@ -178,15 +179,19 @@ export function ConnectionsPage() {
           <div><Typography as="h2" id="social-connections-heading" variant="heading-2">Social publishing</Typography>
             <Typography tone="muted">Publishing permissions are separate from advertising. A Google Ads or Meta Ads connection does not authorize social posts. Meta supports Facebook Pages with content creation access and linked Instagram professional accounts; personal profiles are not eligible.</Typography></div>
           {social.map((connection) => <ConnectionCard key={connection.id} connection={connection} mode={settings?.mode ?? "disabled"}
-            enabled={settings?.social.some((item) => item.provider === socialPlatform(connection.provider) && item.enabled) ?? false} paid={false} busy={Boolean(busy)} onAction={onAction} />)}
+            enabled={settings?.social.some((item) => item.provider === socialPlatform(connection.provider) && item.enabled) ?? false} paid={false} busy={Boolean(busy)} onAction={onAction} connectionReadCostMicros={settings?.social.find((item) => item.provider === "X")?.connectionReadCostMicros} />)}
           {!social.length ? <Typography tone="muted">No social publishing permissions connected yet.</Typography> : null}
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Social publishing platforms">{SOCIAL_PLATFORMS.map((platform) => {
             const config = settings?.social.find((item) => item.provider === platform.provider);
             return <li key={platform.provider} className="rounded-box border border-base-300 p-4"><Stack gap={3}>
               <Typography className="font-semibold">{platform.label}</Typography>
               <Typography tone="muted" variant="caption">{config?.enabled ? "Connect and choose a verified publishing destination. Selection does not publish content." : "Publishing connection setup is unavailable in this environment."}</Typography>
-              {config?.enabled ? <Button className="min-h-11" disabled={Boolean(busy)} loading={busy === platform.provider}
-                onClick={() => start(platform.provider as SocialProvider)}>Connect {platform.label}</Button> : null}
+              {platform.provider === "X" && config?.enabled ? <><Input label="Maximum X connection API cost (USD)" inputMode="decimal" value={xLimit}
+                placeholder="Enter your limit" disabled={Boolean(busy)} onChange={(event) => setXLimit(event.target.value)}
+                description="Explicitly approve an identity-read allocation before connecting. Up to six decimal places; no default limit." />
+                <Typography variant="caption">{config.connectionReadCostMicros !== undefined ? `Configured identity-read allocation: US$${microsToUsd(config.connectionReadCostMicros)}.` : "A configured identity-read allocation is required."} {settings?.mode === "mock" ? "Synthetic fixture rates; no real API charges." : "X charges for API reads. This is an allocation estimate, not an actual bill or credit balance."}</Typography></> : null}
+              {config?.enabled ? <Button className="min-h-11" disabled={Boolean(busy) || (platform.provider === "X" && usdToMicros(xLimit) === undefined)} loading={busy === platform.provider}
+                onClick={() => { const cap = usdToMicros(xLimit); if (platform.provider === "X") setXLimit(""); void start(platform.provider as SocialProvider, undefined, cap); }}>Connect {platform.label}</Button> : null}
             </Stack></li>;
           })}</ul>
         </Stack></section>
