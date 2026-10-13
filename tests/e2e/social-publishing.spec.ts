@@ -65,7 +65,7 @@ test("creating another social post starts a separate empty draft", async ({ page
   await page.getByLabel(/^Password/).fill("isolated-test-password-for-fixtures");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/social\/create$/);
-  await page.getByLabel("Draft title", { exact: true }).fill("First independent draft");
+  await page.getByLabel(/^Draft title/).fill("First independent draft");
   await page.getByLabel("Caption or post text", { exact: true }).fill("Keep this saved caption.");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page).toHaveURL(/\/social\/posts\/[A-Za-z0-9_-]+$/);
@@ -74,9 +74,9 @@ test("creating another social post starts a separate empty draft", async ({ page
   await page.getByRole("link", { name: "Create social post", exact: true }).click();
   await expect(page).toHaveURL(/\/social\/create$/);
   await expect(page.getByRole("heading", { name: "Create social post", exact: true })).toBeVisible();
-  await expect(page.getByLabel("Draft title", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel(/^Draft title/)).toHaveValue("");
   await expect(page.getByLabel("Caption or post text", { exact: true })).toHaveValue("");
-  await page.getByLabel("Draft title", { exact: true }).fill("Second independent draft");
+  await page.getByLabel(/^Draft title/).fill("Second independent draft");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page).toHaveURL(/\/social\/posts\/[A-Za-z0-9_-]+$/);
   expect(new URL(page.url()).pathname.split("/").at(-1)).not.toBe(first);
@@ -90,7 +90,7 @@ test("a refreshed content revision requires a fresh review acknowledgment", asyn
   await page.getByLabel(/^Password/).fill("isolated-test-password-for-fixtures");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/social\/create$/);
-  await page.getByLabel("Draft title", { exact: true }).fill("Review revision fixture");
+  await page.getByLabel(/^Draft title/).fill("Review revision fixture");
   await page.getByLabel("Caption or post text", { exact: true }).fill("Original reviewed caption.");
   await page.getByRole("checkbox", { name: /^Fixture LinkedIn member/ }).check();
   await page.getByRole("button", { name: "Save and review", exact: true }).click();
