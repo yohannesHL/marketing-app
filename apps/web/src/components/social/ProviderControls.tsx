@@ -151,7 +151,7 @@ export function ReviewedOptions({
       {Object.entries(options).map(([key, value]) => (
         <div key={key} className="flex flex-wrap gap-x-2">
           <dt className="font-medium">{labels[key] ?? "Provider setting"}:</dt>
-          <dd>
+          <dd className="min-w-0 break-all">
             {key === "maxApiCostMicros" && Number.isSafeInteger(Number(value)) ? `US$${microsToUsd(Number(value))}` : typeof value === "boolean"
               ? value
                 ? "Yes"

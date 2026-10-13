@@ -121,3 +121,12 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - Local owned draft quotes use official weighted text and operator-configured rates, distinguish possible renewal cost and expose no invented bill or credit balance. Customer caps use exact dollars and explicit AI/partnership decisions.
 - Preliminary isolated backend378/378 passed. Independent review found a live SDK read-funding escape; the fix and three permanent no-network live-read regressions pass in57/57 X checks. Isolated browser build found incompatible named CommonJS text-validator exports; default import fixes it, with57/57 checks and typecheck passing again.
 - New X journey passed3/3 in Chromium/Firefox/WebKit without retry, with inspected mobile/desktop screenshots and no build diagnostics. Synthetic rates, saved drafts and actual Mockoon HTTP do not establish live approval, credits, billing, publication or cleanup.
+
+### All-platform release QA — 13 October 2026
+
+- TikTok #30, LinkedIn #31 and X #32 have exact-head migration/security and three-browser CI passing. This five-issue batch remains unmerged pending QA and owner handoff.
+- Seven actual-SDK Mockoon matrix checks cover every destination, independent customer ownership, advertising/social separation, durable known/unknown outcomes, rate/credit failures and scheduling. Two additional failure/abort regressions verify that partially started provider servers and temporary files are cleaned up.
+- The dedicated app/continuous-worker journey passed individually in Chromium, Firefox and WebKit with fresh databases and provider fixtures, zero retries: seven destinations each published once, followed by future scheduling/rescheduling/cancellation without another provider submission. Inspected mobile/desktop evidence exposed and verified a correction to wrapping long receipt labels and creator versions.
+- A separate setup-abort process regression verifies provider children are reaped before the web app starts. A real independent SQLite writer held for eight seconds did not kill the worker; a subsequently reviewed X post succeeded once.
+- An earlier local browser attempt stopped the worker during account selection without a useful diagnostic. The cause remains unconfirmed; safe code-only CLI diagnostics and further concurrency review are underway. The successful reruns do not establish that this earlier finding was fixed.
+- No live provider credentials, approvals, credits, spending or publication were used. The final owner release packet retains those external gates explicitly.
