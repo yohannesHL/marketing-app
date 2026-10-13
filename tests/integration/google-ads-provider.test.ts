@@ -142,7 +142,9 @@ test("campaign smoke follows pagination using the selected advertiser and root h
   assert.equal(campaigns.length, 2);
   assert.equal(campaigns[0].costMicros, "1200000");
   assert.equal(campaigns[1].externalId, "902");
-  await assert.rejects(client.readCampaigns("mock-access", { customerId: "400", loginCustomerId: "200" }), { code: "PROVIDER_PERMISSION_DENIED" });
+  assert.deepEqual(await client.readCampaigns("mock-access", { customerId: "400", loginCustomerId: "200" }), campaigns);
+  await assert.rejects(client.readCampaigns("mock-access", { customerId: "400", loginCustomerId: "999" }), { code: "PROVIDER_PERMISSION_DENIED" });
+  await assert.rejects(client.readCampaigns("mock-access", { customerId: "999", loginCustomerId: "100" }), { code: "PROVIDER_PERMISSION_DENIED" });
 });
 
 test("structured Ads project/role failures expose only safe codes and request IDs", async () => {

@@ -72,7 +72,7 @@ export function ReviewLaunchStep({
           Review & Launch
         </Typography>
         <Typography tone="muted">
-          Everything looks great. Ready to go live?
+          Review your plan before submitting the advertising demo.
         </Typography>
       </div>
 
@@ -227,7 +227,7 @@ export function ReviewLaunchStep({
       ) : null}
       {launchResult ? (
         <div data-testid="launch-result">
-          <Alert title="Campaign launch queued" tone="success">
+          <Alert title="Campaign demo saved" tone="success">
             {launchResult.message} Reference: {launchResult.launchId}.
             Platforms: {launchResult.platformsInvoked.join(", ") || "none"}.
             Uniform payload:{" "}

@@ -5,6 +5,7 @@ import { ProviderConnectionState, type DiscoveredAccount } from "./providerConne
 import { GoogleAdsClient, GOOGLE_ADS_SCOPES, type GoogleAdsDestination } from "../providers/googleAds";
 import { ProviderHttpError } from "../providers/providerHttp";
 import { fail, privateJson, readBody, securityResponse } from "../security/errors";
+import { oauthBrowserFailure } from "./oauthBrowserResponse";
 
 function accounts(rows: GoogleAdsDestination[]): DiscoveredAccount[] {
   return rows.map((row) => ({ externalId: row.externalId, name: row.name,
@@ -138,11 +139,12 @@ export class GoogleConnectionService {
       if (!metadata?.contexts?.length) fail("INVALID_ACCOUNT_CONTEXT", 409, "Refresh account discovery before checking this account.");
       const context = { customerId: destination.externalId, loginCustomerId: selectedContext ? selectedContext.loginCustomerId : metadata.contexts[0].loginCustomerId };
       const account = await this.client.verifyAccount(snapshot.accessToken!, context);
+      await this.state.recordGoogleAccount(principal, id, snapshot.credentialVersion, destinationId, accounts([account])[0]);
       const campaigns = await this.client.readCampaigns(snapshot.accessToken!, context);
       const current = await this.state.grant(principal, id, "GOOGLE");
       if (current.credentialVersion !== snapshot.credentialVersion)
         fail("STALE_CREDENTIALS", 409, "The connection changed during this check.");
-      return { mode: this.mode, canRead: true, canWrite: "UNKNOWN", account, campaigns };
+      return { mode: this.mode, credentialVersion: snapshot.credentialVersion, canRead: true, canWrite: "UNKNOWN", account, campaigns };
     });
   }
 
@@ -150,15 +152,17 @@ export class GoogleConnectionService {
 
 export function createGoogleConnectionApi(auth: CustomerAuth, service: GoogleConnectionService) {
   return async (request: Request) => {
+    const url = new URL(request.url);
+    const htmlCallback = url.pathname === "/api/connections/google/callback" &&
+      request.method === "GET" && request.headers.get("accept")?.includes("text/html");
     try {
       const principal = await auth.requireSession(request);
-      const url = new URL(request.url);
       if (url.pathname === "/api/connections/google/callback" && request.method === "GET") {
         const result = await service.complete(principal, url.searchParams.get("state") ?? "",
           url.searchParams.get("code") ?? undefined, url.searchParams.get("error") === "access_denied",
           url.searchParams.has("error") && url.searchParams.get("error") !== "access_denied");
         if (request.headers.get("accept")?.includes("text/html"))
-          return new Response(null, { status: 303, headers: { Location: `${auth.origin}/connections?provider=google&result=connected`, "Cache-Control": "no-store" } });
+          return new Response(null, { status: 303, headers: { Location: `${auth.origin}/connections?provider=google&result=connected`, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
         return privateJson(result);
       }
       auth.assertOrigin(request);
@@ -186,6 +190,9 @@ export function createGoogleConnectionApi(auth: CustomerAuth, service: GoogleCon
       if (Object.keys(body).some((key) => key !== "destinationId") || typeof body.destinationId !== "string")
         fail("INVALID_BODY", 400, "Supply a destination from this connection.");
       return privateJson(await service.readSmoke(principal, match[1], body.destinationId));
-    } catch (error) { return providerResponse(error); }
+    } catch (error) {
+      if (htmlCallback) return oauthBrowserFailure(auth.origin, "google", error);
+      return providerResponse(error);
+    }
   };
 }

@@ -17,3 +17,5 @@
 - [Google OAuth, manager discovery, and Mockoon setup](docs/google-ads-connection.md)
 - [Meta Business Login, signed callbacks, and Mockoon setup](docs/meta-ads-connection.md)
 - Security integration tests: `npm run test:security`
+
+Customer account settings and environment behavior: [connection settings](docs/customer-connection-settings.md).

@@ -7,6 +7,7 @@ import { MetaConnectionService, createMetaConnectionApi, dispatchMetaLifecycle, 
 } from "./metaConnectionApi";
 import { ProviderConnectionState } from "./providerConnectionState";
 import { metaLifecycleStore } from "./metaLifecycleStore";
+import { oauthBrowserFailure } from "./oauthBrowserResponse";
 
 function configuration(): { mode: "mock" | "live"; appId: string; appSecret: string;
   configId: string; testBaseUrl?: string } {
@@ -37,8 +38,10 @@ export function metaConnectionService() {
 
 /** Next route context is never interpreted as a lifecycle receiver. */
 export async function handleMetaConnectionApi(request: Request) {
+  let callbackOrigin: string | undefined;
   try {
     const auth = customerAuth();
+    callbackOrigin = auth.origin;
     const url = new URL(request.url);
     const publicCallback = ["/api/connections/meta/deauthorize", "/api/connections/meta/data-deletion"].includes(url.pathname) ||
       url.pathname.startsWith("/api/connections/meta/deletion-status/");
@@ -53,5 +56,10 @@ export async function handleMetaConnectionApi(request: Request) {
     await auth.requireSession(request);
     return await createMetaConnectionApi(auth, metaConnectionService(),
       { appSecret: configuration().appSecret })(request);
-  } catch (error) { return metaProviderResponse(error); }
+  } catch (error) {
+    if (callbackOrigin && new URL(request.url).pathname === "/api/connections/meta/callback" &&
+      request.headers.get("accept")?.includes("text/html"))
+      return oauthBrowserFailure(callbackOrigin, "meta", error);
+    return metaProviderResponse(error);
+  }
 }

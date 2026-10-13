@@ -5,6 +5,7 @@ import { CredentialVault } from "../security/credentialVault";
 import { fail } from "../security/errors";
 import { GoogleConnectionService, createGoogleConnectionApi, providerResponse } from "./googleConnectionApi";
 import { ProviderConnectionState } from "./providerConnectionState";
+import { oauthBrowserFailure } from "./oauthBrowserResponse";
 
 export function googleConnectionService() {
   const auth = customerAuth();
@@ -26,10 +27,17 @@ export function googleConnectionService() {
 }
 
 export async function handleGoogleConnectionApi(request: Request) {
+  let callbackOrigin: string | undefined;
   try {
     const auth = customerAuth();
+    callbackOrigin = auth.origin;
     await auth.requireSession(request);
     return await createGoogleConnectionApi(auth, googleConnectionService())(request);
   }
-  catch (error) { return providerResponse(error); }
+  catch (error) {
+    if (callbackOrigin && new URL(request.url).pathname === "/api/connections/google/callback" &&
+      request.headers.get("accept")?.includes("text/html"))
+      return oauthBrowserFailure(callbackOrigin, "google", error);
+    return providerResponse(error);
+  }
 }

@@ -18,7 +18,7 @@ export function buildRegistry(platforms: Platform[]) {
 
   for (const platform of platforms) {
     const Adapter = platformAdaptors[platform];
-    if (Adapter) registry.register(new Adapter());
+    if (Adapter) registry.registerFactory(platform, () => new Adapter());
   }
 
   return registry;

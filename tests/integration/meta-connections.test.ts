@@ -125,9 +125,11 @@ test("owned reconnect preserves verified subject and mode; browser callback uses
     { headers: { cookie: owner.cookie, accept: "text/html" } }));
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), `${origin}/connections?provider=meta&result=connected`);
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   const failure = await api(new Request(`${origin}/api/connections/meta/callback?state=forged&error_description=secret`,
     { headers: { cookie: owner.cookie, accept: "text/html" } }));
-  assert.equal(failure.headers.get("location"), `${origin}/connections?provider=meta&result=failed`);
+  assert.equal(failure.headers.get("location"), `${origin}/connections?provider=meta&result=failed&error=INVALID_OAUTH_STATE`);
+  assert.equal(failure.headers.get("referrer-policy"), "no-referrer");
   const live = new MetaConnectionService(auth, connections, state, client, "live", () => clock);
   await assert.rejects(live.start(owner.principal, result.connection.id), { code: "CONNECTION_MODE_MISMATCH" });
   await assert.rejects(live.refreshAccounts(owner.principal, result.connection.id), { code: "CONNECTION_MODE_MISMATCH" });

@@ -271,6 +271,41 @@ export class MetaAdsClient {
       objective: text(result.objective), specialAdCategories: stringList(result.special_ad_categories) };
   }
 
+  async readCampaigns(accessToken: string, externalId: string): Promise<MetaCampaign[]> {
+    const id = accountId(externalId);
+    const path = `${this.marketingVersion}/act_${id}/campaigns`;
+    const campaigns = new Map<string, MetaCampaign>();
+    const seen = new Set<string>();
+    let after: string | undefined;
+    for (let page = 0; page < 100; page++) {
+      const result = await this.#request(path, accessToken, {
+        fields: CAMPAIGN_FIELDS, limit: "25", ...(after ? { after } : {}),
+      });
+      if (!Array.isArray(result.data)) return invalid();
+      for (const value of result.data) {
+        const row = object(value);
+        if (numericId(row.account_id) !== id) return invalid();
+        const campaignId = numericId(row.id);
+        campaigns.set(campaignId, { id: campaignId, accountId: id, name: text(row.name),
+          status: text(row.status), effectiveStatus: text(row.effective_status),
+          objective: text(row.objective), specialAdCategories: stringList(row.special_ad_categories) });
+      }
+      if (campaigns.size > 2500) return invalid();
+      if (result.paging === undefined) return [...campaigns.values()];
+      const paging = object(result.paging);
+      if (paging.next === undefined) return [...campaigns.values()];
+      let next: URL;
+      try { next = new URL(text(paging.next, 32768), this.#origin); }
+      catch { return invalid(); }
+      if (next.origin !== this.#origin || next.username || next.password || next.hash ||
+          next.pathname !== `/${path}`) return invalid();
+      after = next.searchParams.get("after") ?? undefined;
+      if (!after || after.length > 4096 || seen.has(after)) return invalid();
+      seen.add(after);
+    }
+    return invalid();
+  }
+
   async removeCampaign(accessToken: string, campaignId: string, expectedAccountId: string) {
     const campaign = await this.readCampaign(accessToken, campaignId, expectedAccountId);
     if (campaign.status !== "PAUSED") throw new MetaProviderError("CAMPAIGN_NOT_PAUSED", 409);

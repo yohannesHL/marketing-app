@@ -8,27 +8,26 @@ export async function executeAcrossPlatforms<T>(
   registry: AdapterRegistry,
 ): Promise<PlatformExecutionResult<T>[]> {
   const executions = accounts.map(async (account) => {
-    const adapter = registry.get(account.platform);
-
     try {
-      // 🔑 CRITICAL: bind account context
+      const adapter = registry.create(account.platform);
       await adapter.connect(account);
 
       const result = await fn(adapter);
 
       return {
         platform: account.platform,
+        accountId: account.id,
         success: true,
         data: result,
       } satisfies PlatformExecutionResult<T>;
-    } catch (err: any) {
+    } catch {
       return {
         platform: account.platform,
+        accountId: account.id,
         success: false,
         error: {
-          message: err?.message || "Unknown error",
-          code: err?.code,
-          raw: err,
+          message: "The advertising account request could not be completed.",
+          code: "ACCOUNT_REQUEST_FAILED",
         },
       } satisfies PlatformExecutionResult<T>;
     }

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const auth = customerAuth();
     await auth.requireSession(request);
     auth.assertOrigin(request);
-    if (process.env.ADS_MODE !== "mock")
+    if (process.env.ADS_MODE !== "mock" || process.env.CONNECTION_MODE === "live")
       fail(
         "LIVE_ADS_UNAVAILABLE",
         503,

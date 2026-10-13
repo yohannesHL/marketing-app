@@ -38,6 +38,12 @@ export function MarketingHomePage() {
                   <Link className="btn normal-case shadow-soft btn-primary" href="/campaigns/create">
                     Open campaign wizard
                   </Link>
+                  <Link className="btn normal-case shadow-soft btn-secondary" href="/connections">
+                    Manage connections
+                  </Link>
+                  <Link className="btn normal-case shadow-soft btn-ghost" href="/sign-in">
+                    Sign in
+                  </Link>
                   <Link className="btn normal-case shadow-soft btn-secondary" href="#homepage-highlights">
                     See how it works
                   </Link>

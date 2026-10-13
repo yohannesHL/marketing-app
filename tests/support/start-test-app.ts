@@ -1,13 +1,14 @@
 import { applyConnectionMigrations } from "./test-database";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../../apps/web/src/generated/prisma/client";
 import { CustomerAuth } from "../../apps/web/src/server/auth/customerAuth";
+import { startMockoon } from "./mockoon";
 
 async function main() {
   const directory = await mkdtemp(join(tmpdir(), "launchpad-e2e-"));
@@ -19,7 +20,7 @@ async function main() {
   const db = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
   const auth = new CustomerAuth(db, { origin });
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other"])
+    for (const prefix of ["e2e", "other", "connections"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",
@@ -27,6 +28,18 @@ async function main() {
       });
   }
   await db.$disconnect();
+  const google = await startMockoon("tests/mockoon/google-ads.json");
+  let meta: Awaited<ReturnType<typeof startMockoon>>;
+  try { meta = await startMockoon("tests/mockoon/meta-ads.json"); }
+  catch (error) {
+    await google.stop();
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+  const cleanup = async () => {
+    await Promise.all([google.stop(), meta.stop()]);
+    await rm(directory, { recursive: true, force: true });
+  };
   const env = {
     ...process.env,
     DATABASE_URL: url,
@@ -34,6 +47,9 @@ async function main() {
     BASE_URL: origin,
     INTERNAL_BASE_URL: origin,
     ADS_MODE: "mock",
+    CONNECTION_MODE: "mock",
+    GOOGLE_ADS_MOCKOON_URL: google.origin,
+    META_ADS_MOCKOON_URL: meta.origin,
     CONNECTION_ACTIVE_KEY_ID: "test",
     CONNECTION_TOKEN_KEYS: JSON.stringify({
       test: randomBytes(32).toString("base64"),
@@ -50,7 +66,7 @@ async function main() {
     build.once("exit", resolve),
   );
   if (built !== 0) {
-    await rm(directory, { recursive: true, force: true });
+    await cleanup();
     process.exitCode = built ?? 1;
     return;
   }
@@ -63,7 +79,7 @@ async function main() {
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
   server.once("exit", async (code) => {
-    await rm(directory, { recursive: true, force: true });
+    await cleanup();
     process.exitCode = code ?? 0;
   });
 }

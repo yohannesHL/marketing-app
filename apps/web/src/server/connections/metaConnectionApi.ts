@@ -4,6 +4,7 @@ import { ProviderConnectionState, type DiscoveredAccount } from "./providerConne
 import { MetaAdsClient, MetaProviderError, type MetaAdAccount } from "../providers/metaAds";
 import { MetaSignedRequestError, verifyMetaSignedRequest } from "../providers/metaSignedRequests";
 import { fail, privateJson, readBody, securityResponse } from "../security/errors";
+import { oauthBrowserFailure } from "./oauthBrowserResponse";
 
 export interface MetaLifecycleReceiver {
   deauthorize(signedSubject: string, event?: { eventId: string; issuedAt?: number }): Promise<void>;
@@ -135,8 +136,10 @@ export class MetaConnectionService {
       const account = await this.client.readAccount(snapshot.accessToken!, destination.externalId);
       await this.state.recordMetaAccount(principal, id, snapshot.credentialVersion, destinationId,
         accountMetadata(account));
-      return { mode: this.mode, canRead: true,
-        canWrite: account.canManage ? "ALLOWED" : "DENIED", account };
+      if (account.accountStatus !== 1) fail("ACCOUNT_UNAVAILABLE", 403, "This ad account is not available for this check.");
+      const campaigns = await this.client.readCampaigns(snapshot.accessToken!, destination.externalId);
+      return { mode: this.mode, credentialVersion: snapshot.credentialVersion, canRead: true,
+        canWrite: account.canManage ? "ALLOWED" : "DENIED", account, campaigns };
     });
   }
 }
@@ -216,7 +219,7 @@ export function createMetaConnectionApi(auth: CustomerAuth, service: MetaConnect
           url.searchParams.get("code") ?? undefined, url.searchParams.get("error") === "access_denied",
           url.searchParams.has("error") && url.searchParams.get("error") !== "access_denied");
         if (htmlCallback) return new Response(null, { status: 303, headers: {
-          Location: `${auth.origin}/connections?provider=meta&result=connected`, "Cache-Control": "no-store" } });
+          Location: `${auth.origin}/connections?provider=meta&result=connected`, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
         return privateJson(result);
       }
       auth.assertOrigin(request);
@@ -240,8 +243,7 @@ export function createMetaConnectionApi(auth: CustomerAuth, service: MetaConnect
         ? await service.selectAccount(principal, match[1], body.destinationId)
         : await service.readSmoke(principal, match[1], body.destinationId));
     } catch (error) {
-      if (htmlCallback) return new Response(null, { status: 303, headers: {
-        Location: `${auth.origin}/connections?provider=meta&result=failed`, "Cache-Control": "no-store" } });
+      if (htmlCallback) return oauthBrowserFailure(auth.origin, "meta", error);
       return metaProviderResponse(error);
     }
   };

@@ -1,14 +1,14 @@
 # Customer marketing progress
 
-Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 ready for review; connection UI #6 and controlled rollout QA #7 in progress.
+Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 reviewed in PR #21; #6 connection UI/routing validated; #7 controlled rollout QA prepared.
 
 | Issue | Outcome | Status | PR |
 | --- | --- | --- | --- |
 | [3](https://github.com/yohannesHL/marketing-app/issues/3) | feat: Add authenticated customer ownership and secure ad connection storage | Merged; 14 security regressions pass; fresh migrations/build pass | [#19](https://github.com/yohannesHL/marketing-app/pull/19) |
 | [4](https://github.com/yohannesHL/marketing-app/issues/4) | feat: Connect real Google Ads customer accounts through OAuth | Implemented and independently reviewed; 37 tests and build pass | [#20](https://github.com/yohannesHL/marketing-app/pull/20) |
-| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Implemented; 59 combined backend tests pass; awaiting independent review | Pending |
-| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | UI implemented; routing and browser validation in progress | — |
-| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Planned | — |
+| [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Implemented and reviewed; 60 exact-snapshot tests/build pass | [#21](https://github.com/yohannesHL/marketing-app/pull/21) |
+| [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Implemented; 82 provider/security tests, build and three-browser journey pass; awaiting review | Pending |
+| [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Six read-only pilot CLI regressions and CI/rollback guide prepared; live checks remain unavailable | — |
 | [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Planned | — |
 | [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Planned | — |
 | [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | Planned | — |
@@ -34,3 +34,11 @@ Status: prerequisite #3 merged; Google #4 reviewed in PR #20; Meta #5 ready for 
 - Meta adds verified Business Login, paginated ad account discovery, fresh role checks and signed deauthorization/data deletion callbacks.
 - Deletion preserves unrelated provider/mode history; replay fences protect consent started before revocation, including same-second timestamps.
 - 59 backend tests pass against real local Mockoon HTTP services. No live provider pilot has been performed.
+
+## Selected-account integration
+
+- Sign-in and customer connection settings distinguish Ads and Publishing grants, show actual metadata and require explicit Google manager selection.
+- Selected-account reads validate every supplied customer destination before any provider call; independent contexts and a final transaction prevent stale or deleted provider results from being saved.
+- Concurrent same-provider accounts retain distinct bearer/account contexts; provider failures yield sanitized per-account outcomes.
+- All 88 current backend tests pass (82 in #6; six pilot CLI tests reserved for #7); production build and fresh Prisma CLI migration deploy pass. Browser connect/select/read/reconnect/disconnect journeys pass in Chromium, Firefox and WebKit.
+- Live campaign/asset writes remain disabled. The legacy advertising wizard is explicitly labeled a demo, and live mode cannot reach simulated create success.
