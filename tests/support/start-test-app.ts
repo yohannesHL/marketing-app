@@ -8,6 +8,8 @@ import { createClient } from "@libsql/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../../apps/web/src/generated/prisma/client";
 import { CustomerAuth } from "../../apps/web/src/server/auth/customerAuth";
+import { CustomerConnections } from "../../apps/web/src/server/connections/customerConnections";
+import { CredentialVault } from "../../apps/web/src/server/security/credentialVault";
 import { startMockoon } from "./mockoon";
 
 async function main() {
@@ -19,13 +21,32 @@ async function main() {
   client.close();
   const db = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
   const auth = new CustomerAuth(db, { origin });
+  const tokenKey = randomBytes(32).toString("base64");
+  const connections = new CustomerConnections(db, auth, new CredentialVault({ test: tokenKey }, "test"));
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other", "connections"])
+    for (const prefix of ["e2e", "other", "connections", "social"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",
         password: "isolated-test-password-for-fixtures",
       });
+    // Domain/UI fixture only: a synthetic publishing grant, with no registered
+    // publishing SDK or provider approval. Enqueue remains disabled.
+    const login = await auth.login(`social-${project}@example.test`, "isolated-test-password-for-fixtures");
+    const principal = await auth.requireSession(new Request(origin, { headers: { cookie: login.cookie.split(";")[0] } }));
+    const oauth = { provider: "LINKEDIN" as const, capability: "SOCIAL" as const,
+      scopes: ["openid", "profile", "w_member_social"], redirectUri: `${origin}/api/connections/linkedin/callback`, pkce: false };
+    const attempt = await connections.beginOAuth(principal, oauth);
+    const grant = await connections.completeAuthorization(principal, attempt.state, oauth, {
+      providerUserId: `fixture-member-${project}`, accessToken: `fixture-social-${project}`,
+      scopes: oauth.scopes, expiresAt: new Date(Date.now() + 3600_000), connectionMode: "MOCK",
+    });
+    const destination = await connections.registerDestination(principal, grant.id, {
+      kind: "LINKEDIN_MEMBER", externalId: `urn:li:person:fixture-${project}`, name: "Fixture LinkedIn member",
+    });
+    await db.connectionDestination.update({ where: { id: destination.id }, data: {
+      selected: true, available: true, metadata: { canRead: true, canWrite: "ALLOWED" }, lastCheckedAt: new Date(),
+    } });
   }
   await db.$disconnect();
   const google = await startMockoon("tests/mockoon/google-ads.json");
@@ -50,9 +71,14 @@ async function main() {
     CONNECTION_MODE: "mock",
     GOOGLE_ADS_MOCKOON_URL: google.origin,
     META_ADS_MOCKOON_URL: meta.origin,
+    SOCIAL_PUBLISHING_ENABLED: "false",
+    SOCIAL_APPROVED_PROVIDERS: "[]",
+    SOCIAL_MEDIA_DIRECTORY: join(directory, "media"),
+    SOCIAL_MEDIA_PUBLIC_ORIGIN: origin,
+    SOCIAL_MEDIA_SIGNING_KEY: randomBytes(32).toString("base64"),
     CONNECTION_ACTIVE_KEY_ID: "test",
     CONNECTION_TOKEN_KEYS: JSON.stringify({
-      test: randomBytes(32).toString("base64"),
+      test: tokenKey,
     }),
     PORT: new URL(origin).port || "3000",
     NODE_ENV: "production",

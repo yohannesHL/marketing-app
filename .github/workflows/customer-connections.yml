@@ -31,6 +31,8 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      - name: Install trusted media inspection runtime
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Generate Prisma client
         run: npm exec --workspace @launchpad/web -- prisma generate
       - name: Apply complete migration history to a fresh database
@@ -78,6 +80,8 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      - name: Install trusted media inspection runtime
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Generate Prisma client
         run: npm exec --workspace @launchpad/web -- prisma generate
       - name: Install browser and system dependencies

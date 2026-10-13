@@ -10,7 +10,7 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 | [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Merged; 82 exact-snapshot provider/security tests/build/browser review pass | [#22](https://github.com/yohannesHL/marketing-app/pull/22) |
 | [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Merged; 88 backend tests and 27 app-browser cases pass; live checks unavailable | [#23](https://github.com/yohannesHL/marketing-app/pull/23) |
 | [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Handoff merged; public/live gates remain open | [#24](https://github.com/yohannesHL/marketing-app/pull/24) |
-| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Primary-source handoff verified; review/recording/live gates tracked separately | Pending |
+| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Independent review and exact CI pass; owner review/recording/live gates tracked separately | [#25](https://github.com/yohannesHL/marketing-app/pull/25) |
 | [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | In progress | — |
 | [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | In progress | — |
 | [12](https://github.com/yohannesHL/marketing-app/issues/12) | feat: Connect YouTube channels and publish scheduled Shorts | Planned | — |
@@ -62,3 +62,10 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - Exact QA CI is green: [QA run](https://github.com/yohannesHL/marketing-app/actions/runs/38339210069). Final handoff CI is green: [release packet run](https://github.com/yohannesHL/marketing-app/actions/runs/38339508018). All four jobs pass, including three browser suites.
 - Epic #8 remains open for owner/provider live and public-release gates. The original checkout and customer database remain untouched.
 - Social owner guide freezes callback/configuration contracts while clearly marking provider implementations, actual recordings, public approvals and live publication pending.
+
+## Social delivery implementation
+
+- Immutable reviewed revisions, explicit destination variants, durable leases, encrypted upload progress and per-destination recovery are implemented for #10. Publication remains disabled until separately implemented provider registrations are enabled.
+- Trusted media uploads verify actual PNG/JPEG/MP4 bytes and FFprobe metadata, restrict customer access and issue scoped expiring media links. Seven media regressions pass against actual files.
+- Disconnect/reconnect/revocation hooks stop pending local social work while retaining honest outcomes for provider requests already sent. Operator key rotation includes encrypted resumable upload progress.
+- The isolated application builds successfully and the #11 social UI is undergoing three-browser validation. No live provider pilot or actual platform review is claimed.

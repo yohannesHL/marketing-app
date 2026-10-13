@@ -60,6 +60,9 @@ model User {
   sessions          CustomerSession[]
   authorizations    ProviderAuthorization[]
   oauthAttempts     OAuthAttempt[]
+  socialPosts       SocialPost[]
+  socialMediaAssets SocialMediaAsset[]
+  socialEnqueues    SocialEnqueue[]
 }
 
 model Asset {
@@ -103,13 +106,14 @@ model AssetSetAsset {
 }
 
 model Campaign {
-  id        String   @id @default(cuid())
+  category  MarketingCategory @default(PAID_ADVERTISING)
+  id        String            @id @default(cuid())
   name      String
   objective String
   status    String
   budget    Json
   targeting Json
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
 
   platformCampaigns PlatformCampaign[]
   adGroups          AdGroup[]
@@ -280,22 +284,22 @@ model LoginAttempt {
 }
 
 model OAuthAttempt {
-  id                 String               @id @default(cuid())
-  stateHash          String               @unique
-  userId             String
-  sessionId          String
-  provider           Platform
-  capability         ConnectionCapability
-  redirectUri        String
-  requestedScopes    Json
+  id                       String               @id @default(cuid())
+  stateHash                String               @unique
+  userId                   String
+  sessionId                String
+  provider                 Platform
+  capability               ConnectionCapability
+  redirectUri              String
+  requestedScopes          Json
   reconnectAuthorizationId String?
-  exchangeClaimHash  String?
-  verifierCiphertext String?
-  expiresAt          DateTime
-  consumedAt         DateTime?
-  createdAt          DateTime             @default(now())
-  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session            CustomerSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exchangeClaimHash        String?
+  verifierCiphertext       String?
+  expiresAt                DateTime
+  consumedAt               DateTime?
+  createdAt                DateTime             @default(now())
+  user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session                  CustomerSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
 }
@@ -329,20 +333,22 @@ model ProviderAuthorization {
 }
 
 model ConnectionDestination {
-  id              String                @id @default(cuid())
-  authorizationId String
-  externalId      String
-  kind            DestinationKind
-  name            String?
-  currency        String?
-  timezone        String?
-  selected        Boolean               @default(false)
-  available       Boolean               @default(true)
-  metadata        Json?
-  selectedContext Json?
-  lastCheckedAt   DateTime?
-  authorization   ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
-  operations      ConnectionOperation[]
+  id                 String                @id @default(cuid())
+  authorizationId    String
+  externalId         String
+  kind               DestinationKind
+  name               String?
+  currency           String?
+  timezone           String?
+  selected           Boolean               @default(false)
+  available          Boolean               @default(true)
+  metadata           Json?
+  selectedContext    Json?
+  lastCheckedAt      DateTime?
+  authorization      ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  operations         ConnectionOperation[]
+  socialPostVariants SocialPostVariant[]
+  socialDeliveries   SocialDelivery[]
 
   @@unique([authorizationId, kind, externalId])
 }
@@ -411,10 +417,224 @@ model ProviderLifecycleEvent {
 }
 
 model ProviderDeletionReceipt {
-  id             String   @id
+  id             String    @id
   provider       Platform
   connectionMode String
-  status         String   @default("PENDING")
-  requestedAt    DateTime @default(now())
+  status         String    @default("PENDING")
+  requestedAt    DateTime  @default(now())
   completedAt    DateTime?
+}
+
+enum MarketingCategory {
+  PAID_ADVERTISING
+  SOCIAL_PUBLISHING
+}
+
+enum SocialPostStatus {
+  DRAFT
+  APPROVED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum SocialMediaStatus {
+  PENDING
+  AVAILABLE
+  REJECTED
+  DELETED
+}
+
+enum SocialMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum SocialDeliveryStatus {
+  QUEUED
+  LEASED
+  RETRY_WAIT
+  SUCCEEDED
+  FAILED
+  BLOCKED
+  UNCERTAIN
+  CANCELLED
+  SUPERSEDED
+}
+
+enum SocialDeliveryPhase {
+  PREPARE
+  UPLOAD
+  PROCESS
+  PUBLISH
+  COMPLETE
+}
+
+model SocialPost {
+  id              String               @id @default(cuid())
+  ownerId         String
+  category        MarketingCategory    @default(SOCIAL_PUBLISHING)
+  title           String
+  currentRevision Int                  @default(1)
+  generation      Int                  @default(1)
+  status          SocialPostStatus     @default(DRAFT)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  owner           User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  revisions       SocialPostRevision[]
+  deliveries      SocialDelivery[]
+  enqueues        SocialEnqueue[]
+
+  @@index([ownerId, updatedAt])
+}
+
+model SocialPostRevision {
+  id                   String                @id @default(cuid())
+  postId               String
+  number               Int
+  title                String
+  body                 String
+  contentDigest        String
+  reviewedAt           DateTime?
+  reviewedById         String?
+  approvedDestinations Json?
+  createdAt            DateTime              @default(now())
+  post                 SocialPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  variants             SocialPostVariant[]
+  media                SocialRevisionMedia[]
+  deliveries           SocialDelivery[]
+  enqueues             SocialEnqueue[]
+
+  @@unique([postId, number])
+}
+
+model SocialMediaAsset {
+  id         String                @id @default(cuid())
+  ownerId    String
+  storageKey String                @unique
+  digest     String
+  bytes      Int
+  mime       String
+  type       SocialMediaType
+  width      Int
+  height     Int
+  durationMs Int?
+  expiresAt  DateTime?
+  status     SocialMediaStatus     @default(PENDING)
+  verifiedAt DateTime?
+  filename   String?
+  metadata   Json?
+  createdAt  DateTime              @default(now())
+  owner      User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  revisions  SocialRevisionMedia[]
+
+  @@index([ownerId, status])
+}
+
+model SocialRevisionMedia {
+  revisionId String
+  mediaId    String
+  position   Int
+  revision   SocialPostRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  media      SocialMediaAsset   @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@id([revisionId, mediaId])
+  @@unique([revisionId, position])
+}
+
+model SocialPostVariant {
+  id              String                @id @default(cuid())
+  revisionId      String
+  destinationId   String
+  format          String
+  title           String?
+  body            String
+  mediaIds        Json
+  providerOptions Json                  @default("{}")
+  revision        SocialPostRevision    @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  destination     ConnectionDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  deliveries      SocialDelivery[]
+
+  @@unique([revisionId, destinationId])
+}
+
+model SocialEnqueue {
+  id             String             @id @default(cuid())
+  ownerId        String
+  key            String
+  postId         String
+  revisionId     String
+  requestDigest  String
+  dueAt          DateTime
+  timeZone       String
+  destinationIds Json
+  createdAt      DateTime           @default(now())
+  owner          User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  post           SocialPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  revision       SocialPostRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  deliveries     SocialDelivery[]
+
+  @@unique([ownerId, key])
+}
+
+model SocialDelivery {
+  id                      String                  @id @default(cuid())
+  postId                  String
+  revisionId              String
+  variantId               String
+  destinationId           String
+  enqueueId               String
+  authorizationId         String
+  authorizationGeneration Int
+  postGeneration          Int
+  connectionMode          String
+  requiredScopes          Json
+  dueAt                   DateTime
+  timeZone                String
+  status                  SocialDeliveryStatus    @default(QUEUED)
+  phase                   SocialDeliveryPhase     @default(PREPARE)
+  leaseTokenHash          String?
+  leaseUntil              DateTime?
+  attempts                Int                     @default(0)
+  nextAttemptAt           DateTime?
+  publishStartedAt        DateTime?
+  externalId              String?
+  publishUrl              String?
+  errorCode               String?
+  cancellationRequested   Boolean                 @default(false)
+  createdAt               DateTime                @default(now())
+  completedAt             DateTime?
+  post                    SocialPost              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  revision                SocialPostRevision      @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  variant                 SocialPostVariant       @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  destination             ConnectionDestination   @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  enqueue                 SocialEnqueue           @relation(fields: [enqueueId], references: [id], onDelete: Cascade)
+  deliveryAttempts        SocialDeliveryAttempt[]
+  progress                SocialDeliveryProgress?
+
+  @@unique([revisionId, destinationId])
+  @@index([status, dueAt, nextAttemptAt])
+  @@index([authorizationId, connectionMode])
+}
+
+model SocialDeliveryAttempt {
+  id         String         @id @default(cuid())
+  deliveryId String
+  number     Int
+  leaseHash  String
+  status     String         @default("RUNNING")
+  errorCode  String?
+  startedAt  DateTime       @default(now())
+  endedAt    DateTime?
+  delivery   SocialDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, number])
+}
+
+model SocialDeliveryProgress {
+  deliveryId     String         @id
+  encryptedState String
+  version        Int            @default(1)
+  updatedAt      DateTime       @updatedAt
+  delivery       SocialDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 }
