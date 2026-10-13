@@ -14,7 +14,7 @@ import { CredentialVault } from "../../apps/web/src/server/security/credentialVa
 import { SocialPostService } from "../../apps/web/src/server/social/postService";
 import { SocialDeliveryWorker } from "../../apps/web/src/server/social/deliveryWorker";
 import { SocialProviderRegistry, type SocialCredentialRenewal } from "../../apps/web/src/server/social/types";
-import { TikTokClient, TIKTOK_SCOPES, type TikTokConfig } from "../../apps/web/src/server/providers/tiktok";
+import { TikTokClient, TikTokError, TIKTOK_SCOPES, type TikTokConfig } from "../../apps/web/src/server/providers/tiktok";
 import { applyConnectionMigrations } from "../support/test-database";
 import { startMockoon } from "../support/mockoon";
 
@@ -275,3 +275,21 @@ for (const operation of ["enqueue", "reschedule"] as const) {
     } finally { await q.close(); }
   });
 }
+
+
+test("a typed local guard429 after actual token rotation cannot masquerade as a rejected token exchange", async () => {
+  const q = await setup(); let boundaries = 0;
+  try {
+    q.advance(48 * 3600_000);
+    const config = { ...q.config, beforeRequest: async () => {
+      if (++boundaries === 2) throw new TikTokError("PROVIDER_RATE_LIMITED", 429);
+    } };
+    await assert.rejects(renewTikTokPublishing(q.db, q.vault, config, q.renewalRequest), { code: "RECONNECT_REQUIRED" });
+    assert.equal(boundaries, 2); const row = await parent(q);
+    assert.equal(row.status, "RECONNECT_REQUIRED"); assert.equal(row.accessCiphertext, null); assert.equal(row.refreshCiphertext, null);
+    const lease = await q.db.socialCredentialRenewalLease.findUniqueOrThrow({ where: { authorizationId: q.grant.id } });
+    assert.equal(lease.requestCount, 1); assert.ok(lease.startedAt);
+    await assert.rejects(renewTikTokPublishing(q.db, q.vault, config, q.renewalRequest), { code: "STALE_CREDENTIALS" });
+    assert.equal(boundaries, 2); assert.equal(q.sends(), 0);
+  } finally { await q.close(); }
+});

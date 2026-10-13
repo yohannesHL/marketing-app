@@ -15,11 +15,14 @@ export function renewTikTokPublishing(db: PrismaClient, vault: CredentialVault, 
     generation: request.generation, credentialVersion: request.credentialVersion, requiredScopes: [...TIKTOK_SCOPES],
     verifyCaller: request.verifyCurrent,
     exchange: async (snapshot, beforeRequest) => {
+      let guardFailed = false;
       try {
-        return await new TikTokClient({ ...config, beforeRequest: async () => { await config.beforeRequest?.(); await beforeRequest(); } })
+        return await new TikTokClient({ ...config, beforeRequest: async () => {
+          try { await config.beforeRequest?.(); await beforeRequest(); } catch (error) { guardFailed = true; throw error; }
+        } })
           .renewVerified({ providerUserId: snapshot.providerUserId, refreshToken: snapshot.refreshToken });
       } catch (error) {
-        if (error instanceof TikTokError && error.status === 429 && !error.outcomeUnknown)
+        if (!guardFailed && error instanceof TikTokError && error.status === 429 && !error.outcomeUnknown)
           throw new SocialRenewalExchangeError("RATE_LIMIT", true, error.retryAfterMs);
         throw error;
       }
