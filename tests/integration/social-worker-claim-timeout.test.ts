@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { setTimeout as pause } from "node:timers/promises";
 import { Prisma } from "../../apps/web/src/generated/prisma/client";
 import { SocialDeliveryWorker } from "../../apps/web/src/server/social/deliveryWorker";
 import { SocialApiBudget } from "../../apps/web/src/server/social/apiBudget";
@@ -23,7 +24,7 @@ async function queued() {
   } catch (error) { await q.close(); throw error; }
 }
 type Setup = Awaited<ReturnType<typeof queued>>;
-function worker(setup: Setup, intercept: (invoke: () => Promise<any>, call: number) => Promise<any>) {
+function worker(setup: Pick<Setup, "q">, intercept: (invoke: () => Promise<any>, call: number) => Promise<any>) {
   let calls = 0;
   const db = new Proxy(setup.q.db, { get(target, property) {
     if (property === "$transaction") return (...args: any[]) => intercept(() => (target.$transaction as any)(...args), ++calls);
@@ -121,4 +122,30 @@ test("raw-query errors with missing or unknown structured driver causes remain f
       assert.equal(untouched.status, "QUEUED"); assert.equal(untouched.attempts, 0); await noDeliveryHttp(setup);
     }
   } finally { await setup.q.close(); }
+});
+
+
+test("idle polling opens no claim transaction while real customers authorize and select all five providers", { timeout: 45_000 }, async () => {
+  const q = await socialAllPlatformFixture(), candidate = worker({ q }, async invoke => invoke());
+  let stopping = false;
+  const polling = (async () => {
+    while (!stopping) {
+      assert.equal(await candidate.instance.runOnce(), null);
+      assert.equal(await candidate.instance.reconcileNext(), null);
+      await pause(20);
+    }
+  })();
+  try {
+    for (let round = 0; round < 2; round++) {
+      const owner = await q.customer(`idle-writer-${round}`);
+      for (const provider of ["youtube", "meta-publishing", "tiktok", "linkedin", "x"] as const) {
+        const grant = await owner.connect(provider);
+        assert.ok(grant.destinations.some((destination: any) => destination.selected));
+      }
+    }
+    stopping = true; await polling;
+    assert.equal(candidate.calls(), 0, "No eligible or expired deliveries means no writer claim transaction");
+    assert.equal(await q.db.socialDelivery.count(), 0);
+    assert.equal((await q.counts()).x["qa-create"], "0");
+  } finally { stopping = true; try { await polling; } finally { await q.close(); } }
 });

@@ -64,18 +64,32 @@ export class SocialDeliveryWorker {
   }
   private async claim(id?: string, reconciliation = false): Promise<Lease | null> {
     const token = randomBytes(32).toString("base64url"), hash = digest(token);
+    const eligible = (): Prisma.SocialDeliveryWhereInput => ({
+      ...(id ? { id } : {}), connectionMode: this.config.mode.toUpperCase(),
+      status: reconciliation ? "UNCERTAIN" : { in: [...work] },
+      ...(reconciliation ? { leaseTokenHash: null, ...(!id ? { attempts: { lt: this.maximum + 3 } } : {}),
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] } : {
+        cancellationRequested: false, dueAt: { lte: this.now() }, attempts: { lt: this.maximum },
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }],
+      }),
+    });
     for (let retry = 0; ; retry++) {
-      try { return await this.db.$transaction(async (tx) => {
+      try {
+      // This autocommit read is only a hint. Idle polling must not contend for
+      // a writer with customer OAuth/selection; every fence is reread below.
+      const pending = await this.db.socialDelivery.findFirst({ where: {
+        connectionMode: this.config.mode.toUpperCase(), OR: [eligible(), {
+          leaseUntil: { lte: this.now() },
+          OR: [{ status: "LEASED" }, { status: "UNCERTAIN", leaseTokenHash: { not: null } }],
+        }],
+      }, select: { id: true } });
+      if (!pending) return null;
+      return await this.db.$transaction(async (tx) => {
         // Acquire write intent before reading a snapshot. All work in this
         // transaction is local; a failed/lost commit never authorizes HTTP.
         await tx.$executeRawUnsafe('UPDATE "SocialDelivery" SET "attempts" = "attempts" WHERE 0');
         await this.recover(tx);
-        const delivery = await tx.socialDelivery.findFirst({ where: {
-          ...(id ? { id } : {}), connectionMode: this.config.mode.toUpperCase(),
-          status: reconciliation ? "UNCERTAIN" : { in: [...work] },
-          ...(reconciliation ? { leaseTokenHash: null, ...(!id ? { attempts: { lt: this.maximum + 3 } } : {}), OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] } : { cancellationRequested: false, dueAt: { lte: this.now() }, attempts: { lt: this.maximum },
-            OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: this.now() } }] }),
-        }, orderBy: { dueAt: "asc" } });
+        const delivery = await tx.socialDelivery.findFirst({ where: eligible(), orderBy: { dueAt: "asc" } });
         if (!delivery) return null;
         const attempt = delivery.attempts + 1;
         const changed = await tx.socialDelivery.updateMany({ where: { id: delivery.id, status: delivery.status,
