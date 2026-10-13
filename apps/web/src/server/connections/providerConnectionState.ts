@@ -3,6 +3,7 @@ import { CustomerAuth, digest, type CustomerPrincipal } from "../auth/customerAu
 import { credentialContext, type OAuthRequest } from "./customerConnections";
 import { CredentialVault } from "../security/credentialVault";
 import { fail } from "../security/errors";
+import { cancelSocialDeliveries } from "../social/connectionLifecycle";
 
 export type DiscoveredAccount = {
   externalId: string;
@@ -69,6 +70,7 @@ export class ProviderConnectionState {
         userId: current.userId, provider: current.provider, capability: current.capability, consumedAt: null,
       }, data: { consumedAt: this.now(), verifierCiphertext: null, exchangeClaimHash: null } });
       await tx.connectionDestination.updateMany({ where: { authorizationId: id }, data: { selected: false } });
+      await cancelSocialDeliveries(tx, [id], "RECONNECT_REQUIRED", this.now());
       await tx.connectionOperation.updateMany({ where: {
         destination: { authorizationId: id }, status: { in: ["PENDING", "RUNNING"] },
       }, data: { status: "CANCELLED", completedAt: this.now() } });

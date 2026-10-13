@@ -13,6 +13,7 @@ import {
 } from "../auth/customerAuth";
 import { CredentialVault } from "../security/credentialVault";
 import { fail } from "../security/errors";
+import { cancelSocialDeliveries } from "../social/connectionLifecycle";
 
 export type OAuthRequest = {
   provider: Platform;
@@ -361,6 +362,7 @@ export class CustomerConnections {
           where: { destination: { authorizationId: id }, status: "PENDING" },
           data: { status: "CANCELLED", completedAt: now },
         });
+      if (existing) await cancelSocialDeliveries(tx, [id], "RECONNECTED", now);
       await tx.connectionAuditEvent.create({
         data: {
           authorizationId: id,
@@ -576,6 +578,7 @@ export class CustomerConnections {
         where: { authorizationId: { in: ids } },
         data: { selected: false },
       });
+      await cancelSocialDeliveries(tx, ids, status, this.now());
       await tx.connectionOperation.updateMany({
         where: {
           destination: { authorizationId: { in: ids } },

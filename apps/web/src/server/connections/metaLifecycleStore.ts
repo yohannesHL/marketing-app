@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "../../generated/prisma/client";
 import { digest } from "../auth/customerAuth";
 import { prisma } from "../prisma/client";
 import { fail } from "../security/errors";
+import { cancelSocialDeliveries } from "../social/connectionLifecycle";
 
 type CallbackEvent = { eventId: string; issuedAt?: number };
 
@@ -80,6 +81,7 @@ export class MetaLifecycleStore {
     // fence checked at completion prevents revoked consent from returning,
     // while other identities' pending attempts remain usable.
     await tx.connectionDestination.updateMany({ where: { authorizationId: { in: ids } }, data: { selected: false } });
+    await cancelSocialDeliveries(tx, ids, "PROVIDER_REVOKED", identity.now);
     await tx.connectionOperation.updateMany({ where: {
       destination: { authorizationId: { in: ids } }, status: { in: ["PENDING", "RUNNING"] },
     }, data: { status: "CANCELLED", completedAt: identity.now } });

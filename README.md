@@ -25,3 +25,5 @@ Controlled connection-only rollout, read-only pilot checks and rollback: [operat
 Google/Meta implementation evidence and remaining public-release gates: [paid advertising readiness](docs/paid-advertising-readiness.md).
 
 Social publishing owner setup, permissions, costs and review requirements: [social setup](docs/social-publishing-setup.md) and [social readiness tracker](docs/social-publishing-readiness.md).
+
+Social review, scheduling, trusted media storage and worker operations: [delivery foundation](docs/social-delivery.md).
