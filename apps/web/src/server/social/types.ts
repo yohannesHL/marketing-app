@@ -87,6 +87,7 @@ export type SocialWorkerConfig = {
   leaseMs?: number; maxAttempts?: number; maxBackoffMs?: number;
 };
 export type SocialCredentialRenewal = (request: {
+  authorizationId: string; ownerId: string; authorizationGeneration: number; credentialVersion: number; mode: SocialMode;
   provider: Platform; providerUserId: string; refreshToken: string; scopes: string[];
   verifyCurrent(): Promise<void>;
 }) => Promise<ProviderGrant>;

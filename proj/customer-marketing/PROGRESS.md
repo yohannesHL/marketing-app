@@ -96,3 +96,11 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 - Production Meta review/business/consent and real pilot/cleanup remain owner gates; docs/meta-social-publishing-integration.md gives the exact operator/customer steps.
 
 - Exact Meta runtime310a064 plus test-only54fa4ec passed208/208 backend checks and independent35/35 Meta checks/typecheck. Existing21 browser cases passed; corrected3 new Meta cases passed in Chromium, Firefox and WebKit. Mobile/desktop screenshots reviewed. The test locator now includes its accessible description rather than assuming an exact label.
+
+
+### Second batch merged and TikTok integration — 13 October 2026
+
+- PRs #25–#29 merged in dependency order after independent review and exact-head migration/security/three-browser CI. Main is `311cc199707bb9e61e025818a38130ea9dfa98cf`. Owner/provider approvals and real live pilots remain explicitly unperformed.
+- TikTok now has separate SOCIAL consent, verified creator capabilities, explicit privacy/interactions/disclosures/music/posting consent, verified owned-media delivery and app-side scheduling. Mockoon remains the agreed external test environment.
+- Rotating refresh credentials use a durable shared lease, actual refresh expiry, per-request ownership/generation checks and a single persisted winner. Two independent SQLite clients proved writer coordination; ambiguous rotation requires reconnect rather than reusing an uncertain refresh token.
+- Targeted tests cover actual TikTok SDK renewal after logout/expiry, safe first-request rate-limit retries, actual refresh lifetime during scheduling, scope/subject loss and concurrent worker adoption. Exact isolated app/browser validation follows; no unrun journey is counted as passed.

@@ -7,20 +7,23 @@ import {
   Stack,
   Typography,
 } from "@launchpad/ui";
+import type { TrustedTikTokCreator } from "../connections/connectionUi";
+import type { SocialMedia } from "./socialUi";
+import { TikTokControls } from "./TikTokControls";
 export function ProviderControls({
   kind,
   format,
   options,
   onChange,
   disabled = false,
+  creator, audited, onRefresh, video,
 }: {
   kind: string;
   format?: "TEXT" | "IMAGE" | "SHORT_VIDEO";
   options: Record<string, unknown>;
   onChange: (options: Record<string, unknown>) => void;
-  disabled?: boolean;
+  disabled?: boolean; creator?: TrustedTikTokCreator; audited?: boolean; onRefresh?: () => void; video?: SocialMedia;
 }) {
-  const commercial = options.commercialContentDisclosure === true;
   const set = (key: string, value: unknown) => {
     const next = { ...options };
     if (value === undefined) delete next[key];
@@ -77,137 +80,7 @@ export function ProviderControls({
       </Stack>
     );
   if (kind === "TIKTOK_PROFILE")
-    return (
-      <Stack gap={3}>
-        <Alert
-          title="TikTok creator settings required"
-          tone="warning"
-          role="note"
-        >
-          Fresh creator settings must supply the nickname, permitted privacy
-          choices, and interaction limits before publishing. Those settings are
-          unavailable while this provider is disabled. No privacy choice is
-          assumed.
-        </Alert>
-        <Select
-          label="TikTok privacy"
-          placeholder="Fresh creator settings unavailable"
-          value=""
-          disabled
-          options={[]}
-        />
-        {[
-          ["disableComment", "Allow comments"],
-          ["disableDuet", "Allow Duet"],
-          ["disableStitch", "Allow Stitch"],
-        ].map(([key, label]) => (
-          <Checkbox
-            key={key}
-            label={label}
-            checked={options[key] === false}
-            disabled
-            onChange={() => {}}
-          />
-        ))}
-        <Checkbox
-          label="This post promotes a brand, product, or service"
-          checked={commercial}
-          disabled={disabled}
-          onChange={(e) => {
-            if (e.target.checked) set("commercialContentDisclosure", true);
-            else
-              onChange({
-                ...options,
-                commercialContentDisclosure: false,
-                brandContentToggle: false,
-                brandOrganicToggle: false,
-              });
-          }}
-        />
-        {commercial ? (
-          <>
-            <Typography variant="caption">
-              Choose the commercial content disclosure explicitly.
-            </Typography>
-            <Checkbox
-              label="My brand"
-              checked={options.brandOrganicToggle === true}
-              disabled={disabled}
-              onChange={(e) => set("brandOrganicToggle", e.target.checked)}
-            />
-            <Checkbox
-              label="Branded content for another business"
-              checked={options.brandContentToggle === true}
-              disabled={disabled || options.privacyLevel === "SELF_ONLY"}
-              description={
-                options.privacyLevel === "SELF_ONLY"
-                  ? "Branded content cannot use private visibility."
-                  : undefined
-              }
-              onChange={(e) => set("brandContentToggle", e.target.checked)}
-            />
-            {options.brandContentToggle === true ? (
-              <Typography variant="caption">
-                The video will carry a Paid partnership label.
-              </Typography>
-            ) : options.brandOrganicToggle === true ? (
-              <Typography variant="caption">
-                The video will carry a Promotional content label.
-              </Typography>
-            ) : (
-              <Typography variant="caption">
-                Choose your brand, another business, or both before posting.
-              </Typography>
-            )}
-          </>
-        ) : null}
-        <Checkbox
-          label={
-            options.brandContentToggle === true
-              ? "I agree to TikTok's Branded Content Policy and Music Usage Confirmation"
-              : "I agree to TikTok's Music Usage Confirmation"
-          }
-          checked={options.musicUsageConsent === true}
-          disabled={disabled}
-          onChange={(e) => set("musicUsageConsent", e.target.checked)}
-        />
-        <Typography variant="caption">
-          By posting, you agree to TikTok&apos;s{" "}
-          {options.brandContentToggle === true ? (
-            <>
-              <a
-                className="link link-primary"
-                href="https://www.tiktok.com/legal/page/global/bc-policy/en"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Branded Content Policy
-              </a>{" "}
-              and{" "}
-            </>
-          ) : null}
-          <a
-            className="link link-primary"
-            href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Music Usage Confirmation
-          </a>
-          .
-        </Typography>
-        <Checkbox
-          label="This video includes AI-generated content"
-          checked={options.isAigc === true}
-          disabled={disabled}
-          onChange={(e) => set("isAigc", e.target.checked)}
-        />
-        <Typography variant="caption" tone="muted">
-          Final posting consent is required after fresh creator settings and the
-          exact post have been reviewed.
-        </Typography>
-      </Stack>
-    );
+    return <TikTokControls creator={creator} audited={audited} options={options} onChange={onChange} onRefresh={onRefresh} video={video} disabled={disabled} />;
   if (kind === "FACEBOOK_PAGE")
     return format === "SHORT_VIDEO" ? boolean("isAigc", "Facebook Reel includes AI-generated content") : null;
   if (kind === "INSTAGRAM_PROFILE")

@@ -116,7 +116,8 @@ export class SocialDeliveryWorker {
     };
     let renewed;
     try {
-      renewed = await this.renewCredentials({ provider: old.provider, providerUserId: old.providerUserId,
+      renewed = await this.renewCredentials({ authorizationId: old.id, ownerId: old.userId, authorizationGeneration: old.generation,
+        credentialVersion: old.credentialVersion, mode: this.config.mode, provider: old.provider, providerUserId: old.providerUserId,
         refreshToken: this.vault.decrypt(old.refreshCiphertext, credentialContext(old.userId, old.id, "refresh")),
         scopes: old.scopes as string[], verifyCurrent });
     } catch (error) {

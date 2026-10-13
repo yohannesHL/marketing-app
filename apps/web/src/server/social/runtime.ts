@@ -13,6 +13,10 @@ import { fail } from "../security/errors";
 import { metaPublishingProviderConfig, resolveMetaPublishingPageCredential } from "../connections/metaPublishingRuntime";
 import { MetaPublishingClient } from "../providers/metaPublishing";
 import { metaPublishingRegistration } from "./providers/metaPublishing";
+import { tiktokProviderConfig } from "../connections/tiktokRuntime";
+import { renewTikTokPublishing } from "../connections/tiktokRenewal";
+import { TikTokClient } from "../providers/tiktok";
+import { tiktokSocialRegistration } from "./providers/tiktok";
 
 /** Providers are added only by their separately validated implementation slices. */
 export function socialProviders() {
@@ -30,6 +34,11 @@ export function socialProviders() {
     registry.register(metaPublishingRegistration("FACEBOOK_PAGE", providerConfig));
     registry.register(metaPublishingRegistration("INSTAGRAM_PROFILE", providerConfig));
   } catch { /* Each separately configured publishing integration fails closed. */ }
+  try {
+    const config = tiktokProviderConfig(); new TikTokClient(config);
+    registry.register({ ...tiktokSocialRegistration(config, { verifiedMediaPrefix: process.env.TIKTOK_VERIFIED_MEDIA_PREFIX ?? "",
+      audited: process.env.TIKTOK_APP_AUDITED === "true" }), renewableCredentials: true });
+  } catch { /* Missing verified media ownership leaves this provider unavailable. */ }
   return registry;
 }
 
@@ -50,6 +59,10 @@ export function socialPostService() {
 export function socialDeliveryWorker() {
   return new SocialDeliveryWorker(prisma, CredentialVault.fromEnvironment(), socialProviders(), socialConfiguration(),
     (request) => socialMediaStore().resolve(request), () => new Date(), async (request) => {
+      if (request.provider === "TIKTOK") return renewTikTokPublishing(prisma, CredentialVault.fromEnvironment(), tiktokProviderConfig(), {
+        ownerId: request.ownerId, authorizationId: request.authorizationId, generation: request.authorizationGeneration,
+        credentialVersion: request.credentialVersion, verifyCurrent: request.verifyCurrent,
+      });
       if (request.provider !== "GOOGLE") fail("RECONNECT_REQUIRED", 409, "This provider needs renewed customer authorization.");
       const client = new YouTubeClient(youtubeProviderConfig(request.verifyCurrent));
       return client.renewVerified({ providerUserId: request.providerUserId, refreshToken: request.refreshToken, scopes: request.scopes });

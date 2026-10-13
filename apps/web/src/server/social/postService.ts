@@ -165,8 +165,10 @@ export class SocialPostService {
         registration.validateContent?.({ title: variant.title ?? revision.title, body: variant.body,
           format: variant.format as never, providerOptions: variant.providerOptions as Record<string, unknown> },
           (variant.mediaIds as string[]).map((mediaId) => bindings.find((b) => b.mediaId === mediaId)!.media));
-        if (destination.authorization.expiresAt && destination.authorization.expiresAt <= timing.dueAt &&
-          !(registration.renewableCredentials && destination.authorization.refreshCiphertext))
+        const throughRenewal = new Date(timing.dueAt.getTime() + 60_000);
+        if (destination.authorization.expiresAt && destination.authorization.expiresAt <= throughRenewal &&
+          !(registration.renewableCredentials && destination.authorization.refreshCiphertext &&
+            (!destination.authorization.refreshExpiresAt || destination.authorization.refreshExpiresAt > throughRenewal)))
           fail("RECONNECT_REQUIRED", 409, "Renew provider access before its scheduled delivery time.");
         deliveries.push({ destinationId, variantId: variant.id, authorizationId: destination.authorizationId,
           authorizationGeneration: destination.authorization.generation, requiredScopes: [...registration.requiredScopes] });
@@ -207,8 +209,10 @@ export class SocialPostService {
         const destination = await ownedDestination(tx, principal.userId, d.destinationId, this.config.mode, this.now(), d.requiredScopes as string[]);
         if (destination.authorizationId !== d.authorizationId || destination.authorization.generation !== d.authorizationGeneration)
           fail("STALE_CREDENTIALS", 409, "Approve a new revision after reconnecting this destination.");
-        if (destination.authorization.expiresAt && destination.authorization.expiresAt <= timing.dueAt &&
-          !(this.registry.get(destination.authorization.provider, destination.kind)?.renewableCredentials && destination.authorization.refreshCiphertext))
+        const throughRenewal = new Date(timing.dueAt.getTime() + 60_000);
+        if (destination.authorization.expiresAt && destination.authorization.expiresAt <= throughRenewal &&
+          !(this.registry.get(destination.authorization.provider, destination.kind)?.renewableCredentials && destination.authorization.refreshCiphertext &&
+            (!destination.authorization.refreshExpiresAt || destination.authorization.refreshExpiresAt > throughRenewal)))
           fail("RECONNECT_REQUIRED", 409, "Renew provider access before its rescheduled delivery time.");
       }
       const changed = await tx.socialDelivery.updateMany({ where: { id: { in: deliveryIds }, status: { in: ["QUEUED", "RETRY_WAIT", "BLOCKED"] } },
