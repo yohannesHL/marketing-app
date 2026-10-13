@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Alert,
   AdPreview,
   Button,
   Card,
@@ -65,7 +66,7 @@ export function CreativeGenerationStep({
   const firstCreative = creatives.creatives[0];
 
   return (
-    <Stack gap={8}>
+    <Stack gap={8} data-testid="creative-workspace" aria-busy={isLoading}>
       <div className="flex items-center justify-between">
         <div>
           <Typography variant="heading-3" className="mb-2">
@@ -87,6 +88,12 @@ export function CreativeGenerationStep({
           AI Generate
         </Button>
       </div>
+
+      {error && (
+        <Alert title="Creative generation unavailable" tone="danger">
+          {error} Try AI Generate again or write your ad copy below.
+        </Alert>
+      )}
 
       <Grid minItemWidth="24rem">
         <Stack gap={6}>
