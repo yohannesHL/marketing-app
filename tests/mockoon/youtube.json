@@ -120,6 +120,162 @@
       "endpoint": "token",
       "responses": [
         {
+          "uuid": "da3b7ad0-3dc0-498a-8dd6-f700572b7298",
+          "body": "{\"error\": \"temporarily_unavailable\"}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "yt-refresh-503",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1ff289b7-d0e6-4b3a-af0b-662f72b361d5",
+          "body": "{\"error\": \"temporarily_unavailable\"}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "reusable-refresh",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8f16c4fa-19dc-491c-8933-b3c41b40ff1c",
+          "body": "{\"error\": \"temporarily_unavailable\"}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "code-503",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "66c307af-3508-4fc5-8bab-99aaebf0db40",
+          "body": "{\"access_token\": \"yt-access-a\", \"token_type\": \"Bearer\", \"expires_in\": 3600, \"scope\": \"openid https://www.googleapis.com/auth/youtube.force-ssl\"}",
+          "latency": 0,
+          "statusCode": 308,
+          "label": "success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "yt-refresh-redirect",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
           "uuid": "e95e6bff-a077-472b-a1eb-8e7b2ff65ce8",
           "body": "{\"access_token\": \"yt-access-a\", \"refresh_token\": \"yt-refresh-a\", \"token_type\": \"Bearer\", \"expires_in\": 3600, \"scope\": \"openid https://www.googleapis.com/auth/youtube.force-ssl\", \"id_token\": \"unchecked.forged-subject.signature\"}",
           "latency": 0,

@@ -368,10 +368,14 @@ export class YouTubeClient {
   }
 
   private async token(parameters: Record<string, string>) {
-    return this.json(await this.request(new URL("/token", this.mockOrigin ?? "https://oauth2.googleapis.com").href, {
+    // Google offline refresh tokens are reusable. Code exchanges and publication submissions remain nonretryable.
+    const response = await this.request(new URL("/token", this.mockOrigin ?? "https://oauth2.googleapis.com").href, {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ ...parameters, client_id: this.config.clientId, client_secret: this.config.clientSecret }),
-    }));
+    }, false, parameters.grant_type === "refresh_token");
+    // The shared read flag also permits resumable-upload308. A token response must never take that branch.
+    if (response.status === 308) { await response.body?.cancel(); return reject("INVALID_PROVIDER_RESPONSE", 502); }
+    return this.json(response);
   }
 
   private async verifiedGrant(tokens: Json, previous?: { providerUserId: string; refreshToken: string }, priorScopes?: string[]) {

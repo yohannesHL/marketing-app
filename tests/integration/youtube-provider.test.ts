@@ -188,3 +188,13 @@ test("one stateless client isolates two channel tokens and never accepts the oth
   await assert.rejects(client.videoStatus("yt-access-a", "ytVideoB001", "UCfixtureBrandA"), { code: "CHANNEL_MISMATCH" });
   assert.equal((await client.verifyChannel("yt-access-a", "UCfixtureBrandA")).id, "UCfixtureBrandA");
 });
+test("actual OAuth token503 is retryable only for reusable refresh, while code exchange and redirects stay closed", async () => {
+  await assert.rejects(client.renewVerified({ providerUserId: "google-sub-a", refreshToken: "yt-refresh-503", scopes: [...YOUTUBE_SCOPES] }),
+    (error: unknown) => error instanceof Error && "retryable" in error && error.retryable === true && "outcomeUnknown" in error && error.outcomeUnknown === false);
+  await assert.rejects(client.exchangeCode({ code: "code-503", codeVerifier: verifier }),
+    (error: unknown) => error instanceof Error && "retryable" in error && error.retryable === false);
+  let requests = 0;
+  const guarded = new YouTubeClient({ ...config, mockoonEnabled: true, mockoonBaseUrl: mock.origin, beforeRequest: async () => { requests++; } });
+  await assert.rejects(guarded.renewVerified({ providerUserId: "google-sub-a", refreshToken: "yt-refresh-redirect", scopes: [...YOUTUBE_SCOPES] }));
+  assert.equal(requests, 1);
+});

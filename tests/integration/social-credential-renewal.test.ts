@@ -12,8 +12,9 @@ import { CredentialVault } from "../../apps/web/src/server/security/credentialVa
 import { SocialPostService } from "../../apps/web/src/server/social/postService";
 import { SocialDeliveryWorker } from "../../apps/web/src/server/social/deliveryWorker";
 import { SocialProviderRegistry, type SocialCredentialRenewal } from "../../apps/web/src/server/social/types";
-import { YouTubeError, YOUTUBE_SCOPES } from "../../apps/web/src/server/providers/youtube";
+import { YouTubeClient, YouTubeError, YOUTUBE_SCOPES } from "../../apps/web/src/server/providers/youtube";
 import { applyConnectionMigrations } from "../support/test-database";
+import { startMockoon } from "../support/mockoon";
 
 function gate() {
   let release!: () => void;
@@ -149,3 +150,17 @@ for (const action of ["disconnect", "reconsent", "scope-loss"] as const) {
     } finally { finish.release(); await q.close(); }
   });
 }
+test("real SDK refresh POST503 becomes a bounded durable retry without posting or changing the grant", async () => {
+  const q = await setup();
+  const mock = await startMockoon("tests/mockoon/youtube.json");
+  try {
+    const worker = q.worker((request) => new YouTubeClient({ clientId: "yt-client", clientSecret: "fixture-yt-secret",
+      redirectUri: "https://renewal.test/api/connections/youtube/callback", mockoonEnabled: true, mockoonBaseUrl: mock.origin,
+      now: q.now, beforeRequest: request.verifyCurrent }).renewVerified({ providerUserId: request.providerUserId,
+        refreshToken: request.refreshToken, scopes: request.scopes }));
+    assert.equal((await worker.runOnce())?.status, "RETRY_WAIT");
+    assert.equal(q.sends(), 0); assert.equal(await worker.runOnce(), null);
+    const row = await q.db.providerAuthorization.findUniqueOrThrow({ where: { id: q.grant.id } });
+    assert.equal(row.credentialVersion, q.grant.credentialVersion); assert.equal(vaultPlain(q, row.accessCiphertext!), "old-access");
+  } finally { await mock.stop(); await q.close(); }
+});
