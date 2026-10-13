@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@libsql/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { LocalSqliteAdapter } from "../../apps/web/src/server/prisma/localSqliteAdapter";
 import { PrismaClient } from "../../apps/web/src/generated/prisma/client";
 import { CustomerAuth } from "../../apps/web/src/server/auth/customerAuth";
 import { CustomerConnections } from "../../apps/web/src/server/connections/customerConnections";
@@ -157,7 +157,7 @@ export async function socialAllPlatformFixture(options:{origin?:string;realClock
  const mocks=Object.fromEntries(started.map(result=>(result as PromiseFulfilledResult<[string,Awaited<ReturnType<typeof startMockoon>>]>).value)) as Record<typeof platforms[number],Awaited<ReturnType<typeof startMockoon>>>;
  const sqlUrl="file:"+join(directory,"test.db"),sql=ownedSql=createClient({url:sqlUrl});
  try{await applyConnectionMigrations(sql);checkAbort();}finally{sql.close();ownedSql=undefined;}
- const db=ownedDb=new PrismaClient({adapter:new PrismaLibSql({url:sqlUrl})}),vault=new CredentialVault({test:Buffer.alloc(32,47).toString("base64")},"test"),auth=new CustomerAuth(db,{origin},now);
+ const db=ownedDb=new PrismaClient({adapter:new LocalSqliteAdapter({url:sqlUrl})}),vault=new CredentialVault({test:Buffer.alloc(32,47).toString("base64")},"test"),auth=new CustomerAuth(db,{origin},now);
  const connections=new CustomerConnections(db,auth,vault,now),state=new ProviderConnectionState(db,auth,vault,now),social=new SocialConnectionState(db,auth,now),pages=new MetaPageCredentialStore(db,auth,vault,"mock",now);
  const adsMocks:Record<string,Awaited<ReturnType<typeof startMockoon>>>={};
  let mediaApi:ReturnType<typeof createSocialMediaApi>;const mediaRequests:{method:string;id:string;bytes:number}[]=[];
