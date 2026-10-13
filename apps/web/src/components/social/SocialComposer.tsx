@@ -197,9 +197,12 @@ export function SocialComposer({ postId }: { postId?: string }) {
       notice={notice}
       onError={() => setError("Sign out could not complete. Try again.")}
       onNavigate={
-        dirty
+        dirty || (post !== null && !postId)
           ? (href) => {
-              if (!busy) void save(false, href);
+              if (!busy) {
+                if (dirty) void save(false, href);
+                else window.location.assign(href);
+              }
             }
           : undefined
       }

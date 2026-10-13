@@ -59,6 +59,31 @@ async function noOverflow(page: Page) {
   ).toBe(true);
 }
 
+test("creating another social post starts a separate empty draft", async ({ page }, testInfo) => {
+  await page.goto("/sign-in?returnTo=%2Fsocial%2Fcreate");
+  await page.getByLabel(/^Email/).fill(`social-${testInfo.project.name}@example.test`);
+  await page.getByLabel(/^Password/).fill("isolated-test-password-for-fixtures");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/create$/);
+  await page.getByLabel("Draft title", { exact: true }).fill("First independent draft");
+  await page.getByLabel("Caption or post text", { exact: true }).fill("Keep this saved caption.");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/posts\/[A-Za-z0-9_-]+$/);
+  const first = new URL(page.url()).pathname.split("/").at(-1)!;
+  const original = await readPost(page, first);
+  await page.getByRole("link", { name: "Create social post", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/create$/);
+  await expect(page.getByRole("heading", { name: "Create social post", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Draft title", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Caption or post text", { exact: true })).toHaveValue("");
+  await page.getByLabel("Draft title", { exact: true }).fill("Second independent draft");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page).toHaveURL(/\/social\/posts\/[A-Za-z0-9_-]+$/);
+  expect(new URL(page.url()).pathname.split("/").at(-1)).not.toBe(first);
+  expect((await readPost(page, first)).revision.id).toBe(original.revision.id);
+  expect((await readPost(page, first)).revision.body).toBe("Keep this saved caption.");
+});
+
 test("scheduling resolves daylight-saving gaps, repeated times, and half-hour zones", () => {
   expect(scheduleInstants("2026-03-29T01:30", "Europe/London")).toEqual([]);
   expect(scheduleInstants("2026-10-25T01:30", "Europe/London")).toEqual([
