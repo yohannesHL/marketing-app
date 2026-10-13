@@ -183,6 +183,7 @@ export class CustomerConnections {
         requestedScopes: scopes(input.scopes),
         reconnectAuthorizationId: input.reconnectAuthorizationId ?? null,
         expiresAt,
+        createdAt: this.now(),
         verifierCiphertext: verifier
           ? this.vault.encrypt(verifier, `oauth:${principal.userId}:${id}`)
           : null,
@@ -238,6 +239,7 @@ export class CustomerConnections {
       redirectUri: attempt.redirectUri,
       requestedScopes: attempt.requestedScopes as string[],
       reconnectAuthorizationId: attempt.reconnectAuthorizationId,
+      createdAt: attempt.createdAt,
       codeVerifier: attempt.verifierCiphertext
         ? this.vault.decrypt(
             attempt.verifierCiphertext,
@@ -305,6 +307,12 @@ export class CustomerConnections {
           400,
           "The connection attempt is invalid or expired. Start again.",
         );
+      const fence = await tx.providerRevocationFence.findUnique({ where: { provider_connectionMode_subjectDigest: {
+        provider: expected.provider, connectionMode: grant.connectionMode ?? "LEGACY",
+        subjectDigest: digest(`${expected.provider}:${grant.externalGrantId ?? grant.providerUserId}`),
+      } } });
+      if (fence && fence.revokedAt >= attempt.createdAt)
+        fail("PROVIDER_REVOKED", 409, "Provider access was revoked during this attempt. Start a new connection.");
       const unique = {
         userId: principal.userId,
         provider: expected.provider,
@@ -332,6 +340,7 @@ export class CustomerConnections {
             : null,
         scopes: scopes(grant.scopes),
         connectionMode: grant.connectionMode ?? existing?.connectionMode ?? "LEGACY",
+        authorizedAt: attempt.createdAt,
         expiresAt: grant.expiresAt ?? null,
         externalGrantId:
           grant.externalGrantId ?? existing?.externalGrantId ?? null,
@@ -480,9 +489,9 @@ export class CustomerConnections {
         409,
         "Reconnect before selecting destinations.",
       );
-    if (selected && destination.authorization.provider === "GOOGLE" &&
+    if (selected && ["GOOGLE", "META"].includes(destination.authorization.provider) &&
       destination.authorization.capability === "ADS" && destination.authorization.connectionMode !== "LEGACY")
-      fail("VERIFIED_SELECTION_REQUIRED", 400, "Select Google accounts through the provider route so their manager access is rechecked.");
+      fail("VERIFIED_SELECTION_REQUIRED", 400, "Select accounts through their provider route so current access is rechecked.");
     return this.db.$transaction(async (tx) => {
       const updated = await tx.connectionDestination.updateMany({
         where: {

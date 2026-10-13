@@ -76,6 +76,49 @@ export class ProviderConnectionState {
     });
   }
 
+  async recordMetaAccount(principal: CustomerPrincipal, id: string, version: number,
+    destinationId: string, account: DiscoveredAccount) {
+    await this.auth.assertSession(principal);
+    await this.db.$transaction(async (tx) => {
+      const destination = await tx.connectionDestination.findFirst({ where: {
+        id: destinationId, authorizationId: id, externalId: account.externalId, kind: "AD_ACCOUNT",
+        authorization: { userId: principal.userId, provider: "META", capability: "ADS",
+          status: "CONNECTED", credentialVersion: version },
+      } });
+      if (!destination) fail("STALE_CREDENTIALS", 409, "The account or connection changed during its access check.");
+      const denied = !account.available || account.metadata.canWrite === "DENIED";
+      await tx.connectionDestination.update({ where: { id: destinationId }, data: {
+        name: account.name, currency: account.currency, timezone: account.timezone,
+        available: account.available, lastCheckedAt: this.now(),
+        metadata: { canRead: account.metadata.canRead, canWrite: account.metadata.canWrite,
+          ...(account.metadata.status ? { status: account.metadata.status } : {}),
+          ...(account.metadata.tasks ? { tasks: account.metadata.tasks } : {}) },
+        ...(denied ? { selected: false } : {}),
+      } });
+      if (denied)
+        await tx.connectionOperation.updateMany({ where: { destinationId, status: { in: ["PENDING", "RUNNING"] } },
+          data: { status: "CANCELLED", completedAt: this.now() } });
+    });
+  }
+
+  async selectMetaAccount(principal: CustomerPrincipal, id: string, version: number, destinationId: string) {
+    await this.auth.assertSession(principal);
+    await this.db.$transaction(async (tx) => {
+      const destination = await tx.connectionDestination.findFirst({ where: {
+        id: destinationId, authorizationId: id, available: true, kind: "AD_ACCOUNT",
+        authorization: { userId: principal.userId, provider: "META", capability: "ADS",
+          status: "CONNECTED", credentialVersion: version },
+      } });
+      if (!destination) fail("STALE_CREDENTIALS", 409, "The destination or connection changed during selection.");
+      const metadata = destination.metadata as { canWrite?: string } | null;
+      if (metadata?.canWrite !== "ALLOWED")
+        fail("PROVIDER_PERMISSION_DENIED", 403, "This Meta account does not grant advertising management access.");
+      await tx.connectionDestination.update({ where: { id: destinationId }, data: { selected: true } });
+      await tx.connectionOperation.updateMany({ where: { destinationId, status: { in: ["PENDING", "RUNNING"] } },
+        data: { status: "CANCELLED", completedAt: this.now() } });
+    });
+  }
+
   async selectGoogleContext(principal: CustomerPrincipal, id: string, version: number,
     destinationId: string, loginCustomerId: string | null, verified: DiscoveredAccount) {
     await this.auth.assertSession(principal);
@@ -148,7 +191,7 @@ export class ProviderConnectionState {
         await tx.connectionDestination.upsert({ where: { authorizationId_kind_externalId: {
           authorizationId: id, kind: "AD_ACCOUNT", externalId: account.externalId,
         } }, create: { authorizationId: id, kind: "AD_ACCOUNT", externalId: account.externalId, ...data },
-          update: { ...data, ...(!account.available || (context && !retained) ? { selected: false } : {}) } });
+          update: { ...data, ...(!account.available || account.metadata.canWrite === "DENIED" || (context && !retained) ? { selected: false } : {}) } });
       }
       await tx.connectionOperation.updateMany({ where: {
         destination: { authorizationId: id, OR: [{ available: false }, { selected: false }] }, status: { in: ["PENDING", "RUNNING"] },

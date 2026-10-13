@@ -308,6 +308,7 @@ model ProviderAuthorization {
   capability        ConnectionCapability
   externalGrantId   String?
   connectionMode    String                  @default("LEGACY")
+  authorizedAt      DateTime?
   accessCiphertext  String?
   refreshCiphertext String?
   expiresAt         DateTime?
@@ -370,6 +371,9 @@ model ConnectionAuditEvent {
 model AdPlatformInvocation {
   id                 String    @id @default(cuid())
   executionId        String
+  authorizationId    String?
+  destinationId      String?
+  connectionMode     String    @default("LEGACY")
   platform           Platform
   adapterPayload     Json
   downstreamPath     String?
@@ -383,4 +387,34 @@ model AdPlatformInvocation {
   execution AdProxyExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
 
   @@index([executionId])
+  @@index([authorizationId, connectionMode])
+}
+
+model ProviderRevocationFence {
+  id             String   @id @default(cuid())
+  provider       Platform
+  connectionMode String
+  subjectDigest  String
+  revokedAt      DateTime
+
+  @@unique([provider, connectionMode, subjectDigest])
+}
+
+model ProviderLifecycleEvent {
+  id             String   @id
+  provider       Platform
+  connectionMode String
+  subjectDigest  String
+  action         String
+  receivedAt     DateTime @default(now())
+  receiptId      String?
+}
+
+model ProviderDeletionReceipt {
+  id             String   @id
+  provider       Platform
+  connectionMode String
+  status         String   @default("PENDING")
+  requestedAt    DateTime @default(now())
+  completedAt    DateTime?
 }

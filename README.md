@@ -15,4 +15,5 @@
 
 - [Sessions, encrypted credentials, migration, and operator setup](docs/customer-connection-foundation.md)
 - [Google OAuth, manager discovery, and Mockoon setup](docs/google-ads-connection.md)
+- [Meta Business Login, signed callbacks, and Mockoon setup](docs/meta-ads-connection.md)
 - Security integration tests: `npm run test:security`
