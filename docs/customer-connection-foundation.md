@@ -100,8 +100,9 @@ Run `npm --workspace @launchpad/web run security:prune` periodically to delete e
 ## Key rotation
 
 1. Add a new random key while retaining old keys; update the active ID.
-2. During maintenance, run `npm --workspace @launchpad/web run security:rotate-keys`. It transactionally reencrypts current grant credentials, unexpired/stored PKCE verifiers and migrated legacy token columns; credential versions advance so stale refreshes are rejected.
-3. Verify provider connections and database restore procedures before retiring an old key. Preserve old keys for retained backups that still require them.
+2. Before rewriting ciphertext, reload/restart every web and worker instance with the combined old-and-new keyring and the new active ID. Stop affected continuous workers and use a maintenance window so no process retains an obsolete keyring.
+3. During maintenance, run `npm --workspace @launchpad/web run security:rotate-keys`. It transactionally reencrypts current grant credentials, unexpired/stored PKCE verifiers and migrated legacy token columns; credential versions advance so stale refreshes are rejected.
+4. Verify provider connections and database restore procedures, and confirm rotation reports no unavailable records, before retiring an old key. Preserve old keys for retained backups that still require them.
 
 Losing required keys prevents decryption; reconnecting may restore provider access, but does not recover historical encrypted data. Keep key material in the agreed secret store.
 
