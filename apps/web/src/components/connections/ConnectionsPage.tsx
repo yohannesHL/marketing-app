@@ -176,7 +176,7 @@ export function ConnectionsPage() {
         </Stack></section>
         <section aria-labelledby="social-connections-heading" data-testid="social-connections"><Stack gap={5}>
           <div><Typography as="h2" id="social-connections-heading" variant="heading-2">Social publishing</Typography>
-            <Typography tone="muted">Publishing permissions are separate from advertising. A Google Ads or Meta Ads connection does not authorize social posts.</Typography></div>
+            <Typography tone="muted">Publishing permissions are separate from advertising. A Google Ads or Meta Ads connection does not authorize social posts. Meta supports Facebook Pages with content creation access and linked Instagram professional accounts; personal profiles are not eligible.</Typography></div>
           {social.map((connection) => <ConnectionCard key={connection.id} connection={connection} mode={settings?.mode ?? "disabled"}
             enabled={settings?.social.some((item) => item.provider === socialPlatform(connection.provider) && item.enabled) ?? false} paid={false} busy={Boolean(busy)} onAction={onAction} />)}
           {!social.length ? <Typography tone="muted">No social publishing permissions connected yet.</Typography> : null}

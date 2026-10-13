@@ -436,6 +436,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
                       variant(v.destinationId, {
                         format: e.target.value as SocialVariantInput["format"],
                         mediaIds: [],
+                        ...(["FACEBOOK_PAGE", "INSTAGRAM_PROFILE"].includes(kind) ? { providerOptions: {} } : {}),
                       })
                     }
                   />
@@ -506,6 +507,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
                   ) : null}
                   <ProviderControls
                     kind={kind}
+                    format={v.format}
                     options={v.providerOptions ?? {}}
                     disabled={busy}
                     onChange={(options) =>

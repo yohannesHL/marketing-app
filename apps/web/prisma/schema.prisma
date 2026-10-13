@@ -63,6 +63,7 @@ model User {
   socialPosts       SocialPost[]
   socialMediaAssets SocialMediaAsset[]
   socialEnqueues    SocialEnqueue[]
+  metaPageCredentials MetaPageCredential[]
 }
 
 model Asset {
@@ -326,6 +327,7 @@ model ProviderAuthorization {
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   destinations      ConnectionDestination[]
   events            ConnectionAuditEvent[]
+  metaPageCredentials MetaPageCredential[]
 
   @@unique([userId, provider, providerUserId, capability])
   @@index([userId, status])
@@ -637,4 +639,24 @@ model SocialDeliveryProgress {
   version        Int            @default(1)
   updatedAt      DateTime       @updatedAt
   delivery       SocialDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+}
+
+// Private SOCIAL Page tokens; public connection DTOs never include this relation.
+model MetaPageCredential {
+  authorizationId String
+  pageId String
+  ownerId String
+  connectionMode String
+  authorizationGeneration Int
+  credentialVersion Int
+  accessCiphertext String
+  version Int @default(1)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorization ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@id([authorizationId, pageId])
+  @@index([ownerId, connectionMode])
 }

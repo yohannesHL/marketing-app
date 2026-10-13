@@ -1,0 +1,53 @@
+import { expect, test } from "@playwright/test";
+
+test("Meta publishing discovers eligible Pages and professional Instagram destinations with explicit Reel controls", async ({ page }, info) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/sign-in?returnTo=%2Fconnections");
+  await page.getByLabel(/^Email/).fill(`meta-social-${info.project.name}@example.test`);
+  await page.getByLabel(/^Password/).fill("isolated-test-password-for-fixtures");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/connections$/);
+  const social = page.getByTestId("social-connections");
+  const callback = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/connections/meta-publishing/callback");
+  await social.getByRole("button", { name: "Connect Facebook Pages", exact: true }).click();
+  expect((await callback).status()).toBe(303);
+  await expect(page).toHaveURL(/\/connections\?provider=meta-publishing&result=connected/);
+  const card = social.getByTestId("provider-connection");
+  await expect(card).toHaveCount(1); await expect(card).toContainText("Meta social publishing");
+  const destination = (name: string) => card.getByTestId("connection-destination").filter({ has: page.getByRole("heading", { name, exact: true }) });
+  await expect(destination("Read-only Page").getByRole("button", { name: "Select account", exact: true })).toBeDisabled();
+  for (const name of ["Customer Page", "Customer Instagram"]) {
+    await destination(name).getByRole("button", { name: "Select account", exact: true }).click();
+    await expect(destination(name).getByRole("button", { name: "Deselect account", exact: true })).toBeVisible();
+  }
+  const rows = await (await page.request.get("/api/connections")).json();
+  expect(rows).toHaveLength(1); expect(rows[0]).toMatchObject({ provider: "META", capability: "SOCIAL", connectionMode: "MOCK" });
+  expect(rows[0].destinations.filter((d: { selected: boolean }) => d.selected).map((d: { kind: string }) => d.kind).sort()).toEqual(["FACEBOOK_PAGE", "INSTAGRAM_PROFILE"]);
+  expect(JSON.stringify(rows)).not.toMatch(/access_token|accessToken|Ciphertext|short_social|unused-private|fixture-app-secret/);
+  await expect(page.getByTestId("paid-connections").getByTestId("provider-connection")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath("meta-publishing-connections-mobile.png"), fullPage: true });
+  await page.goto("/social/create");
+  await page.getByLabel(/^Draft title/).fill("Reviewed Meta draft");
+  await page.getByLabel("Caption or post text", { exact: true }).fill("Reviewed caption");
+  await page.getByRole("checkbox", { name: "Customer Page", exact: true }).check();
+  await expect(page.getByLabel("Facebook Reel includes AI-generated content")).toHaveCount(0);
+  await page.getByLabel("Format for Customer Page", { exact: true }).selectOption("SHORT_VIDEO");
+  const disclosure = page.getByLabel("Facebook Reel includes AI-generated content", { exact: true });
+  await expect(disclosure).toHaveValue(""); await disclosure.selectOption("yes");
+  await page.getByRole("checkbox", { name: "Customer Instagram", exact: true }).check();
+  const share = page.getByLabel("Also share the Reel to the Instagram feed", { exact: true });
+  await expect(share).toHaveValue(""); await share.selectOption("no");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath("meta-reel-controls-desktop.png"), fullPage: true });
+  await page.getByRole("checkbox", { name: "Customer Instagram", exact: true }).uncheck();
+  await page.getByLabel("Format for Customer Page", { exact: true }).selectOption("TEXT");
+  await expect(disclosure).toHaveCount(0);
+  const saved = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/social/posts" && r.request().method() === "POST");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  const response = await saved; expect(response.status()).toBe(201);
+  const post = await response.json(); expect(post.revision.variants[0].providerOptions).toEqual({});
+  expect(post.publishingEnabled).toBe(false); expect(post.deliveries).toEqual([]);
+});

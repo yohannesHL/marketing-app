@@ -10,6 +10,9 @@ import { youtubeProviderConfig } from "../connections/youtubeRuntime";
 import { YouTubeClient } from "../providers/youtube";
 import { youtubeSocialRegistration } from "./providers/youtube";
 import { fail } from "../security/errors";
+import { metaPublishingProviderConfig, resolveMetaPublishingPageCredential } from "../connections/metaPublishingRuntime";
+import { MetaPublishingClient } from "../providers/metaPublishing";
+import { metaPublishingRegistration } from "./providers/metaPublishing";
 
 /** Providers are added only by their separately validated implementation slices. */
 export function socialProviders() {
@@ -19,6 +22,14 @@ export function socialProviders() {
     new YouTubeClient(config);
     registry.register({ ...youtubeSocialRegistration(config, { mediaOrigin: process.env.SOCIAL_MEDIA_PUBLIC_ORIGIN ?? customerAuth().origin }), renewableCredentials: true });
   } catch { /* Unconfigured providers stay disabled; another provider's drafts remain available. */ }
+  try {
+    const config = metaPublishingProviderConfig();
+    new MetaPublishingClient(config);
+    const providerConfig = { ...config, mediaOrigin: process.env.SOCIAL_MEDIA_PUBLIC_ORIGIN ?? customerAuth().origin,
+      resolvePageCredential: resolveMetaPublishingPageCredential };
+    registry.register(metaPublishingRegistration("FACEBOOK_PAGE", providerConfig));
+    registry.register(metaPublishingRegistration("INSTAGRAM_PROFILE", providerConfig));
+  } catch { /* Each separately configured publishing integration fails closed. */ }
   return registry;
 }
 

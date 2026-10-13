@@ -152,7 +152,9 @@ test("customer signs in with a keyboard and manages isolated advertising permiss
     await expect(social).toContainText("No social publishing permissions connected yet");
     for (const label of ["Facebook Pages", "Instagram", "YouTube Shorts", "TikTok", "LinkedIn", "X"]) await expect(social.getByText(label, { exact: true })).toBeVisible();
     await expect(social.getByRole("button", { name: "Connect YouTube Shorts", exact: true })).toBeEnabled();
-    await expect(social.getByRole("button")).toHaveCount(1);
+    await expect(social.getByRole("button", { name: "Connect Facebook Pages", exact: true })).toBeEnabled();
+    await expect(social.getByRole("button", { name: "Connect Instagram", exact: true })).toBeEnabled();
+    await expect(social.getByRole("button")).toHaveCount(3);
     await expect(social.getByTestId("provider-connection")).toHaveCount(0);
     const selectedIds = (await connections(page)).filter((row) => row.capability === "ADS")
       .flatMap((row) => row.destinations.filter((destination) => destination.selected).map((destination) => destination.id)).sort();

@@ -86,3 +86,11 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 
 - Full current #12 backend selection passed 164/164 (before new independent renewal-race tests). The connection and social browser selection passed21/21 across Chromium, Firefox and WebKit; fresh app build and typecheck passed. Mobile/desktop YouTube screenshots were inspected.
 - Independent review reproduced concurrent renewal loser and retryable429 bugs; fixes passed both reviewer reproductions. The final regression suite also covers reconsent/disconnect/scope-loss and reusable-Google503 backoff.
+
+### Meta social publishing integration — 13 October 2026
+
+- YouTube PR #28 is attached, stacked on #27. Independent review fixes include real Mockoon token503/308 behavior; only Google reusable-refresh POSTs can safely retry. Latest head6210421 has35/35 targeted YouTube/renewal checks.
+- #13 Meta SDK/adapter/routes/encrypted Page-store integration passed35/35 targeted checks. App wiring now enables independent Page/professional-profile connection discovery and selection; live publication remains separately disabled. Page-key rotation is included in the maintenance CLI.
+- UI explicitly distinguishes FB Reel AI disclosure from IG Reel feed-sharing, clears obsolete format choices, and names an IG account by username when its display name is absent. Processing failure keeps authoritative receipts terminal without another publication attempt.
+- Browser tests caught ambiguous Page/IG fallback names and WebKit navigation-prefetch errors during OAuth/sign-out. Names now use IG usernames; authenticated account-navigation links no longer prefetch across those session/provider transitions. Current browser rerun is underway.
+- Production Meta review/business/consent and real pilot/cleanup remain owner gates; docs/meta-social-publishing-integration.md gives the exact operator/customer steps.
