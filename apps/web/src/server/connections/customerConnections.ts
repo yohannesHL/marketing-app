@@ -30,6 +30,7 @@ export type ProviderGrant = {
   refreshToken?: string;
   scopes: string[];
   expiresAt?: Date | null;
+  refreshExpiresAt?: Date | null;
   externalGrantId?: string;
   connectionMode?: "MOCK" | "LIVE";
 };
@@ -117,7 +118,8 @@ function validateGrant(grant: ProviderGrant) {
     grant.accessToken.length > 32768 ||
     (grant.refreshToken !== undefined &&
       (!grant.refreshToken || grant.refreshToken.length > 32768)) ||
-    (grant.expiresAt && !Number.isFinite(grant.expiresAt.getTime()))
+    (grant.expiresAt && !Number.isFinite(grant.expiresAt.getTime())) ||
+    (grant.refreshExpiresAt && !Number.isFinite(grant.refreshExpiresAt.getTime()))
   ) {
     fail("INVALID_GRANT", 400, "The provider authorization is incomplete.");
   }
@@ -343,6 +345,7 @@ export class CustomerConnections {
         connectionMode: grant.connectionMode ?? existing?.connectionMode ?? "LEGACY",
         authorizedAt: attempt.createdAt,
         expiresAt: grant.expiresAt ?? null,
+        refreshExpiresAt: grant.refreshExpiresAt ?? null,
         externalGrantId:
           grant.externalGrantId ?? existing?.externalGrantId ?? null,
         status: "CONNECTED" as const,
@@ -849,6 +852,7 @@ export class CustomerConnections {
           : current.refreshCiphertext,
         scopes: scopes(grant.scopes),
         expiresAt: grant.expiresAt ?? null,
+        ...(grant.refreshExpiresAt !== undefined ? { refreshExpiresAt: grant.refreshExpiresAt } : {}),
         credentialVersion: { increment: 1 },
       },
     });

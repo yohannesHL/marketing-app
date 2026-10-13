@@ -1,12 +1,18 @@
 export type Provider = "GOOGLE" | "META";
 export type SocialProvider = "YOUTUBE" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "LINKEDIN" | "X";
 export type ProviderMode = "mock" | "live" | "disabled";
+export interface TrustedTikTokCreator {
+  openId: string; username: string; nickname: string; privacyLevels: string[];
+  commentDisabled: boolean; duetDisabled: boolean; stitchDisabled: boolean;
+  maxDurationSeconds: number; version: string; authorizationId: string;
+  authorizationGeneration: number; checkedAt: string;
+}
 export interface Destination {
   id: string; externalId: string; kind: string; name: string | null;
   currency: string | null; timezone: string | null; selected: boolean;
   available: boolean; lastCheckedAt: string | null;
   metadata: { contexts?: { loginCustomerId: string | null }[]; manager?: boolean;
-    status?: string; canRead?: boolean; canWrite?: string; tasks?: string[] } | null;
+    status?: string; canRead?: boolean; canWrite?: string; tasks?: string[]; tiktokCreator?: TrustedTikTokCreator } | null;
   selectedContext: { loginCustomerId?: string | null } | null;
 }
 export interface Connection {
@@ -17,7 +23,7 @@ export interface Connection {
 export interface ProviderSettings {
   mode: ProviderMode;
   paid: { provider: Provider; enabled: boolean; reason?: string; liveWritesEnabled: boolean }[];
-  social: { provider: SocialProvider; label: string; enabled: boolean }[];
+  social: { provider: SocialProvider; label: string; enabled: boolean; audited?: boolean }[];
 }
 
 export class ConnectionUiError extends Error {

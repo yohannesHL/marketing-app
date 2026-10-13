@@ -17,6 +17,7 @@ import type { Connection, ProviderSettings } from "../connections/connectionUi";
 import { SocialLayout } from "./SocialLayout";
 import { MediaPreview } from "./MediaPreview";
 import { ProviderControls } from "./ProviderControls";
+import { tikTokConsentOnlyChange } from "./TikTokControls";
 import { SocialReview } from "./SocialReview";
 import { SocialDeliveries } from "./SocialDeliveries";
 import {
@@ -38,6 +39,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
     [media, setMedia] = useState<SocialMedia[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]),
     [mode, setMode] = useState<string>(),
+    [tikTokAudited, setTikTokAudited] = useState(false),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [dirty, setDirty] = useState(false),
@@ -80,6 +82,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
         if (!mounted.current) return;
         setConnections(rows);
         setMode(settings.mode);
+        setTikTokAudited((settings.social.find((row) => row.provider === "TIKTOK") as { audited?: boolean } | undefined)?.audited === true);
         if (value) acceptPost(value);
       })
       .catch((failure) => {
@@ -111,8 +114,16 @@ export function SocialComposer({ postId }: { postId?: string }) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-  const change = (next: SocialDraft) => {
-    setDraft(next);
+  const isTikTok = (id: string) => connections.some((connection) => connection.destinations.some((destination) => destination.id === id && destination.kind === "TIKTOK_PROFILE")) ||
+    post?.revision.variants.some((variant) => variant.destinationId === id && variant.kind === "TIKTOK_PROFILE") === true;
+  const change = (update: SocialDraft | ((current: SocialDraft) => SocialDraft),
+    consentOnly: boolean | ((current: SocialDraft) => boolean) = false) => {
+    setDraft((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      const preserveConsent = typeof consentOnly === "function" ? consentOnly(current) : consentOnly;
+      return preserveConsent ? next : { ...next, variants: next.variants.map((variant) => isTikTok(variant.destinationId) ?
+        { ...variant, providerOptions: { ...variant.providerOptions, explicitPostingConsent: false } } : variant) };
+    });
     setDirty(true);
     setReview(false);
     setNotice(null);
@@ -162,11 +173,22 @@ export function SocialComposer({ postId }: { postId?: string }) {
     });
   }
   function variant(destinationId: string, patch: Partial<SocialVariantInput>) {
-    change({
-      ...draft,
-      variants: draft.variants.map((v) =>
-        v.destinationId === destinationId ? { ...v, ...patch } : v,
-      ),
+    change((current) => ({ ...current, variants: current.variants.map((v) => v.destinationId === destinationId ? { ...v, ...patch } : v) }),
+      (current) => isTikTok(destinationId) && Object.keys(patch).length === 1 && patch.providerOptions !== undefined &&
+        tikTokConsentOnlyChange(current.variants.find((item) => item.destinationId === destinationId)?.providerOptions ?? {}, patch.providerOptions));
+  }
+  async function refreshTikTok(connection: Connection, destinationId: string) {
+    await action(async () => {
+      // Refresh changes only trusted connection evidence and this variant's
+      // posting choices. Preserve all unsaved caption/media/content edits.
+      change((current) => ({ ...current, variants: current.variants.map((variant) => variant.destinationId === destinationId ? { ...variant, providerOptions: {} } : variant) }));
+      setConnections((current) => current.map((item) => item.id === connection.id ? { ...item,
+        destinations: item.destinations.map((destination) => destination.id === destinationId ? { ...destination,
+          metadata: { ...destination.metadata, tiktokCreator: undefined } } : destination) } : item));
+      const refreshed = await socialRequest<{ connection: Connection }>(
+        `/api/connections/tiktok/${encodeURIComponent(connection.id)}/check`, "POST", { destinationId });
+      setConnections((current) => current.map((item) => item.id === refreshed.connection.id ? refreshed.connection : item));
+      setNotice("TikTok creator settings refreshed. Review privacy, interactions, disclosures and this exact video again before giving posting consent.");
     });
   }
   async function upload(file: File) {
@@ -179,7 +201,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
         form,
       );
       setMedia((items) => [...items, item]);
-      change({ ...draft, mediaIds: [...draft.mediaIds, item.id] });
+      change((current) => ({ ...current, mediaIds: [...current.mediaIds, item.id] }));
       setNotice(
         "Media uploaded and inspected. Choose it for each destination variant before saving.",
       );
@@ -436,7 +458,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
                       variant(v.destinationId, {
                         format: e.target.value as SocialVariantInput["format"],
                         mediaIds: [],
-                        ...(["FACEBOOK_PAGE", "INSTAGRAM_PROFILE"].includes(kind) ? { providerOptions: {} } : {}),
+                        ...(["FACEBOOK_PAGE", "INSTAGRAM_PROFILE", "TIKTOK_PROFILE"].includes(kind) ? { providerOptions: {} } : {}),
                       })
                     }
                   />
@@ -510,6 +532,11 @@ export function SocialComposer({ postId }: { postId?: string }) {
                     format={v.format}
                     options={v.providerOptions ?? {}}
                     disabled={busy}
+                    creator={kind === "TIKTOK_PROFILE" && row?.ready && row.destination.metadata?.tiktokCreator?.authorizationId === row.connection.id &&
+                      row.destination.metadata.tiktokCreator.openId === row.destination.externalId ? row.destination.metadata.tiktokCreator : undefined}
+                    audited={tikTokAudited}
+                    video={kind === "TIKTOK_PROFILE" && (v.mediaIds ?? []).length === 1 ? media.find((item) => item.id === v.mediaIds![0] && item.type === "VIDEO") : undefined}
+                    onRefresh={kind === "TIKTOK_PROFILE" && row ? () => { void refreshTikTok(row.connection, row.destination.id); } : undefined}
                     onChange={(options) =>
                       variant(v.destinationId, { providerOptions: options })
                     }

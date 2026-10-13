@@ -31,3 +31,5 @@ Social review, scheduling, trusted media storage and worker operations: [deliver
 YouTube connection, delivery and owner pilot steps: [YouTube Shorts integration](docs/youtube-shorts-integration.md).
 
 Facebook/Instagram connection, delivery and owner pilot steps: [Meta social publishing integration](docs/meta-social-publishing-integration.md).
+
+TikTok creator connection, explicit posting controls, audit gates and delivery recovery: [TikTok publishing integration](docs/tiktok-publishing-integration.md).

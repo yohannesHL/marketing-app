@@ -23,7 +23,7 @@ export function providerCatalog(env: NodeJS.ProcessEnv, configure: Record<"GOOGL
     { provider: "X", label: "X", enabled: false },
   ].map((platform) => {
     const configure = configureSocial[platform.provider as keyof typeof configureSocial];
-    if (mode !== "disabled" && configure) { try { configure(); return { ...platform, enabled: true }; } catch {} }
+    if (mode !== "disabled" && configure) { try { configure(); return { ...platform, enabled: true, ...(platform.provider === "TIKTOK" ? { audited: env.TIKTOK_APP_AUDITED === "true" } : {}) }; } catch {} }
     return platform;
   }) };
 }
@@ -36,8 +36,9 @@ export async function handleProviderCatalog(request: Request) {
     const { metaConnectionService } = await import("./metaRuntime");
     const { youtubeConnectionService } = await import("./youtubeRuntime");
     const { metaPublishingConnectionService } = await import("./metaPublishingRuntime");
+    const { tiktokConnectionService } = await import("./tiktokRuntime");
     return privateJson(providerCatalog(process.env, { GOOGLE: googleConnectionService, META: metaConnectionService }, {
-      YOUTUBE: youtubeConnectionService, FACEBOOK: metaPublishingConnectionService, INSTAGRAM: metaPublishingConnectionService,
+      YOUTUBE: youtubeConnectionService, FACEBOOK: metaPublishingConnectionService, INSTAGRAM: metaPublishingConnectionService, TIKTOK: tiktokConnectionService,
     }));
   } catch (error) { return securityResponse(error); }
 }

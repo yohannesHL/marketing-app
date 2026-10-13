@@ -317,6 +317,7 @@ model ProviderAuthorization {
   accessCiphertext  String?
   refreshCiphertext String?
   expiresAt         DateTime?
+  refreshExpiresAt  DateTime?
   scopes            Json
   status            AuthorizationStatus     @default(CONNECTED)
   generation        Int                     @default(1)
@@ -328,6 +329,7 @@ model ProviderAuthorization {
   destinations      ConnectionDestination[]
   events            ConnectionAuditEvent[]
   metaPageCredentials MetaPageCredential[]
+  renewalLease      SocialCredentialRenewalLease?
 
   @@unique([userId, provider, providerUserId, capability])
   @@index([userId, status])
@@ -659,4 +661,32 @@ model MetaPageCredential {
 
   @@id([authorizationId, pageId])
   @@index([ownerId, connectionMode])
+}
+
+// Estimated API allocations, never claims of actual provider bills. Retained when a draft/job is deleted.
+
+
+
+
+// Private, explicit session-owned approval for one OAuth or account-check operation.
+
+
+// Private rotating-refresh coordination; contains no access/refresh token plaintext.
+model SocialCredentialRenewalLease {
+  authorizationId         String @id
+  ownerId                 String
+  provider                Platform
+  connectionMode          String
+  authorizationGeneration Int
+  credentialVersion       Int
+  refreshDigest           String
+  leaseTokenHash          String
+  leaseUntil              DateTime
+  startedAt               DateTime?
+  requestCount            Int @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  authorization           ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
+
+  @@index([leaseUntil])
 }

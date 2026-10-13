@@ -1,0 +1,4404 @@
+{
+  "uuid": "36d870a1-d808-4ff1-a341-6b447216113c",
+  "lastMigration": 33,
+  "name": "TikTok Direct Post server HTTP fixtures",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3914,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "0194aeb4-0ad4-4135-b040-20552d9b565e",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "get",
+      "endpoint": "health",
+      "responses": [
+        {
+          "uuid": "3584f5a0-3cfa-49a8-9805-b8040d9d0f57",
+          "body": "{\"ok\": true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "0182bb54-e39d-409b-b43f-b2bbefff4994",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "get",
+      "endpoint": "v2/auth/authorize/",
+      "responses": [
+        {
+          "uuid": "6356b19b-280c-4eab-8fc2-236b19b6a196",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?error=access_denied&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fixture_consent",
+              "value": "denied",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8184fc59-a804-4b05-96c4-da33dbf3c835",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Explicit private-account browser fixture",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?code=private&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fixture_consent",
+              "value": "private",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "61bb695f-55d6-4feb-995b-27fbc304399c",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "{{queryParam 'redirect_uri'}}?code=success&state={{queryParam 'state'}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "05656aac-af60-45a9-a00d-04f72ce4f4c5",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "v2/oauth/token/",
+      "responses": [
+        {
+          "uuid": "6b9635b1-3e2c-4e6a-8d16-a2b825c9e479",
+          "body": "{\"access_token\": \"tt-access-a\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "success",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "success",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "52b7951f-a5c9-427a-aba0-552ca94a05a2",
+          "body": "{\"access_token\": \"tt-private\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "private",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "private",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "30cdd5f5-b33a-4e7f-bb8e-dce390de098b",
+          "body": "{\"access_token\": \"tt-access-a\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "missing-scope",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "missing-scope",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "93754636-1370-4d89-8a34-2413aea3fa4e",
+          "body": "{\"access_token\": \"tt-user-b\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-b\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "wrong-subject",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "wrong-subject",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "772f526d-5956-489c-aed0-1bd1adba9a48",
+          "body": "{\"access_token\": \"tt-user-b\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "forged-subject",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "forged-subject",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e30416f2-aadc-406e-818d-9b48145b9a32",
+          "body": "{\"access_token\": \"tt-access-a\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": -1, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "bad-expiry",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "bad-expiry",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "53d7d9ab-cd45-42a7-accb-badf869084bc",
+          "body": "{\"access_token\": \"tt-access-a\", \"refresh_token\": null, \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "no-refresh",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "authorization_code",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "redirect_uri",
+              "value": "^https?://[^?#]+/api/connections/tiktok/callback$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "no-refresh",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "eabbdec6-c610-489f-8858-943cf00774c4",
+          "body": "{\"access_token\": \"tt-rotated\", \"refresh_token\": \"tt-refresh-rotated\", \"expires_in\": 86400, \"refresh_expires_in\": 25920000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "tt-refresh-a",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "tt-refresh-a",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7f00ae98-5a7f-40c6-9e5b-346c3d285d47",
+          "body": "{\"access_token\": \"tt-rotated\", \"refresh_token\": \"tt-refresh-rotated\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-a\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "tt-refresh-rotated",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "tt-refresh-rotated",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1e7f61b5-1f55-447b-893f-766ba1ec9d7c",
+          "body": "{\"access_token\": \"tt-user-b\", \"refresh_token\": \"tt-refresh-a\", \"expires_in\": 86400, \"refresh_expires_in\": 31536000, \"scope\": \"user.info.basic,video.publish\", \"open_id\": \"open-id-b\", \"token_type\": \"Bearer\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "tt-refresh-wrong",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "refresh_token",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "refresh_token",
+              "value": "tt-refresh-wrong",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b8f21dfb-7cda-4fb5-819d-f01d0601df85",
+          "body": "{\"error\": \"invalid_grant\", \"error_description\": \"fixture-provider-secret\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_key",
+              "value": "tt-client",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "fixture-tt-secret",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "code",
+              "value": "revoked",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "febfa31b-d89d-46c7-86bd-751401ba2ce8",
+          "body": "{\"error\": \"invalid_request\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "06f92c45-e4b6-449f-937c-368a8885870c",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "get",
+      "endpoint": "v2/user/info/",
+      "responses": [
+        {
+          "uuid": "c641f952-9f28-439c-b527-841df6cc6f7e",
+          "body": "{\"error\": {\"code\": \"access_token_invalid\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-expired",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aebec178-cee2-47c7-8ed8-87ffdcea92a5",
+          "body": "{\"error\": {\"code\": \"scope_not_authorized\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-no-scope",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "78c8e2be-5a59-42f7-bbc2-a191665ad612",
+          "body": "{\"data\": {\"user\": {\"open_id\": \"open-id-b\", \"display_name\": \"Other creator\"}}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fields",
+              "value": "open_id,display_name",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-user-b",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5b8de90c-2115-4a50-bbf6-47d94881b712",
+          "body": "{\"data\": {\"user\": {\"open_id\": \"open-id-a\", \"display_name\": \"Fixture TikTok creator\"}}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "fields",
+              "value": "open_id,display_name",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "699beef7-c1da-4442-a64f-0f623d2b259a",
+          "body": "{\"error\": {\"code\": \"access_token_invalid\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "0b91348e-384f-4fdc-8b63-17be26d457bd",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "v2/post/publish/creator_info/query/",
+      "responses": [
+        {
+          "uuid": "af597d25-d823-4dc5-987b-c65ba26129f3",
+          "body": "{\"error\": {\"code\": \"spam_risk_too_many_posts\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-daily",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8e8dfc0a-5e2c-488c-a4a3-4dec9b00c0c8",
+          "body": "{\"error\": {\"code\": \"rate_limit_exceeded\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Retry-After",
+              "value": "12"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-creator-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "dc2ee6a5-0056-42f7-8e3b-0441873407fb",
+          "body": "{\"data\": {\"creator_username\": \"fixture_creator\", \"creator_nickname\": \"Fixture TikTok creator\", \"privacy_level_options\": [\"FOLLOWER_OF_CREATOR\", \"MUTUAL_FOLLOW_FRIENDS\", \"SELF_ONLY\"], \"comment_disabled\": false, \"duet_disabled\": true, \"stitch_disabled\": true, \"max_video_post_duration_sec\": 300}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-private",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8df7e547-2106-4944-aac9-8baa984f7644",
+          "body": "{\"data\": {\"creator_username\": \"fixture_creator\", \"creator_nickname\": \"Changed creator name\", \"privacy_level_options\": [\"PUBLIC_TO_EVERYONE\", \"MUTUAL_FOLLOW_FRIENDS\", \"SELF_ONLY\"], \"comment_disabled\": false, \"duet_disabled\": false, \"stitch_disabled\": true, \"max_video_post_duration_sec\": 300}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer tt-changed",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "31a68cd4-e45e-4a57-b42c-229be04f9fda",
+          "body": "{\"data\": {\"creator_username\": \"fixture_creator\", \"creator_nickname\": \"Fixture TikTok creator\", \"privacy_level_options\": [\"PUBLIC_TO_EVERYONE\", \"MUTUAL_FOLLOW_FRIENDS\", \"SELF_ONLY\"], \"comment_disabled\": false, \"duet_disabled\": false, \"stitch_disabled\": true, \"max_video_post_duration_sec\": 300}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "524f2417-afcb-452d-aca9-83f62090b842",
+          "body": "{\"error\": {\"code\": \"scope_not_authorized\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "94df972c-8a37-46c3-b605-e6e76c26aa84",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "v2/post/publish/video/init/",
+      "responses": [
+        {
+          "uuid": "8db2b24e-257f-4b0d-8f55-4d6a83dfc603",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-public",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-public",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "252f28cf-14ad-4ba6-a66e-a5e2bb078270",
+          "body": "{{setGlobalVar 'init-fixture-public' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.public\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-public",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-public",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "595d6e8d-2274-431c-b4f0-bb0af856260d",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-private",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "SELF_ONLY",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-private",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3b97115e-7979-4b0f-98eb-6c44f040034e",
+          "body": "{{setGlobalVar 'init-fixture-private' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.private\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-private",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-private",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "SELF_ONLY",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8b5cdaf3-f433-4a6e-942b-ccf09beb16e6",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-pending",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e1c3243b-0cd5-4f44-a62a-4fef833bb642",
+          "body": "{{setGlobalVar 'init-fixture-pending' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.pending\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-pending",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6bd5237f-77e4-4118-bb26-665023338ad1",
+          "body": "{{setGlobalVar 'retry-submitted' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.retry_completed\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-retry",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-retry",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "retry-submitted",
+              "value": "yes",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9e2d356d-4a2a-4976-8e1d-a475b06d15d6",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-retry",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-retry",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b352d8b4-3e0b-4c2a-99af-91de91ded588",
+          "body": "{{setGlobalVar 'init-fixture-retry' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.failed_retry\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-retry",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-retry",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3cf8c93f-2597-41e0-b484-9e46707ef00e",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-terminal",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-terminal",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "97fc04a3-a10b-4854-8efa-db4400d34baa",
+          "body": "{{setGlobalVar 'init-fixture-terminal' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.failed_terminal\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-terminal",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-terminal",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5949a1f9-1369-406b-88fc-f3017945ee43",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-cancel",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-cancel",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a998bbed-af9f-458b-a853-4e43f93e26b1",
+          "body": "{{setGlobalVar 'init-fixture-cancel' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.cancel\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-cancel",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-cancel",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b1654f84-bb1a-4af4-8228-cc1e127a82d3",
+          "body": "{\"error\": {\"code\": \"duplicate_submit\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-worker-pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "init-fixture-worker-pending",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "eb06796e-afa3-445d-ae8e-94d697364ef7",
+          "body": "{{setGlobalVar 'init-fixture-worker-pending' 'yes'}}{\"data\": {\"publish_id\": \"v_pub_url~v2-1.worker_pending\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "fixture-worker-pending",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-worker-pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "86e339a6-af6e-45ab-8179-0b3681aaa5ac",
+          "body": "{\"data\": {\"publish_id\": \"v_pub_url~v2-1.disclosure\"}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-disclosure",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.privacy_level",
+              "value": "PUBLIC_TO_EVERYONE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "55e5ab40-04fe-4f3d-b456-5ac14a774f3a",
+          "body": "{\"error\": {\"code\": \"rate_limit_exceeded\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Retry-After",
+              "value": "60"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7439b34f-ee56-4cbd-bc66-2c85f72cec73",
+          "body": "{\"error\": {\"code\": \"unaudited_client_can_only_post_to_private_accounts\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-unaudited",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6d72b33e-6f32-400f-9639-a6027c48e647",
+          "body": "{}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.source",
+              "value": "PULL_FROM_URL",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "source_info.video_url",
+              "value": "^http://127\\.0\\.0\\.1:[0-9]+/api/social/media/[-A-Za-z0-9_]+/content\\?expires=[0-9]{10}&signature=[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_comment",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_duet",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.disable_stitch",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_content_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.brand_organic_toggle",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.is_aigc",
+              "value": "false",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "post_info.title",
+              "value": "fixture-ambiguous",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ab771c5a-dfb2-4176-ba6a-a60148efdee3",
+          "body": "{\"error\": {\"code\": \"invalid_param\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "a3d593e2-e474-4f35-a3e2-e567ff3d4d05",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "v2/post/publish/status/fetch/",
+      "responses": [
+        {
+          "uuid": "328ce4d0-f4f4-453f-9471-43c17dd82cf2",
+          "body": "{\"data\": {\"status\": \"PUBLISH_COMPLETE\", \"publicaly_available_post_id\": [7364839287461827391]}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.retry_completed",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c21d5e4f-6bcc-49b6-a3a9-d6de08193255",
+          "body": "{\"data\": {\"status\": \"PUBLISH_COMPLETE\", \"publicaly_available_post_id\": [7364839287461827391]}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.public",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "28d2c6df-4d28-4ddf-b4fb-edef517c520c",
+          "body": "{\"data\": {\"status\": \"PUBLISH_COMPLETE\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.private",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ccf325ed-0d80-4e5a-86c0-a5bbc4c7d785",
+          "body": "{\"data\": {\"status\": \"PUBLISH_COMPLETE\", \"publicaly_available_post_id\": [7364839287461827391]}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.worker_pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "complete-worker_pending",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "089d78de-6196-422b-9640-d261fb1a0e2d",
+          "body": "{\"data\": {\"status\": \"PROCESSING_DOWNLOAD\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.worker_pending",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "924b51db-0bfc-40ee-a130-413dbdfce546",
+          "body": "{\"data\": {\"status\": \"PUBLISH_COMPLETE\", \"publicaly_available_post_id\": [7364839287461827391]}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.pending",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "complete-pending",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "91f2be89-f2d2-47aa-8254-861373daaee1",
+          "body": "{\"data\": {\"status\": \"PROCESSING_DOWNLOAD\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.pending",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7f2d3c61-0c28-4478-ad15-77b4dd89c244",
+          "body": "{\"data\": {\"status\": \"FAILED\", \"fail_reason\": \"video_pull_failed\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.failed_retry",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a8aa4969-7a43-4c5b-82e8-8b800f991893",
+          "body": "{\"data\": {\"status\": \"FAILED\", \"fail_reason\": \"spam_risk_text\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.failed_terminal",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e7e2b989-8e71-4c80-af39-3c358ce8ef68",
+          "body": "{\"data\": {\"status\": \"FAILED\", \"fail_reason\": \"publish_cancelled\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.cancel",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "global_var",
+              "modifier": "cancel-accepted",
+              "value": "yes",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1a8571c6-b773-43d0-89ff-8d5ba2018d6f",
+          "body": "{\"data\": {\"status\": \"PROCESSING_DOWNLOAD\", \"publicaly_available_post_id\": []}, \"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.cancel",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "73a2bfc6-6876-47d8-b7a8-16d7be32d7d5",
+          "body": "{\"error\": {\"code\": \"rate_limit_exceeded\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.quota",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "301ce5e7-1ed7-4029-8a9b-14abfbe4be38",
+          "body": "{\"error\": {\"code\": \"token_not_authorized_for_specified_publish_id\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.other-user",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c1d9cbdd-4f4d-456d-8e70-9e8054ee8c27",
+          "body": "{\"error\": {\"code\": \"invalid_publish_id\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3f3a1e4a-9335-4d04-aa42-de293f604a92",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "v2/post/publish/cancel/",
+      "responses": [
+        {
+          "uuid": "785e7e52-3c1b-4136-980f-be7b1c1337e3",
+          "body": "{{setGlobalVar 'cancel-accepted' 'yes'}}{\"error\": {\"code\": \"ok\", \"message\": \"\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "^Bearer tt-[a-z0-9-]+$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "content-type",
+              "value": "application/json; charset=UTF-8",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "publish_id",
+              "value": "v_pub_url~v2-1.cancel",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "62f856f6-c9e7-484c-90dd-e95fa6107121",
+          "body": "{\"error\": {\"code\": \"publish_not_cancellable\", \"message\": \"Do not expose fixture-provider-secret or raw upstream message\", \"log_id\": \"fixture-log\"}}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "b7dafdfa-d254-4383-a8c9-16a6c68d5ce6",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "head",
+      "endpoint": "api/social/media/:id/content",
+      "responses": [
+        {
+          "uuid": "5edd0b6c-af75-4653-8ad8-d1c3f2450794",
+          "body": "",
+          "latency": 0,
+          "statusCode": 302,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Location",
+              "value": "https://untrusted.example/video.mp4"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-redirect",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "39c2d18b-90dd-499b-a073-9be87fb1298e",
+          "body": "",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-expired",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "daa57b2a-fe21-4e42-9be0-2d3a1b66c65c",
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "video/mp4"
+            },
+            {
+              "key": "Content-Length",
+              "value": "4199"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": "asset-bad-size",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ba5a0a51-6984-4c06-9180-055a38177014",
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "video/mp4"
+            },
+            {
+              "key": "Content-Length",
+              "value": "4200"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "signature",
+              "value": "^[a-f0-9]{64}$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aa2e3af6-775e-46a5-a7a5-8aba675807e4",
+          "body": "",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "170f94ef-6218-4770-830e-99ab14b09e02",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "fixture/complete/pending",
+      "responses": [
+        {
+          "uuid": "2070858e-1fa9-49be-820b-e4ec5e8a5f39",
+          "body": "{{setGlobalVar 'complete-pending' 'yes'}}{\"ok\": true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "defc3ed6-95f8-4263-8cf5-161cb0c234c8",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "post",
+      "endpoint": "fixture/complete/worker_pending",
+      "responses": [
+        {
+          "uuid": "3dd685d5-4a50-4fc4-b86c-0ef05baadf01",
+          "body": "{{setGlobalVar 'complete-worker_pending' 'yes'}}{\"ok\": true}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "4bed6677-a48c-4baa-b86e-896752d7eed4",
+      "type": "http",
+      "documentation": "Synthetic local contract fixture; not provider approval.",
+      "method": "get",
+      "endpoint": "fixture/metrics",
+      "responses": [
+        {
+          "uuid": "bd34e135-2754-4a87-be7f-69f0d93ec774",
+          "body": "{\"publicInit\":\"{{getGlobalVar 'init-fixture-public'}}\",\"pendingInit\":\"{{getGlobalVar 'init-fixture-pending'}}\",\"privateInit\":\"{{getGlobalVar 'init-fixture-private'}}\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Synthetic fixture",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "proxyMode": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": false,
+  "headers": [],
+  "data": [],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "451609a3-3709-46b6-bea3-6e1f9e303868"
+    },
+    {
+      "type": "route",
+      "uuid": "37abc69b-767f-4fa9-bb33-73d1b3add482"
+    },
+    {
+      "type": "route",
+      "uuid": "ff830ee3-b692-45ac-81e2-6b625d82aa08"
+    },
+    {
+      "type": "route",
+      "uuid": "089b6af8-4cb0-49f8-a2f4-f0f2e9fb832c"
+    },
+    {
+      "type": "route",
+      "uuid": "d8f3b77a-d17b-4206-a153-4217afceb93c"
+    },
+    {
+      "type": "route",
+      "uuid": "399ab750-61c6-4f78-8907-27bb02e11f81"
+    }
+  ],
+  "callbacks": []
+}
