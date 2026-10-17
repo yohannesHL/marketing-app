@@ -1,5 +1,5 @@
 "use client";
-import { WorkspaceTheme } from "../funnels/WorkspaceTheme";
+import { useAppNavigationEnvironment, useAppNavigationGuard } from "../navigation/AppShell";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Container } from "@launchpad/ui";
@@ -114,8 +114,9 @@ export function EmailLayout({
   dirty?: boolean;
 }) {
   const [navigationError, setNavigationError] = useState<Error | null>(null);
+  useAppNavigationEnvironment(environment);
+  useAppNavigationGuard(() => !dirty || window.confirm("Leave this page and discard unsaved campaign edits?"));
   return (
-    <WorkspaceTheme>
       <main
         className="py-8 sm:py-12"
         onClickCapture={(event) => {
@@ -144,6 +145,7 @@ export function EmailLayout({
           <div className="space-y-6">
             <AccountNavigation
               signedIn
+              busy={dirty}
               onError={(error) =>
                 setNavigationError(
                   error instanceof Error
@@ -195,7 +197,6 @@ export function EmailLayout({
           </div>
         </Container>
       </main>
-    </WorkspaceTheme>
   );
 }
 export function EnvironmentPicker({

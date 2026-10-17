@@ -112,6 +112,7 @@ test("email campaign forms preserve no-send simulation, audited consent and expl
     page.getByText("Sender check completed.", { exact: true }),
   ).toBeVisible();
   await page
+    .getByRole("navigation", { name: "Email workspace", exact: true })
     .getByRole("link", { name: "Email campaigns", exact: true })
     .click();
   const category = `ui-${randomUUID().slice(0, 8)}`,

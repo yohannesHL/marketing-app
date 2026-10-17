@@ -369,9 +369,12 @@ test("customer saves and reviews social revisions without pretending disabled pu
   await page
     .getByLabel("Draft title")
     .fill(`Preserved ${testInfo.project.name}`);
+  const mainMenu = page.getByRole("button", { name: "Main menu", exact: true });
+  if (await mainMenu.isVisible()) await mainMenu.click();
   await page
+    .getByRole("navigation", { name: "Main navigation", exact: true })
     .getByRole("link", {
-      name: "Paid advertising · Create campaign",
+      name: "Campaigns",
       exact: true,
     })
     .click();

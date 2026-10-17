@@ -43,6 +43,10 @@ test.describe("campaign creation wizard", () => {
       await expect(campaignWizardPage.root).toBeVisible();
       await expect(campaignWizardPage.stepTitle).toContainText("Campaign Goal");
       await page.getByLabel("Campaign Name").fill(campaignWizardSeed.campaignName);
+      page.once("dialog", dialog => dialog.dismiss());
+      await page.getByRole("navigation", { name: "Main navigation", exact: true }).getByRole("link", { name: "Funnels", exact: true }).click();
+      await expect(page).toHaveURL(/\/campaigns\/create$/);
+      await expect(page.getByLabel("Campaign Name")).toHaveValue(campaignWizardSeed.campaignName);
     });
 
     await test.step("When the marketer selects a goal and reviews strategy guidance", async () => {

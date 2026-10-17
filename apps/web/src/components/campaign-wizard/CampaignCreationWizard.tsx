@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useAppNavigationGuard } from "../navigation/AppShell";
 
 import {
   campaignWizardSteps,
@@ -64,6 +65,8 @@ export function CampaignCreationWizard({ demoEnabled = false }: { demoEnabled?: 
   const [platformEstimateLoading, setPlatformEstimateLoading] =
     React.useState(false);
   const [launchLoading, setLaunchLoading] = React.useState(false);
+  const savedDraft = React.useRef(JSON.stringify(formState));
+  useAppNavigationGuard(() => launchLoading ? "Wait for campaign submission to finish before leaving." : JSON.stringify(formState) === savedDraft.current || window.confirm("Leave the campaign wizard and discard this plan?"));
   const [audienceUploadError, setAudienceUploadError] = React.useState<
     string | null
   >(null);
@@ -493,6 +496,7 @@ export function CampaignCreationWizard({ demoEnabled = false }: { demoEnabled?: 
 
     try {
       const launchResult = await submitLaunchCampaign(formState);
+      savedDraft.current = JSON.stringify(formState);
       setAsyncState((previousState) => ({
         ...previousState,
         launchResult: {
