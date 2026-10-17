@@ -32,7 +32,7 @@ export function StageEditor({ definition, onChange, selectedStageId, onSelectSta
   const actions = definition.stageActions?.filter(action => action.stageId === selectedStageId).length ?? 0;
   return <section className="funnel-inspector grid min-w-0 gap-5" aria-label="Stage editor">
     <div className="funnel-inspector-heading"><div className="min-w-0"><p className="funnel-inspector-kicker">{stage ? `Stage ${position + 1} of ${definition.stages.length}` : "Your journey"}</p><h2 ref={heading} tabIndex={-1} className="break-words font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">{stage ? `${stage.name || "Unnamed stage"} settings` : "Stage settings"}</h2></div>
-      <button type="button" className={button} disabled={disabled || !valid || definition.stages.length >= 256} onClick={() => { setAdding(true); setNewName(""); }}>Add {stage ? "next " : ""}stage</button></div>
+      <button type="button" className={button} disabled={disabled || !valid || definition.stages.length >= 256} onClick={() => { setAdding(true); setNewName(""); }}>Add stage</button></div>
     <p role="status" className="text-sm text-base-content/70">{notice}</p>
     {adding && <fieldset className="grid gap-3 rounded-box border border-base-300 p-3"><legend className="px-1 font-semibold">New custom stage</legend>
       <label className="grid gap-1 text-sm font-medium">Stage name<input className="input input-bordered min-h-11 w-full min-w-0 bg-base-100" value={newName} maxLength={256} disabled={disabled} autoFocus onChange={event => setNewName(event.target.value)} /></label>

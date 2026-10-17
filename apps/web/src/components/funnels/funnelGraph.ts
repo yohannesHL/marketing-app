@@ -62,7 +62,7 @@ export function forkRoute(definition: FunnelDefinition, input: {
   routeId: string; branchId: string; to: string; when: Condition; beforeBranchId?: string;
 }): FunnelDefinition {
   const route = definition.routes.find(item => item.id === input.routeId);
-  if (!route) throw new Error("Choose an existing event rule to fork.");
+  if (!route) throw new Error("Choose an existing event rule for the conditional stage.");
   const issue = connectionIssue(definition, route.from, input.to);
   if (issue) throw new Error(issue);
   const when = validateCondition(input.when);

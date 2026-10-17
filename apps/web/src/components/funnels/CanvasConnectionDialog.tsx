@@ -24,7 +24,7 @@ export function CanvasConnectionDialog({ request, definition, sources, onApply, 
   const forkSource = sources.find(item => item.id === route?.trigger.sourceId);
   const fromName = definition.stages.find(stage => stage.id === request.from)?.name ?? "New journey";
   const toName = definition.stages.find(stage => stage.id === edge?.to)?.name;
-  const title = mode === "insert" ? "Insert a stage" : mode === "fork" ? "Add a conditional fork" : mode === "stage" ? "Add a connected stage" : mode === "connect" ? "Connect stages" : "Choose the next step";
+  const title = mode === "insert" ? "Insert a stage" : mode === "fork" ? "Add a conditional stage" : mode === "stage" ? "Add a connected stage" : mode === "connect" ? "Connect stages" : "Choose the next step";
   useEffect(() => {
     const element = dialog.current, previous = document.activeElement as HTMLElement | null;
     element?.showModal();
@@ -63,13 +63,13 @@ export function CanvasConnectionDialog({ request, definition, sources, onApply, 
         <button type="button" onClick={() => setMode("stage")}><strong>Add stage</strong><span>Create a milestone and connect it with an event.</span></button>
         <button type="button" disabled={!choices.length} onClick={() => setMode("connect")}><strong>Connect to an existing stage</strong><span>Choose a destination without dragging a connector.</span></button>
       </>}
-      <button type="button" disabled={!outgoing.length} onClick={() => setMode("fork")}><strong>Add fork</strong><span>{outgoing.length ? "Split an existing event rule using a condition." : "Add a connection first, then split its path."}</span></button>
+      <button type="button" disabled={!outgoing.length} onClick={() => setMode("fork")}><strong>Conditional stage</strong><span>{outgoing.length ? "Send people to a stage when they match your conditions." : "Connect a stage first, then add a conditional stage."}</span></button>
     </div> : <form className="funnel-connection-form" onSubmit={event => { event.preventDefault(); apply(); }}>
       {mode === "fork" && <>
-        <label>Event rule to split<select className={inputClass} value={routeId} onChange={event => { setRouteId(event.target.value); setWhen(undefined); }}>
+        <label>When this event happens<select className={inputClass} value={routeId} onChange={event => { setRouteId(event.target.value); setWhen(undefined); }}>
           {outgoing.map(item => <option key={item.id} value={item.id}>{item.trigger.type} · Rule {definition.routes.indexOf(item) + 1}</option>)}
         </select></label>
-        <label>Fork destination<select className={inputClass} value={useExisting ? "existing" : "new"} onChange={event => { setUseExisting(event.target.value === "existing"); setTo(""); }}>
+        <label>Conditional destination<select className={inputClass} value={useExisting ? "existing" : "new"} onChange={event => { setUseExisting(event.target.value === "existing"); setTo(""); }}>
           <option value="new">Create a new stage</option><option value="existing" disabled={!choices.length}>Go to an existing stage</option>
         </select></label>
       </>}
@@ -86,11 +86,11 @@ export function CanvasConnectionDialog({ request, definition, sources, onApply, 
         {!sources.some(item => item.status === "ACTIVE") && <p role="status">Connect a tracking source from Tracking sources, then refresh the source choices in Funnel details.</p>}
       </> : <>
         <p className="funnel-connection-explanation">When this condition matches, take the new path. It is checked {edge?.branchId ? "before the selected branch" : "before the otherwise path"}. Existing branch order and destinations are preserved. Unknown values wait.</p>
-        <ConditionEditor value={when} onChange={setWhen} onValidityChange={setConditionValid} fields={forkSource?.config.propertyKeys ?? []} sources={sources} label="Fork condition" />
-        {!when && <p className="text-sm">Add a condition to define who takes this fork.</p>}
+        <ConditionEditor value={when} onChange={setWhen} onValidityChange={setConditionValid} fields={forkSource?.config.propertyKeys ?? []} sources={sources} label="Stage condition" />
+        {!when && <p className="text-sm">Add a condition to define who reaches this stage.</p>}
       </>}
       {error && <p role="alert" className="text-error">{error}</p>}
-      <div className="funnel-connection-footer"><button type="submit" className="btn btn-primary min-h-11 normal-case" disabled={!ready}>{mode === "insert" ? "Insert stage" : mode === "fork" ? "Add fork to draft" : mode === "stage" ? "Add connected stage" : "Add connection rule"}</button>
+      <div className="funnel-connection-footer"><button type="submit" className="btn btn-primary min-h-11 normal-case" disabled={!ready}>{mode === "insert" ? "Insert stage" : mode === "fork" ? "Add conditional stage" : mode === "stage" ? "Add connected stage" : "Add connection rule"}</button>
         <button type="button" className={buttonClass} onClick={onClose}>Cancel connection</button>
         {!request.to && <button type="button" className="btn btn-ghost min-h-11 normal-case" onClick={() => { setMode(null); setError(null); }}>Back</button>}
       </div>

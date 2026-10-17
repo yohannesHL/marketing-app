@@ -1,8 +1,9 @@
 .funnel-workspace { --funnel-line: oklch(var(--bc) / .13); --funnel-connector: oklch(var(--bc) / .5); }
 .funnel-workspace .btn { min-height: 44px; }
-.funnel-workspace .funnel-command-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; background:oklch(var(--b1)); border:1px solid var(--funnel-line); border-radius:10px; }
-.funnel-command-status { display:flex; flex-wrap:wrap; gap:7px 16px; align-items:center; font-size:13px; }
-.funnel-command-status strong { font-weight:600; }
+.funnel-heading-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px 24px; }
+.funnel-heading-title { display:flex; flex-wrap:wrap; align-items:center; gap:12px; min-width:0; flex:1; }
+.funnel-heading-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; flex-shrink:0; }
+.funnel-heading-meta { display:flex; flex-wrap:wrap; gap:7px 16px; align-items:center; font-size:13px; }
 .funnel-save-state { display:inline-flex; align-items:center; gap:7px; }
 .funnel-save-state::before { content:""; width:7px; height:7px; border-radius:50%; background:oklch(var(--su)); }
 .funnel-save-state.is-dirty::before { background:oklch(var(--wa)); }
@@ -66,8 +67,8 @@
 .funnel-list-stages { display:flex; flex-wrap:wrap; gap:6px; }
 .funnel-list-stages span { font-size:12px; padding:5px 8px; border:1px solid var(--funnel-line); border-radius:6px; overflow-wrap:anywhere; }
 .funnel-list-card-footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-top:auto; padding-top:16px; border-top:1px solid var(--funnel-line); }
-@media(min-width:1100px) { .funnel-editor-grid.has-canvas.has-settings { grid-template-columns:minmax(0,1fr) minmax(320px,360px); } .funnel-editor-grid.has-canvas > .funnel-visual-column { position:sticky; top:20px; } }
-@media(max-width:639px) { .funnel-canvas-viewport { height:560px; } .funnel-inspector { padding:16px; } .funnel-workspace .funnel-command-bar { padding:16px; } .funnel-stage-list { gap:6px; } .funnel-editor-top > nav { flex-basis:100%; } .funnel-details > div { left:0; right:auto; } }
+@media(min-width:768px) { .funnel-editor-grid.has-settings { grid-template-columns:minmax(0,1fr) minmax(280px,320px); } .funnel-editor-grid.has-canvas > .funnel-visual-column { position:sticky; top:20px; } }
+@media(max-width:639px) { .funnel-canvas-viewport { height:560px; } .funnel-inspector { padding:16px; } .funnel-heading-row { flex-wrap:wrap; } .funnel-heading-actions { margin-left:auto; } .funnel-stage-list { gap:6px; } .funnel-editor-top > nav { flex-basis:100%; } .funnel-details > div { left:0; right:auto; } }
 
 .funnel-settings-column[hidden] { display:none; }
 .funnel-stage-summary { padding:0 16px 14px; font-size:11px; color:oklch(var(--bc) / .7); }
@@ -95,3 +96,48 @@
 .funnel-connection-form > label { display:grid; gap:6px; font-size:14px; font-weight:500; }
 .funnel-connection-footer { display:flex; flex-wrap:wrap; gap:8px; padding-top:12px; border-top:1px solid var(--funnel-line); }
 @media(max-width:639px) { .funnel-connection-dialog { padding:18px; } }
+
+/* The diagram owns its path controls; cards only expose editing. */
+.funnel-stage-card, .funnel-entry-node, .funnel-exit-card { position:relative; }
+.funnel-stage-card-top > svg { color:oklch(var(--bc) / .65); }
+.funnel-stage-card-bottom { justify-content:flex-end; }
+.funnel-entry-node { justify-content:center; text-align:center; min-height:76px; }
+.funnel-add-tail { display:flex; flex-direction:column; align-items:center; padding-bottom:8px; }
+.funnel-add-tail > span { width:2px; height:44px; background:var(--funnel-connector); }
+.funnel-path-control { width:44px; height:44px; display:grid; place-items:center; }
+.funnel-path-label { position:absolute; bottom:calc(100% + 8px); max-width:240px; }
+.funnel-exit-card { display:flex; align-items:center; gap:12px; width:270px; min-height:88px; padding:12px 16px; border:1px solid var(--funnel-line); border-radius:8px; background:oklch(var(--b1)); }
+.funnel-exit-card.is-selected { border-color:oklch(var(--p)); box-shadow:0 0 0 3px oklch(var(--p) / .14); }
+.funnel-exit-symbol { display:grid; place-items:center; width:44px; height:44px; flex-shrink:0; border-radius:50%; background:oklch(var(--su) / .16); color:oklch(var(--su)); }
+.funnel-exit-card.is-failure .funnel-exit-symbol { background:oklch(var(--er) / .14); color:oklch(var(--er)); }
+.funnel-exit-card > div { min-width:0; }
+.funnel-exit-kind { display:block; font-size:12px; color:oklch(var(--bc) / .7); }
+.funnel-exit-card button { display:block; min-height:44px; font-weight:600; font-size:15px; text-align:left; overflow-wrap:anywhere; text-decoration:underline; text-underline-offset:3px; }
+.funnel-exit-card button:focus-visible { outline:3px solid oklch(var(--p)); outline-offset:3px; }
+.funnel-display-switch { display:flex; gap:4px; padding:4px; background:oklch(var(--b2)); border:1px solid var(--funnel-line); border-radius:9px; }
+.funnel-display-switch button { min-height:44px; min-width:96px; padding:8px 16px; border-radius:6px; font-size:14px; }
+.funnel-display-switch button[aria-pressed="true"] { background:oklch(var(--b1)); box-shadow:0 1px 3px oklch(var(--bc) / .1); font-weight:600; }
+.funnel-settings-panel { position:sticky; inset:auto; top:24px; margin:0; width:100%; min-width:0; max-width:none; max-height:calc(100dvh - 48px); padding:0; overflow:auto; overscroll-behavior:contain; border:1px solid var(--funnel-line); border-radius:10px; background:oklch(var(--b1)); color:oklch(var(--bc)); z-index:12; }
+.funnel-settings-panel .funnel-inspector { border:0; padding:18px; }
+.funnel-settings-panel .btn { animation:none; }
+.funnel-stage-table { background:oklch(var(--b1)); border:1px solid var(--funnel-line); border-radius:10px; overflow:hidden; }
+.funnel-stage-table header { padding:20px; border-bottom:1px solid var(--funnel-line); }
+.funnel-stage-table h2, .funnel-stage-table h3 { font-weight:600; }
+.funnel-stage-table p { margin-top:5px; font-size:13px; line-height:1.5; color:oklch(var(--bc) / .7); overflow-wrap:anywhere; }
+.funnel-stage-table li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid var(--funnel-line); }
+.funnel-stage-table li:last-child { border-bottom:0; }
+.funnel-stage-table li.is-selected { background:oklch(var(--p) / .04); box-shadow:inset 3px 0 oklch(var(--p)); }
+.funnel-stage-table li > div { min-width:0; }
+.funnel-stage-table h3 { margin-top:4px; font-size:16px; overflow-wrap:anywhere; }
+.funnel-list-kind { font-size:12px; color:oklch(var(--bc) / .7); }
+.funnel-list-kind.is-success { color:oklch(var(--su)); }
+.funnel-list-kind.is-failure { color:oklch(var(--er)); }
+.funnel-list-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; flex-shrink:0; max-width:50%; }
+@media(min-width:1280px) { .funnel-editor-grid.has-settings { grid-template-columns:minmax(0,1fr) minmax(320px,360px); } }
+@media(max-width:767px) { .funnel-settings-panel { position:static; max-height:none; overflow:visible; } }
+@media(max-width:639px) { .funnel-stage-table li { flex-wrap:wrap; } .funnel-list-actions { max-width:100%; } }
+
+.funnel-settings-panel[hidden] { display:none; }
+.funnel-settings-top { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 14px; border-bottom:1px solid var(--funnel-line); background:oklch(var(--b1)); }
+.funnel-settings-top strong { font-size:13px; }
+.funnel-settings-warning { margin:12px; padding:12px; border:1px solid oklch(var(--er)); border-radius:6px; font-size:13px; }

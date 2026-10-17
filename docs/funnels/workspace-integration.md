@@ -77,17 +77,34 @@ this verification does not claim a production deployment or live delivery proof.
 ## Canvas connection controls
 
 The journey canvas now uses orthogonal connectors with a plus button on every
-path, plus an add button on each open stage and the journey entry. Users can:
+path. An open stage or journey entry with no onward path gets a short line and
+one plus beneath it. Connected stages have no duplicate card-level plus, and exit
+stages have neither an onward handle nor a plus. Users can:
 
 - Add a new stage with an explicit source/event connection.
 - Connect an existing stage without dragging, or draw between the green handles.
 - Insert a stage on one selected path. The original incoming condition and rule
   priority stay intact; the user chooses the later event for the onward path.
-- Fork an existing event rule with a required condition. Its existing destinations
-  and fallback remain intact. The fork is inserted before the selected branch,
-  or before an unconditional branch / fallback when adding from a stage.
-- Hide settings to give the canvas the full available width, and reopen them with
-  Edit stage. Layout remains local to the visit; rules use the existing saved draft.
+- Add a **Conditional stage** to an existing event rule with a required condition.
+  Its existing destinations and fallback remain intact. The new condition is checked
+  before the selected branch, or before an unconditional branch / fallback.
+- Switch between **Canvas** and **List** to work with the same draft. The old
+  numbered stage-navigation buttons are removed. The list names each milestone,
+  its onward destinations and whether it ends the journey.
+- Choose **Edit stage** to open and focus the right-side settings pane. Its
+  **Close** button hides it and restores the canvas/list width. There is no separate
+  settings button, dialog or drawer. The pane stays on the right from 768px upward;
+  on small phones it remains inline below the journey, with Edit stage bringing
+  its heading into view. Unfinished invalid fields survive and prevent closing
+  or switching context.
+- Save the draft or open publication review from the top right beside the title.
+  Journey type, environment, status, saved revision and published version appear
+  below the title. The previous command card and explanatory subheading are removed.
+- Identify successful and unsuccessful exits by their compact endpoint cards,
+  explicit Goal exit / Exit labels and green/red flag icons. Branch paths display
+  their actual condition or Otherwise.
+
+Layout remains local to the visit; both modes use the existing saved draft.
 
 Connection setup uses a native modal dialog with keyboard focus containment,
 Escape/cancel and return focus. Cancelling changes no draft data. Invalid source,
@@ -95,11 +112,15 @@ cycle, exit-stage and condition rules still apply. No action enables automation.
 React Flow attribution is hidden through its supported `proOptions` setting;
 the installed MIT license and copyright notice remain unchanged.
 
-Validation for this update: TypeScript and production build passed; 12 focused
-rule/inspector integration tests passed. Nine browser journeys passed across
-Chromium, Firefox and WebKit, covering drawn connections, plus-button creation,
-conditional forks, insertion, existing destinations, persisted reloads, keyboard
-access, mobile dialogs, draft conflicts and no provider side effects.
+Validation for this update: TypeScript and production build passed; all 12
+focused rule/inspector integration tests passed. Fifteen affected browser cases
+were verified across Chromium, Firefox and WebKit. The final targeted run passed
+all six navigation and canvas/list cases after correcting focus restoration; the
+remaining nine connection, insertion and save/conflict cases passed in the prior
+run. Coverage includes single-plus placement on drawn connectors, distinct exits,
+Edit/Close behavior, right-side settings at 949px, inline settings on phones,
+invalid input preservation, keyboard focus, persisted reloads and unchanged
+provider activity.
 
 The local workspace contains a separate unpublished TEST draft named
 “Lead journey · builder review” and a “Local funnel review” TEST source for visual
