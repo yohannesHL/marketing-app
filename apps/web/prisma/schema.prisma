@@ -64,6 +64,18 @@ model User {
   socialMediaAssets SocialMediaAsset[]
   socialEnqueues    SocialEnqueue[]
   metaPageCredentials MetaPageCredential[]
+  trackingSources     TrackingSource[]
+  funnelContacts      FunnelContact[]
+  funnelIdentities    FunnelIdentity[]
+  funnelSubjects      FunnelSubject[]
+  funnelSubjectReferences FunnelSubjectReference[]
+  trackingVisitors    TrackingVisitor[]
+  trackingCorrelations TrackingCorrelation[]
+  trackingEvents      TrackingEvent[]
+  trackingFacts       TrackingFact[]
+  trackingAudits      TrackingAudit[]
+  trackingRateLimits  TrackingRateLimit[]
+  trackingDeletions   TrackingDeletion[]
 }
 
 model Asset {
@@ -741,4 +753,243 @@ model SocialCredentialRenewalLease {
   authorization           ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
 
   @@index([leaseUntil])
+}
+
+// Tracking identities are separate from customer logins and advertising accounts.
+// Migration CHECKs and immutable-identity triggers enforce the string contracts.
+model TrackingSource {
+  id                   String   @id @default(cuid())
+  ownerId              String
+  environment          String
+  provider             String
+  externalAccountId    String
+  name                 String
+  config               Json
+  credentialCiphertext String?
+  ingressTokenHash     String   @unique
+  status               String   @default("ACTIVE")
+  generation           Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  owner                User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  identities           FunnelIdentity[]
+  subjectReferences    FunnelSubjectReference[]
+  visitors             TrackingVisitor[]
+  correlations         TrackingCorrelation[]
+  events               TrackingEvent[]
+  audits               TrackingAudit[]
+  rateLimits           TrackingRateLimit[]
+  deletions            TrackingDeletion[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([ownerId, environment, provider, externalAccountId])
+  @@index([ownerId, environment, status])
+}
+
+model FunnelContact {
+  id          String   @id @default(cuid())
+  ownerId     String
+  environment String
+  email       String?
+  name        String?
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  identities  FunnelIdentity[]
+  subjects    FunnelSubject[]
+  events      TrackingEvent[]
+
+  @@unique([id, ownerId, environment])
+  @@index([ownerId, environment, email])
+}
+
+model FunnelIdentity {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  sourceId    String
+  namespace   String
+  externalId  String
+  contactId   String
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  contact     FunnelContact @relation(fields: [contactId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@unique([ownerId, sourceId, namespace, externalId])
+  @@index([contactId, ownerId, environment])
+}
+
+model FunnelSubject {
+  id             String @id @default(cuid())
+  ownerId        String
+  environment    String
+  kind           String
+  contactId      String?
+  createdAt      DateTime @default(now())
+  lastOccurredAt DateTime?
+  owner          User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  contact        FunnelContact? @relation(fields: [contactId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  references     FunnelSubjectReference[]
+  correlations   TrackingCorrelation[]
+  events         TrackingEvent[]
+  facts          TrackingFact[]
+
+  @@unique([id, ownerId, environment])
+  @@index([ownerId, environment, kind, contactId])
+}
+
+model FunnelSubjectReference {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  sourceId    String
+  subjectId   String
+  kind        String
+  externalId  String
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@unique([ownerId, sourceId, kind, externalId])
+  @@index([subjectId, ownerId, environment])
+}
+
+model TrackingVisitor {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  sourceId    String
+  tokenHash   String @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  events      TrackingEvent[]
+
+  @@unique([id, ownerId, environment])
+  @@index([sourceId, expiresAt])
+}
+
+model TrackingCorrelation {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  sourceId    String
+  subjectId   String
+  tokenHash   String @unique
+  emailDigest String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@index([sourceId, expiresAt])
+  @@index([subjectId, ownerId, environment])
+}
+
+model TrackingEvent {
+  id               String @id @default(cuid())
+  ownerId          String
+  environment      String
+  sourceId         String
+  sourceGeneration Int
+  type             String
+  dedupeKey        String
+  rawPayloadDigest String
+  envelope         Json
+  ingestionMode    String @default("LIVE")
+  processingMode   String @default("LIVE")
+  status           String @default("QUEUED")
+  reason           String?
+  subjectId        String?
+  contactId        String?
+  visitorId        String?
+  factId           String?
+  occurredAt       DateTime
+  receivedAt       DateTime @default(now())
+  processedAt      DateTime?
+  expiresAt        DateTime
+  duplicateCount   Int @default(0)
+  conflictCount    Int @default(0)
+  late             Boolean @default(false)
+  owner            User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source           TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  subject          FunnelSubject? @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  contact          FunnelContact? @relation(fields: [contactId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  visitor          TrackingVisitor? @relation(fields: [visitorId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  fact             TrackingFact? @relation(fields: [factId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  audits           TrackingAudit[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([ownerId, sourceId, type, dedupeKey])
+  @@index([status, receivedAt])
+  @@index([ownerId, environment, sourceId, occurredAt])
+  @@index([ownerId, environment, subjectId, occurredAt])
+  @@index([expiresAt])
+}
+
+model TrackingFact {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  subjectId   String
+  key         String
+  type        String
+  authority   String
+  occurredAt  DateTime
+  attributes  Json
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  events      TrackingEvent[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([ownerId, subjectId, key])
+  @@index([ownerId, environment, occurredAt])
+}
+
+model TrackingAudit {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  sourceId    String
+  eventId     String?
+  actorId     String?
+  action      String
+  reason      String
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  event       TrackingEvent? @relation(fields: [eventId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+
+  @@index([ownerId, environment, sourceId, createdAt])
+  @@index([eventId])
+}
+
+model TrackingRateLimit {
+  sourceId    String
+  bucket      DateTime
+  ownerId     String
+  environment String
+  count       Int
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@id([sourceId, bucket])
+  @@index([bucket])
+}
+
+model TrackingDeletion {
+  id               String @id @default(cuid())
+  ownerId          String
+  environment      String
+  sourceId         String
+  namespace        String
+  externalIdDigest String
+  createdAt        DateTime @default(now())
+  owner            User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  source           TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@unique([ownerId, sourceId, namespace, externalIdDigest])
 }
