@@ -1,5 +1,5 @@
 "use client";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Background, Controls, Handle, MarkerType, Position, ReactFlow, applyNodeChanges, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import type { FunnelDefinition } from "../../server/funnels/funnelDefinition";
 import { connectionIssue, funnelEdges } from "./funnelGraph";
@@ -49,17 +49,17 @@ export default function FunnelCanvas({ definition, sources, selectedStageId, onS
   onConnect: (from: string | null, to: string) => void; disabled?: boolean;
 }) {
   const ENTRY = entryNode(definition);
-  const viewport = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<CanvasNode[]>(() => arrange(definition, sources)), [flow, setFlow] = useState<ReactFlowInstance<CanvasNode> | null>(null);
   useEffect(() => {
-    if (!flow || !viewport.current) return;
+    if (!flow) return;
     let frame = 0;
-    const observer = new ResizeObserver(() => {
+    const fitOnResize = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => { void flow.fitView({ padding: .25, maxZoom: .95, duration: 0 }); });
-    });
-    observer.observe(viewport.current);
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+      // Let React Flow finish measuring its new viewport before fitting nodes.
+      frame = requestAnimationFrame(() => { frame = requestAnimationFrame(() => { void flow.fitView({ padding: .25, maxZoom: .95, duration: 0 }); }); });
+    };
+    window.addEventListener("resize", fitOnResize);
+    return () => { window.removeEventListener("resize", fitOnResize); cancelAnimationFrame(frame); };
   }, [flow]);
   useEffect(() => { setNodes(old => arrange(definition, sources).map(node => {
     const previous = old.find(prior => prior.id === node.id);
@@ -78,7 +78,7 @@ export default function FunnelCanvas({ definition, sources, selectedStageId, onS
   return <section data-funnel-canvas aria-label="Funnel canvas" className="funnel-canvas-shell">
     <div className="funnel-canvas-toolbar"><div><strong>Journey canvas</strong><p>{definition.stages.length} stages <span aria-hidden="true">·</span> {definition.routes.length} event rules</p></div>
       <button className="btn btn-ghost min-h-11 normal-case" type="button" disabled={disabled} onClick={() => { const arranged = arrange(definition, sources); setNodes(old => old.map(node => ({ ...node, position: arranged.find(item => item.id === node.id)?.position ?? node.position }))); requestAnimationFrame(() => flow?.fitView({ padding: .25, duration: 0 })); }}>Arrange stages</button></div>
-    <div ref={viewport} className="funnel-canvas-viewport" data-testid="funnel-canvas"><ReactFlow<CanvasNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={changes} onInit={setFlow}
+    <div className="funnel-canvas-viewport" data-testid="funnel-canvas"><ReactFlow<CanvasNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={changes} onInit={setFlow}
       onNodeClick={(_, node) => { if (!disabled && node.id !== ENTRY) onSelectStage(node.id); }}
       onConnect={connection => { if (!disabled && connection.source && connection.target) onConnect(connection.source === ENTRY ? null : connection.source, connection.target); }}
       isValidConnection={connection => Boolean(connection.source && connection.target && !connectionIssue(definition, connection.source === ENTRY ? null : connection.source, connection.target))}
