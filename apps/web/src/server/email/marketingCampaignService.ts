@@ -2,7 +2,9 @@ import type { Prisma, PrismaClient, CampaignMembership } from "../../generated/p
 import type { CustomerAuth, CustomerPrincipal } from "../auth/customerAuth";
 import { fail } from "../security/errors";
 import { fields, object, sha256, text, timestamp } from "../funnels/trackingValidation";
-import { assertCampaignExecutionSupported, emailEnvironment, emailRevision, subscriptionCategory, validateCampaignDefinition } from "./campaignDefinition";
+import { assertCampaignExecutionSupported, assertCampaignSourcesTx, emailEnvironment, emailRevision, subscriptionCategory, validateCampaignDefinition } from "./campaignDefinition";
+import { ensureFirstStepTx } from "./campaignStepService";
+import { simulateCampaign } from "./campaignSimulation";
 import { applyEmailOptOut, applyEmailSuppression, checkEmailEligibility, emailAddressDigest, emailJson, recordEmailPolicyAudit, stopEmailMembership } from "./emailPolicy";
 
 type Tx = Prisma.TransactionClient;
@@ -27,8 +29,8 @@ export class MarketingCampaignService {
   async get(p: CustomerPrincipal, id: string) {
     await this.auth.assertSession(p); const campaign = await this.owned(this.db, p, id);
     const revisions = await this.db.campaignRevision.findMany({ where: { campaignId: id }, orderBy: { number: "desc" }, take: 30, include: { steps: { orderBy: { position: "asc" } } } });
-    return { ...campaign, revisions, capability: campaign.category === "EMAIL" ? "SINGLE_IMMEDIATE_MANUAL_SEND" : "ATTRIBUTION_ONLY",
-      existingMemberships: "PINNED_REVISION", automaticStageActions: false };
+    return { ...campaign, revisions, capability: campaign.category === "EMAIL" ? "OWNED_EMAIL_SEQUENCE" : "ATTRIBUTION_ONLY",
+      existingMemberships: "PINNED_REVISION", automaticStageActions: "EXPLICIT_ENABLEMENT", manualCadence: "EXPLICIT_START" };
   }
   async create(p: CustomerPrincipal, value: unknown) {
     await this.auth.assertSession(p); const input = object(value); fields(input, ["name", "environment", "category", "membershipScope", "definition"]);
@@ -63,6 +65,7 @@ export class MarketingCampaignService {
       if (campaign.category !== "EMAIL") fail("CAMPAIGN_ATTRIBUTION_ONLY", 409, "This campaign has no supported email delivery capability.");
       if (campaign.draftRevision !== reviewed) fail("DRAFT_CHANGED", 409, "Review the current draft before publishing.");
       const definition = validateCampaignDefinition(campaign.draft); assertCampaignExecutionSupported(definition);
+      await assertCampaignSourcesTx(tx, campaign, definition);
       const sender = await tx.emailSender.findFirst({ where: { id: definition.senderId, ownerId: p.userId, environment: campaign.environment } });
       if (!sender) fail("EMAIL_SENDER_UNAVAILABLE", 409, "Choose an owned sender in the same environment.");
       const connection = await tx.emailConnection.findUniqueOrThrow({ where: { id: sender.connectionId } });
@@ -95,6 +98,11 @@ export class MarketingCampaignService {
       return tx.marketingCampaign.update({ where: { id }, data: { enrolmentEnabled: input.enrolmentEnabled as boolean | undefined,
         dispatchEnabled: input.dispatchEnabled as boolean | undefined, status: input.status as string | undefined } });
     });
+  }
+  async simulate(p: CustomerPrincipal, id: string, value: unknown) {
+    await this.auth.assertSession(p); const campaign = await this.owned(this.db, p, id), input = object(value);
+    if (campaign.category !== "EMAIL") fail("CAMPAIGN_ATTRIBUTION_ONLY", 409, "This campaign has no email sequence to preview.");
+    return simulateCampaign(validateCampaignDefinition(input.definition ?? campaign.draft), input);
   }
   async enrol(p: CustomerPrincipal, campaignId: string, value: unknown) {
     await this.auth.assertSession(p); const input = object(value); fields(input, ["subjectId", "contactId", "journeyId", "revisionId", "requestKey", "reason", "newCycle"]);
@@ -152,13 +160,33 @@ export class MarketingCampaignService {
     const rows = await this.db.campaignMembership.findMany({ where: { campaignId, ownerId: p.userId, ...(cursor ? { id: { gt: text(cursor) } } : {}) }, orderBy: { id: "asc" }, take: 50 });
     return { memberships: rows.map(membershipDto), nextCursor: rows.length === 50 ? rows.at(-1)!.id : null };
   }
+  async start(p: CustomerPrincipal, id: string, value: unknown) {
+    await this.auth.assertSession(p); const input = object(value); fields(input, ["requestKey", "reason"]);
+    const requestKey = text(input.requestKey, 128), reason = text(input.reason, 500);
+    const requestDigest = sha256(JSON.stringify(["START_CAMPAIGN", id, reason]));
+    return this.db.$transaction(async tx => {
+      await this.session(tx, p);
+      const membership = await tx.campaignMembership.findFirst({ where: { id, ownerId: p.userId } });
+      if (!membership) fail("NOT_FOUND", 404, "Membership not found.");
+      const prior = await tx.campaignStepExecution.findFirst({ where: { ownerId: p.userId, environment: membership.environment, authorizationRequestKey: requestKey } });
+      if (prior) {
+        if (prior.membershipId !== id || prior.authorizationRequestDigest !== requestDigest) fail("IDEMPOTENCY_CONFLICT", 409, "This start key was used for another request.");
+        return { membershipId: id, executionId: prior.id, status: prior.status, existing: true, reason: prior.reason };
+      }
+      const eligibility = await checkEmailEligibility(tx, { membershipId: id, now: this.now(), liveEnabled: this.liveEnabled, purpose: "START" });
+      if (!eligibility.eligible) fail(eligibility.code, 409, "Starting this sequence is blocked by its current membership, recipient or connection policy.");
+      const execution = await ensureFirstStepTx(tx, id, { kind: "MANUAL", requestKey, requestDigest, actorId: p.userId, reason }, this.now());
+      return { membershipId: id, executionId: execution.id, status: execution.status, existing: false, reason: execution.reason };
+    });
+  }
   async membership(p: CustomerPrincipal, id: string) {
     await this.auth.assertSession(p); const m = await this.db.campaignMembership.findFirst({ where: { id, ownerId: p.userId } });
     if (!m) fail("NOT_FOUND", 404, "Membership not found.");
     const reasons = await this.db.campaignMembershipReason.findMany({ where: { membershipId: id }, orderBy: { createdAt: "asc" }, take: 200 });
     const sends = await this.db.messageSend.findMany({ where: { membershipId: id }, orderBy: { dueAt: "asc" }, take: 100,
       select: { id: true, stepId: true, status: true, deliveryState: true, dueAt: true, acceptedAt: true, cancelRequestedAt: true } });
-    return { membership: membershipDto(m), reasons, sends };
+    const steps = await this.db.campaignStepExecution.findMany({ where: { membershipId: id }, orderBy: [{ sequenceAnchorAt: "asc" }, { createdAt: "asc" }], take: 100 });
+    return { membership: membershipDto(m), reasons, sends, steps, cadenceStarted: steps.length > 0 };
   }
   async stop(p: CustomerPrincipal, id: string, value: unknown) {
     await this.auth.assertSession(p); const input = object(value); fields(input, ["reasonId", "reason"]); const reason = text(input.reason, 500);

@@ -101,6 +101,8 @@ model User {
   deliveryAttemptRecords DeliveryAttempt[]
   emailDeliveryReceiptRecords EmailDeliveryReceipt[]
   emailUnsubscribeTokenRecords EmailUnsubscribeToken[]
+  funnelActionExecutions FunnelActionExecution[]
+  campaignStepExecutions CampaignStepExecution[]
 }
 
 model Asset {
@@ -813,6 +815,7 @@ model TrackingSource {
   emailConnection EmailConnection?
   emailPolicyAudits EmailPolicyAudit[]
   @@unique([id, provider, ownerId, environment])
+  waitingSteps CampaignStepExecution[]
 }
 
 model FunnelContact {
@@ -959,6 +962,7 @@ model TrackingEvent {
   audits           TrackingAudit[]
   evaluationReceipts FunnelEvaluationReceipt[]
   stageTransitions FunnelStageTransition[]
+  evaluationEffects FunnelEvidenceEffect[]
 
   @@unique([id, ownerId, environment])
   @@unique([ownerId, sourceId, type, dedupeKey])
@@ -1056,6 +1060,8 @@ model Funnel {
 
   @@unique([id, ownerId, environment])
   @@index([ownerId, environment, status])
+  automationEnrolmentEnabled Boolean @default(false)
+  automationDispatchEnabled Boolean @default(false)
 }
 
 model FunnelVersion {
@@ -1095,6 +1101,7 @@ model FunnelStage {
   journeys    FunnelJourney[]
   transitionsFrom FunnelStageTransition[] @relation("FunnelTransitionFrom")
   transitionsTo FunnelStageTransition[] @relation("FunnelTransitionTo")
+  evaluatedEffects FunnelEvidenceEffect[]
 
   @@unique([versionId, key])
   @@unique([key, versionId, ownerId, environment])
@@ -1172,6 +1179,7 @@ model FunnelStageTransition {
   @@index([eventId])
   campaignMembershipReasons CampaignMembershipReason[]
   @@unique([id, journeyId, versionId, toStageKey, ownerId, environment], map: "FunnelStageTransition_campaign_reason_binding_key")
+  actionExecutions FunnelActionExecution[]
 }
 
 model FunnelPropertySnapshot {
@@ -1214,6 +1222,9 @@ model FunnelEvaluationReceipt {
   @@unique([eventId, matchRevision])
   @@index([status, createdAt])
   @@index([ownerId, environment, subjectId, status])
+  sourceGeneration Int?
+  stepExecutions CampaignStepExecution[]
+  @@unique([id, eventId, matchRevision, ownerId, environment], map: "FunnelEvaluationReceipt_wait_binding_key")
 }
 
 model FunnelEvidenceEffect {
@@ -1228,6 +1239,10 @@ model FunnelEvidenceEffect {
   evidenceKey String
   outcome     String
   ruleId      String?
+  evaluationEventId String?
+  evaluatedStageKey String?
+  evaluationJourneyRevision Int?
+  evaluationOccurredAt DateTime?
   createdAt   DateTime @default(now())
   owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   funnel      Funnel @relation(fields: [funnelId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
@@ -1235,6 +1250,10 @@ model FunnelEvidenceEffect {
   subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
   journey     FunnelJourney? @relation(fields: [journeyId, funnelId, versionId, subjectId, cycle, ownerId, environment], references: [id, funnelId, versionId, subjectId, cycle, ownerId, environment], onDelete: NoAction)
 
+  evaluationEvent TrackingEvent? @relation(fields: [evaluationEventId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  evaluatedStage FunnelStage? @relation(fields: [evaluatedStageKey, versionId, ownerId, environment], references: [key, versionId, ownerId, environment], onDelete: NoAction)
+
+  @@index([journeyId, evaluationJourneyRevision, ruleId, createdAt])
   @@unique([funnelId, subjectId, cycle, evidenceKey])
   @@index([ownerId, environment, subjectId])
 }
@@ -1259,6 +1278,9 @@ model FunnelActionOutbox {
 
   @@unique([transitionId, kind, actionKey])
   @@index([ownerId, environment, status, createdAt])
+  actions FunnelActionExecution[]
+  @@unique([id, ownerId, environment])
+  @@unique([id, journeyId, transitionId, ownerId, environment], map: "FunnelActionOutbox_execution_binding_key")
 }
 
 model EmailConnection {
@@ -1308,6 +1330,20 @@ model EmailSender {
   @@index([connectionId, status])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  refreshStatus String @default("IDLE")
+  refreshRevision Int @default(1)
+  refreshMembershipId String?
+  refreshLeaseTokenHash String?
+  refreshLeaseUntil DateTime?
+  refreshConnectionGeneration Int?
+  refreshCredentialVersion Int?
+  refreshAttemptCount Int @default(0)
+  refreshNextAttemptAt DateTime?
+  refreshLastAttemptAt DateTime?
+  refreshCompletedAt DateTime?
+  refreshErrorCode String?
+  refreshMembership CampaignMembership? @relation(fields: [refreshMembershipId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  @@index([refreshStatus, refreshNextAttemptAt, refreshLeaseUntil])
 }
 
 model MarketingCampaign {
@@ -1334,6 +1370,7 @@ model MarketingCampaign {
   @@index([ownerId, environment, status])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  actionExecutions FunnelActionExecution[]
 }
 
 model CampaignRevision {
@@ -1364,6 +1401,7 @@ model CampaignRevision {
   @@unique([id, senderId, subscriptionCategory, ownerId, environment], map: "CampaignRevision_sender_category_binding_key")
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  actionExecutions FunnelActionExecution[]
 }
 
 model CampaignStep {
@@ -1387,6 +1425,7 @@ model CampaignStep {
   @@unique([id, revisionId, ownerId, environment])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  executions CampaignStepExecution[]
 }
 
 model StageCampaignLink {
@@ -1442,6 +1481,10 @@ model CampaignMembership {
   @@index([ownerId, environment, contactId, status])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  stepExecutions CampaignStepExecution[]
+  actionExecutions FunnelActionExecution[]
+  senderRefreshes EmailSender[]
+  @@unique([id, revisionId, ownerId, environment], map: "CampaignMembership_step_binding_key")
 }
 
 model CampaignMembershipReason {
@@ -1477,6 +1520,11 @@ model CampaignMembershipReason {
   @@index([membershipId, endedAt])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  actionExecutionId String? @unique
+  stopOnStageExit Boolean @default(false)
+  stopOnGoal Boolean @default(false)
+  actionExecution FunnelActionExecution? @relation(fields: [actionExecutionId, membershipId, journeyId, transitionId, versionId, stageKey, campaignId, requestedRevisionId, ownerId, environment], references: [id, membershipId, journeyId, transitionId, versionId, stageKey, campaignId, requestedRevisionId, ownerId, environment], onDelete: NoAction)
+  @@unique([actionExecutionId, membershipId, journeyId, transitionId, versionId, stageKey, campaignId, requestedRevisionId, ownerId, environment], map: "CampaignMembershipReason_action_binding_key")
 }
 
 model EmailSubscription {
@@ -1593,6 +1641,12 @@ model MessageSend {
   @@index([ownerId, environment, status, dueAt])
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+  reconcileAttemptCount Int @default(0)
+  lastReconciledAt DateTime?
+  reconcileErrorCode String?
+  stepExecution CampaignStepExecution?
+  @@unique([id, membershipId, revisionId, stepId, iteration, ownerId, environment], map: "MessageSend_step_execution_binding_key")
+  @@index([status, nextAttemptAt, leaseUntil])
 }
 
 model MessageSendAttribution {
@@ -1685,4 +1739,108 @@ model EmailUnsubscribeToken {
   send MessageSend? @relation(fields: [sendId, addressDigest, category, ownerId, environment], references: [id, recipientDigest, subscriptionCategory, ownerId, environment], onDelete: NoAction)
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   @@unique([id, ownerId, environment])
+}
+
+
+// Explicitly authorized local action and cadence state; external submission stays in MessageSend.
+model FunnelActionExecution {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  outboxId String
+  journeyId String
+  transitionId String
+  versionId String
+  stageKey String
+  actionKey String
+  kind String
+  campaignId String
+  requestedRevisionId String?
+  membershipId String?
+  plan Json
+  mode String
+  dueAt DateTime
+  expiresAt DateTime?
+  status String @default("PENDING")
+  reason String?
+  evaluationTrace Json @default("{}")
+  nextWakeAt DateTime?
+  revision Int @default(1)
+  completedAt DateTime?
+  redactedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  outbox FunnelActionOutbox @relation(fields: [outboxId, journeyId, transitionId, ownerId, environment], references: [id, journeyId, transitionId, ownerId, environment], onDelete: NoAction)
+  transition FunnelStageTransition @relation(fields: [transitionId, journeyId, versionId, stageKey, ownerId, environment], references: [id, journeyId, versionId, toStageKey, ownerId, environment], onDelete: NoAction)
+  campaign MarketingCampaign @relation(fields: [campaignId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  requestedRevision CampaignRevision? @relation(fields: [requestedRevisionId, campaignId, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  membership CampaignMembership? @relation(fields: [membershipId, campaignId, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  membershipReason CampaignMembershipReason?
+  authorizedStep CampaignStepExecution?
+  @@unique([id, ownerId, environment])
+  @@unique([outboxId, actionKey])
+  @@unique([id, membershipId, journeyId, transitionId, versionId, stageKey, campaignId, requestedRevisionId, ownerId, environment], map: "FunnelActionExecution_reason_binding_key")
+  @@unique([id, membershipId, ownerId, environment], map: "FunnelActionExecution_step_authorization_key")
+  @@index([status, nextWakeAt, dueAt])
+  @@index([ownerId, environment, journeyId, status])
+}
+
+model CampaignStepExecution {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  membershipId String
+  revisionId String
+  stepId String
+  iteration Int @default(1)
+  authorizationKind String
+  authorizationRequestKey String?
+  authorizationRequestDigest String?
+  authorizationActorId String?
+  authorizationReason String?
+  authorizationActionExecutionId String? @unique
+  previousExecutionId String? @unique
+  sequenceAnchorAt DateTime
+  waitStartedAt DateTime
+  waitAnchorAt DateTime
+  waitDeadlineAt DateTime?
+  dueAt DateTime?
+  expiresAt DateTime?
+  waitSourceId String?
+  sourceGeneration Int?
+  receiptId String?
+  eventId String?
+  matchRevision Int?
+  evidenceAvailableAt DateTime?
+  sendId String? @unique
+  status String @default("WAITING")
+  reason String?
+  evaluationTrace Json @default("{}")
+  resolvedAt DateTime?
+  completedAt DateTime?
+  nextWakeAt DateTime?
+  revision Int @default(1)
+  redactedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  membership CampaignMembership @relation(fields: [membershipId, revisionId, ownerId, environment], references: [id, revisionId, ownerId, environment], onDelete: NoAction)
+  step CampaignStep @relation(fields: [stepId, revisionId, ownerId, environment], references: [id, revisionId, ownerId, environment], onDelete: NoAction)
+  authorizationAction FunnelActionExecution? @relation(fields: [authorizationActionExecutionId, membershipId, ownerId, environment], references: [id, membershipId, ownerId, environment], onDelete: NoAction)
+  previousExecution CampaignStepExecution? @relation("CampaignStepContinuation", fields: [previousExecutionId, membershipId, revisionId, ownerId, environment], references: [id, membershipId, revisionId, ownerId, environment], onDelete: NoAction, onUpdate: NoAction)
+  nextExecution CampaignStepExecution? @relation("CampaignStepContinuation")
+  waitSource TrackingSource? @relation(fields: [waitSourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  receipt FunnelEvaluationReceipt? @relation(fields: [receiptId, eventId, matchRevision, ownerId, environment], references: [id, eventId, matchRevision, ownerId, environment], onDelete: NoAction)
+  send MessageSend? @relation(fields: [sendId, membershipId, revisionId, stepId, iteration, ownerId, environment], references: [id, membershipId, revisionId, stepId, iteration, ownerId, environment], onDelete: NoAction)
+  @@unique([id, ownerId, environment])
+  @@unique([membershipId, stepId, iteration])
+  @@unique([ownerId, environment, authorizationRequestKey])
+  @@unique([previousExecutionId, membershipId, revisionId, ownerId, environment], map: "CampaignStepExecution_previous_binding_key")
+  @@unique([authorizationActionExecutionId, membershipId, ownerId, environment], map: "CampaignStepExecution_authorization_binding_key")
+  @@unique([sendId, membershipId, revisionId, stepId, iteration, ownerId, environment], map: "CampaignStepExecution_send_binding_key")
+  @@unique([id, membershipId, revisionId, ownerId, environment], map: "CampaignStepExecution_continuation_key")
+  @@index([status, nextWakeAt])
+  @@index([membershipId, status])
+  @@index([waitSourceId, status, waitDeadlineAt])
 }

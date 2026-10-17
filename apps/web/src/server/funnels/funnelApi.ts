@@ -21,13 +21,15 @@ export function createFunnelApi(auth: CustomerAuth, service: FunnelService) {
         if (request.method === "GET") return privateJson(await service.get(principal, funnel[1]));
         if (request.method === "PATCH") return privateJson(await service.updateDraft(principal, funnel[1], await definitionBody(request)));
       }
-      const action = path.match(new RegExp(`^/api/funnels/${ID}/(publish|status|journeys|move|simulate)$`));
+      const action = path.match(new RegExp(`^/api/funnels/${ID}/(publish|status|controls|journeys|move|simulate)$`));
       if (action) {
         const [, id, operation] = action;
         if (operation === "publish" && request.method === "POST")
           return privateJson(await service.publish(principal, id, await definitionBody(request)));
         if (operation === "status" && request.method === "PATCH")
           return privateJson(await service.setStatus(principal, id, await definitionBody(request)));
+        if (operation === "controls" && request.method === "PATCH")
+          return privateJson(await service.controls(principal, id, await definitionBody(request)));
         if (operation === "journeys" && request.method === "GET")
           return privateJson(await service.journeys(principal, id, url.searchParams.get("cursor") ?? undefined));
         if (operation === "move" && request.method === "POST")
@@ -37,6 +39,8 @@ export function createFunnelApi(auth: CustomerAuth, service: FunnelService) {
       }
       const history = path.match(new RegExp(`^/api/funnels/${ID}/journeys/${ID}/history$`));
       if (history && request.method === "GET") return privateJson(await service.history(principal, history[1], history[2]));
+      const cancel = path.match(new RegExp(`^/api/funnels/${ID}/journeys/${ID}/cancel$`));
+      if (cancel && request.method === "POST") return privateJson(await service.cancelJourney(principal, cancel[1], cancel[2], await definitionBody(request)));
       return privateJson({ code: "NOT_FOUND", message: "Funnel endpoint not found." }, 404);
     } catch (error) { return securityResponse(error); }
   };

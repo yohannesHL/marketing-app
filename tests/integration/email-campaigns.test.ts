@@ -232,17 +232,19 @@ test("stopping an uncertain send keeps its scope occupied and contact deletion e
   } finally { await f.close(); }
 });
 
-test("unsupported timed sequences can be drafted but cannot publish or execute", async () => {
+test("timed sequences publish but manual sending cannot bypass explicit cadence start or its wait", async () => {
   const f = await createEmailFixture();
   try {
     const setup = await f.readyConnection(), definition = f.definition(setup.sender.id);
     definition.steps[0].wait = { kind: "DURATION", seconds: 60 };
-    const campaign = await f.campaigns.create(f.principal, { name: "Later sequence", environment: "TEST", definition });
-    await assert.rejects(f.campaigns.publish(f.principal, campaign.id, { draftRevision: 1 }), { code: "CAMPAIGN_TIMING_UNAVAILABLE" });
-    definition.steps[0].wait = { kind: "IMMEDIATE" }; definition.steps.push({ ...definition.steps[0], id: "second" });
-    await f.campaigns.updateDraft(f.principal, campaign.id, { draftRevision: 1, definition });
-    await assert.rejects(f.campaigns.publish(f.principal, campaign.id, { draftRevision: 2 }), { code: "CAMPAIGN_TIMING_UNAVAILABLE" });
-    assert.equal(await f.db.campaignRevision.count(), 0);
-    await assert.rejects(f.campaigns.controls(f.principal, campaign.id, { enrolmentEnabled: true }), { code: "CAMPAIGN_UNPUBLISHED" });
+    definition.steps.push({ ...definition.steps[0], id: "second", wait: { kind: "IMMEDIATE" } });
+    const published = await f.publishedCampaign({ setup, definition }), item = await f.enrolled({ published, journey: false });
+    await assert.rejects(f.delivery.createIntent(f.principal, { membershipId: item.membership.id }), { code: "EMAIL_STEP_UNAVAILABLE" });
+    assert.equal((await f.campaigns.membership(f.principal, item.membership.id)).cadenceStarted, false);
+    await f.campaigns.start(f.principal, item.membership.id, { requestKey: randomUUID(), reason: "Start the reviewed sequence" });
+    await assert.rejects(f.delivery.createIntent(f.principal, { membershipId: item.membership.id }), { code: "STEP_WAITING" });
+    assert.equal((await f.campaigns.membership(f.principal, item.membership.id)).steps[0].dueAt!.toISOString(), "2026-10-19T10:01:00.000Z");
+    await assert.rejects(f.campaigns.updateDraft(f.principal, item.campaign.id, { draftRevision: 1,
+      definition: { ...definition, steps: [...definition.steps, { ...definition.steps[0] }] } }), { code: "INVALID_EMAIL_DEFINITION" });
   } finally { await f.close(); }
 });

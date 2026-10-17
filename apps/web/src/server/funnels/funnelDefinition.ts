@@ -20,8 +20,11 @@ export type FunnelRoute = {
   fallback: { kind: "WAIT" } | { kind: "MOVE"; to: string };
 };
 export type FunnelCampaignLink = { id: string; stageId: string; campaignId: string; purpose: "ATTRIBUTION" };
+export type FunnelStageAction = { id: string; stageId: string; campaignId: string } & (
+  | { kind: "EMAIL_ENROLL"; revisionId: string; delaySeconds: number; expiresAfterDueSeconds: number; stopOnStageExit: boolean; stopOnGoal: boolean }
+  | { kind: "EMAIL_STOP" });
 export type FunnelDefinition = { schemaVersion: 1; stages: FunnelStage[]; entryStages: string[]; routes: FunnelRoute[];
-  campaignLinks?: FunnelCampaignLink[]; stageActions?: never[] };
+  campaignLinks?: FunnelCampaignLink[]; stageActions?: FunnelStageAction[] };
 export type EvaluationInput = {
   currentStage: string | null;
   event: { sourceId: string; type: string; properties: Record<string, Scalar>; occurredAt: string };
@@ -155,6 +158,10 @@ function parseCondition(value: unknown, path: string, depth: number, budget: { n
   return { field: parsedField, type, op, value: condition.value as Scalar };
 }
 
+export function validateCondition(value: unknown): Condition {
+  return parseCondition(jsonClone(value), "condition", 1, { nodes: 0 });
+}
+
 export function validateDefinition(value: unknown): FunnelDefinition {
   const body = object(jsonClone(value), "definition");
   keys(body, ["schemaVersion", "stages", "entryStages", "routes", "campaignLinks", "stageActions"], "definition");
@@ -227,11 +234,32 @@ export function validateDefinition(value: unknown): FunnelDefinition {
     return { id: text(link.id, `${path}.id`), stageId, campaignId: text(link.campaignId, `${path}.campaignId`), purpose: "ATTRIBUTION" };
   });
   if (campaignLinks) unique(campaignLinks.map(link => link.id), "campaignLinks");
-  if (body.stageActions !== undefined && list(body.stageActions, "stageActions", 512).length)
-    invalid("stageActions", "automatic stage actions require the durable automation runner; a campaign link alone never sends");
+  const stageActions = body.stageActions === undefined ? undefined : list(body.stageActions, "stageActions", 512).map((item, index): FunnelStageAction => {
+    const path = `stageActions[${index}]`, action = object(item, path);
+    if (action.kind !== "EMAIL_ENROLL" && action.kind !== "EMAIL_STOP") invalid(`${path}.kind`, "choose an implemented email enrolment or stop action");
+    keys(action, action.kind === "EMAIL_STOP" ? ["id", "stageId", "kind", "campaignId"] :
+      ["id", "stageId", "kind", "campaignId", "revisionId", "delaySeconds", "expiresAfterDueSeconds", "stopOnStageExit", "stopOnGoal"], path);
+    const base = { id: text(action.id, `${path}.id`), stageId: text(action.stageId, `${path}.stageId`), campaignId: text(action.campaignId, `${path}.campaignId`) };
+    if (!ids.has(base.stageId)) invalid(`${path}.stageId`, "references a missing stage");
+    if (action.kind === "EMAIL_STOP") return { ...base, kind: "EMAIL_STOP" };
+    const seconds = (value: unknown, name: string, fallback: number, min: number) => {
+      const result = value ?? fallback;
+      if (!Number.isSafeInteger(result) || Number(result) < min || Number(result) > 31_536_000) invalid(`${path}.${name}`, `must be an integer from ${min} to 31536000`);
+      return Number(result);
+    };
+    for (const key of ["stopOnStageExit", "stopOnGoal"]) if (action[key] !== undefined && typeof action[key] !== "boolean") invalid(`${path}.${key}`, "must be a boolean");
+    return { ...base, kind: "EMAIL_ENROLL", revisionId: text(action.revisionId, `${path}.revisionId`),
+      delaySeconds: seconds(action.delaySeconds, "delaySeconds", 0, 0), expiresAfterDueSeconds: seconds(action.expiresAfterDueSeconds, "expiresAfterDueSeconds", 604_800, 1),
+      stopOnStageExit: action.stopOnStageExit === undefined ? true : action.stopOnStageExit as boolean,
+      stopOnGoal: action.stopOnGoal === undefined ? true : action.stopOnGoal as boolean };
+  });
+  if (stageActions) {
+    unique(stageActions.map(action => action.id), "stageActions");
+    unique(stageActions.map(action => JSON.stringify([action.stageId, action.campaignId])), "stageActions campaign per stage");
+  }
   // Preserve absent fields so existing published definition digests remain stable.
   return { schemaVersion: 1, stages, entryStages, routes, ...(campaignLinks === undefined ? {} : { campaignLinks }),
-    ...(body.stageActions === undefined ? {} : { stageActions: [] }) };
+    ...(stageActions === undefined ? {} : { stageActions }) };
 }
 
 type Truth = "TRUE" | "FALSE" | "UNKNOWN";
@@ -257,7 +285,7 @@ function compare(left: Scalar, right: Scalar, type: ValueType): number {
   if (left === right) return 0;
   return (left as number) < (right as number) ? -1 : 1;
 }
-function evaluateCondition(condition: Condition, input: EvaluationInput): ConditionResult {
+export function evaluateCondition(condition: Condition, input: EvaluationInput): ConditionResult {
   if ("all" in condition || "any" in condition) {
     const kind = "all" in condition ? "all" : "any";
     const children = ("all" in condition ? condition.all : condition.any).map(child => evaluateCondition(child, input));

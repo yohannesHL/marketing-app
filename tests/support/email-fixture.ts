@@ -31,6 +31,8 @@ export async function createEmailFixture() {
   const migration = createClient({ url });
   try { await applyConnectionMigrations(migration); } finally { migration.close(); }
   const db = new PrismaClient({ adapter: new LocalSqliteAdapter({ url }) });
+  const peers: PrismaClient[] = [];
+  const createPeerDb = () => { const peer = new PrismaClient({ adapter: new LocalSqliteAdapter({ url }) }); peers.push(peer); return peer; };
   let clock = new Date("2026-10-19T10:00:00.000Z");
   const now = () => new Date(clock), setNow = (value: Date) => { assert.ok(Number.isFinite(value.getTime())); clock = new Date(value); };
   const auth = new CustomerAuth(db, { origin: EMAIL_FIXTURE_ORIGIN }, now);
@@ -159,8 +161,8 @@ export async function createEmailFixture() {
     const signature = createHmac("sha256", Buffer.from((options.secret ?? EMAIL_FIXTURE_SECRET).slice(6), "base64")).update(`${deliveryId}.${time}.${raw}`).digest("base64");
     return { rawBody: Buffer.from(raw), headers: new Headers({ "svix-id": deliveryId, "svix-timestamp": time, "svix-signature": `v1,${signature}` }), deliveryId };
   }
-  return { db, auth, vault, principal, cookie, providerFor, connections, campaigns, delivery, tracking, funnels, now, setNow,
+  return { db, databaseUrl: url, createPeerDb, auth, vault, principal, cookie, providerFor, connections, campaigns, delivery, tracking, funnels, now, setNow,
     transport, requests, knownEmails, owner, readyConnection, recipient, definition, publishedCampaign, consent, manualJourney, enrolled, signWebhook,
-    close: async () => { await db.$disconnect(); await rm(dir, { recursive: true, force: true }); } };
+    close: async () => { await Promise.all(peers.map(peer => peer.$disconnect())); await db.$disconnect(); await rm(dir, { recursive: true, force: true }); } };
 }
 export type EmailFixture = Awaited<ReturnType<typeof createEmailFixture>>;

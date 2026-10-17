@@ -22,7 +22,7 @@ export function emailServices() {
   const auth = customerAuth(), vault = CredentialVault.fromEnvironment(), providerFor = emailProviderFactory();
   const origin = process.env.APP_ORIGIN!;
   const liveEnabled = process.env.EMAIL_LIVE_DELIVERY_ENABLED === "true";
-  return { auth, connections: new EmailConnectionService(prisma, auth, vault, providerFor, origin),
+  return { auth, connections: new EmailConnectionService(prisma, auth, vault, providerFor, origin, () => new Date(), { liveEnabled }),
     campaigns: new MarketingCampaignService(prisma, auth, () => new Date(), liveEnabled),
     delivery: new EmailDeliveryService(prisma, auth, vault, providerFor, { liveEnabled, unsubscribeBaseUrl: `${origin}/unsubscribe` }) };
 }
