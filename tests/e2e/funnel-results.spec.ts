@@ -129,7 +129,9 @@ test("results preserve version and UTC cohort while separating enquiry cycles, g
   for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width: 320, height: 740 }); await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption(theme);
     await noOverflow(page); const refresh = board.getByRole("button", { name: "Refresh board", exact: true });
-    await refresh.focus(); await expect(refresh).toBeFocused(); expect((await refresh.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await refresh.focus(); await expect(refresh).toBeFocused();
+    // Wait for the button's press transition to settle before measuring its target.
+    await expect.poll(async () => (await refresh.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: info.outputPath(`results-board-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
   const historyLink = board.getByRole("link", { name: "Inspect journey 2", exact: true });

@@ -51,6 +51,7 @@ async function selectStage(page: Page, name: string) {
   await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue(name);
 }
 async function addRule(page: Page, sourceId: string, to: string, entry = false) {
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Tracking", exact: true }).click();
   await page.getByRole("button", { name: "Add event rule", exact: true }).click();
   const form = page.getByRole("group", { name: "New event rule", exact: true });
   await form.getByRole("combobox", { name: "Rule starts", exact: true }).selectOption(entry ? "ENTRY" : "STAGE");
@@ -177,6 +178,9 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await page.getByRole("navigation", { name: "Stage list", exact: true }).getByRole("button", { name: /^2\. Discovery call/ }).click();
   await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue("Inquiry received");
   await expect(firstBranch.getByLabel("Compare with", { exact: true })).toHaveValue("unfinished");
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Campaigns", exact: true }).click();
+  await expect(page.getByText("Complete or remove the invalid field before changing sections. Your unfinished value is preserved.", { exact: true })).toBeVisible();
+  await expect(firstBranch.getByLabel("Compare with", { exact: true })).toHaveValue("unfinished");
   await firstBranch.getByLabel("Compare with", { exact: true }).fill("70");
   await firstBranch.getByRole("button", { name: "Group with more conditions", exact: true }).click();
   await firstBranch.getByRole("combobox", { name: "Match", exact: true }).selectOption("any");
@@ -189,6 +193,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await route.getByRole("group", { name: "Branch 2", exact: true }).getByRole("combobox", { name: "Go to stage", exact: true }).selectOption({ label: "Discovery call" });
   await route.getByRole("button", { name: "Move branch 2 of rule 2 earlier", exact: true }).click();
   await route.getByRole("button", { name: "Move branch 1 of rule 2 later", exact: true }).click();
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Campaigns", exact: true }).click();
   await page.getByRole("combobox", { name: "Connect another campaign", exact: true }).selectOption(customer.campaignId);
   await page.getByRole("button", { name: "Connect for attribution", exact: true }).click();
   await expect(page.getByText("Tracking only. No entry actions are configured.", { exact: true })).toBeVisible();
@@ -206,6 +211,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   // Both tabs write through the production HTTP endpoint with real optimistic revision checks.
   const secondTab = await context.newPage();
   await secondTab.goto(`/funnels/${funnelId}`);
+  await secondTab.getByText("Funnel details", { exact: true }).click();
   await secondTab.getByLabel("Funnel name", { exact: true }).fill("Server-reviewed consultation funnel");
   await secondTab.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(secondTab.getByText(/Draft revision 3 saved\. Published journeys are unchanged\./)).toBeVisible();
@@ -263,9 +269,15 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await page.getByRole("navigation", { name: "Funnel views", exact: true }).getByRole("button", { name: "Build", exact: true }).click();
   await expect(page.getByTestId("funnel-canvas")).toBeVisible();
   await page.screenshot({ path: info.outputPath("funnel-desktop.png"), fullPage: true, animations: "disabled" });
-  await page.getByRole("button", { name: "Hide canvas", exact: true }).click();
   await selectStage(page, "Proposal approved");
   await page.setViewportSize({ width: 320, height: 740 });
+  await expect.poll(() => page.getByTestId("funnel-canvas").evaluate(canvas => {
+    const viewport = canvas.getBoundingClientRect();
+    return [...canvas.querySelectorAll(".react-flow__node")].every(node => {
+      const bounds = node.getBoundingClientRect();
+      return bounds.width > 0 && bounds.left >= viewport.left && bounds.right <= viewport.right && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom;
+    });
+  }), { message: "Resize should fit every stage inside the mobile canvas" }).toBe(true);
   for (const theme of ["light", "dark"]) {
     await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption(theme);
     await noHorizontalOverflow(page);
@@ -274,6 +286,17 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
     expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: info.outputPath(`funnel-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
+  for (const summary of ["Workspace menu", "Funnel details"]) {
+    await page.getByText(summary, { exact: true }).click();
+    await noHorizontalOverflow(page);
+    await page.getByText(summary, { exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Hide canvas", exact: true }).click();
+  await expect(page.getByTestId("funnel-canvas")).toHaveCount(0);
+  await selectStage(page, "Inquiry received");
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Tracking", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Routing rules", exact: true })).toBeVisible();
+  await noHorizontalOverflow(page);
 });
 
 test("two enquiries retain separate pinned histories and manual correction affects only the selected journey", async ({ page }, info) => {
@@ -344,5 +367,50 @@ test("two enquiries retain separate pinned histories and manual correction affec
   await expect(page.getByRole("alert").filter({ hasText: /journey|cycle|changed/i })).toBeVisible();
   const after = (await (await page.request.get(`/api/funnels/${customer.funnelId}/journeys`)).json()).journeys;
   expect(after.find((journey: { id: string }) => journey.id === secondCycle.id)).toEqual(secondCycle);
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("canvas connections require evidence and layout controls leave the saved rules unchanged", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  const definition: FunnelDefinition = { schemaVersion: 1, stages: [
+    { id: "inquiry", name: "New inquiry", goal: false, terminal: "NONE" },
+    { id: "booked", name: "Call booked", goal: true, terminal: "NONE" },
+  ], entryStages: ["inquiry"], routes: [] };
+  const response = await page.request.post("/api/funnels", { headers: { Origin: new URL(page.url()).origin }, data: { name: "Canvas connection review", environment: "TEST", subjectKind: "SALES", definition } });
+  expect(response.status()).toBe(201);
+  const created = await response.json();
+  await page.goto(`/funnels/${created.id}`);
+  const canvas = page.getByTestId("funnel-canvas");
+  await expect(canvas.locator('.react-flow__node[data-id="inquiry"]')).toBeVisible();
+  const connect = async () => {
+    await canvas.locator('.react-flow__node[data-id="inquiry"] .react-flow__handle.source').click();
+    await canvas.locator('.react-flow__node[data-id="booked"] .react-flow__handle.target').click();
+  };
+  await connect();
+  const connection = page.getByRole("region", { name: "Connect stages", exact: true });
+  await expect(connection).toBeVisible();
+  await expect(connection.getByRole("button", { name: "Add connection rule", exact: true })).toBeDisabled();
+  expect((await readFunnel(page, created.id)).draft.routes).toEqual([]);
+  await connection.getByRole("button", { name: "Cancel connection", exact: true }).click();
+  await expect(connection).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  await connect();
+  await connection.getByRole("combobox", { name: "Connection source", exact: true }).selectOption(customer.sourceId);
+  await connection.getByRole("combobox", { name: "Connection event", exact: true }).selectOption("enquiry.accepted");
+  await connection.getByRole("button", { name: "Add connection rule", exact: true }).click();
+  const saveResponse = page.waitForResponse(response => response.request().method() === "PATCH" && new URL(response.url()).pathname === `/api/funnels/${created.id}`);
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  expect((await saveResponse).status()).toBe(200);
+  await expect(page.getByRole("status").filter({ hasText: "Draft revision 2 saved" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  const saved = await readFunnel(page, created.id);
+  expect(saved.draft.routes).toHaveLength(1);
+  expect(saved.draft.routes[0]).toMatchObject({ from: "inquiry", trigger: { kind: "EVENT", sourceId: customer.sourceId, type: "enquiry.accepted" }, fallback: { kind: "MOVE", to: "booked" } });
+  await page.getByRole("button", { name: "Arrange stages", exact: true }).click();
+  await page.getByRole("button", { name: "Zoom in on funnel", exact: true }).click();
+  await page.getByRole("button", { name: "Fit all funnel stages", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  expect(await readFunnel(page, created.id)).toEqual(saved);
+  expect(saved.draft.stageActions ?? []).toEqual([]);
   expect(await providerStats(page)).toEqual(before);
 });
