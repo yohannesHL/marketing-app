@@ -6,6 +6,7 @@ import { fail } from "../security/errors";
 import { verifyProviderReceipt, reconcileProviderResource } from "./providerTracking";
 import type { AdapterSource, NormalizedTrackingEvent, ReconcileResource, SourceCredentials, TrackingMode, TrackingSourceConfig } from "./trackingTypes";
 import { enqueueFunnelEvaluation, eraseFunnelSubjects } from "./funnelLifecycle";
+import { eraseEmailContact } from "../email/emailPolicy";
 import { email, emailKey, equalSecret, fields, json, object, properties, sha256, strings, text, timestamp } from "./trackingValidation";
 
 type Tx = Prisma.TransactionClient;
@@ -69,7 +70,8 @@ export class TrackingService {
   private dto(source: TrackingSource) {
     return { id: source.id, name: source.name, provider: source.provider, environment: source.environment,
       externalAccountId: source.externalAccountId, status: source.status, generation: source.generation,
-      config: source.config, credentialsSaved: !!source.credentialCiphertext, createdAt: source.createdAt };
+      config: source.config, credentialsSaved: source.provider === "RESEND" ? undefined : !!source.credentialCiphertext,
+      ...(source.provider === "RESEND" ? { credentialsManagedBy: "EMAIL_CONNECTION" } : {}), createdAt: source.createdAt };
   }
   async createSource(principal: CustomerPrincipal, value: unknown) {
     await this.auth.assertSession(principal);
@@ -104,6 +106,7 @@ export class TrackingService {
     const ingressToken = input.rotateIngress ? randomBytes(32).toString("base64url") : undefined;
     const source = await this.db.$transaction(async tx => {
       await this.session(tx, principal); const source = await this.owned(tx, principal, id);
+      if (source.provider === "RESEND") fail("MANAGED_EMAIL_SOURCE", 409, "Manage this source through its email connection.");
       const credentials = input.credentials === undefined ? undefined : this.credentialsInput(input.credentials);
       if (credentials && source.provider !== "NATIVE" && (!credentials.signingSecret || credentials.signingSecret.length < 16))
         fail("INVALID_TRACKING_INPUT", 400, "Supply the complete replacement signing credentials.");
@@ -237,6 +240,7 @@ export class TrackingService {
   async collectHook(ingressToken: string, headers: Headers, raw: string) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(ingressToken)) fail("TRACKING_SOURCE_UNAVAILABLE", 404, "Webhook source not found.");
     const source = await this.db.trackingSource.findUnique({ where: { ingressTokenHash: sha256(ingressToken) } }); this.usable(source);
+    if (!["CALENDLY", "SHOPIFY"].includes(source.provider)) fail("TRACKING_SOURCE_UNAVAILABLE", 404, "Webhook source not found.");
     await this.rate(source);
     const receipt = verifyProviderReceipt(this.adapterSource(source), this.credentials(source), headers, raw, this.now());
     return this.accept(source, receipt.events, receipt.rawPayloadDigest, "LIVE");
@@ -395,6 +399,7 @@ export class TrackingService {
     const subjectId = text(input.subjectId), reason = text(input.reason, 500);
     await this.db.$transaction(async tx => {
       await this.session(tx, principal); const source = await this.owned(tx, principal, sourceId);
+      if (source.provider === "RESEND") fail("MANAGED_EMAIL_SOURCE", 409, "Email evidence must match its persisted message send.");
       const event = await tx.trackingEvent.findFirst({ where: { id: eventId, sourceId, ownerId: principal.userId, status: "UNMATCHED" } });
       const subject = await tx.funnelSubject.findFirst({ where: { id: subjectId, ownerId: principal.userId, environment: source.environment } });
       if (!event || !subject) fail("NOT_FOUND", 404, "Unmatched event or compatible subject not found.");
@@ -410,6 +415,7 @@ export class TrackingService {
     await this.auth.assertSession(principal);
     await this.db.$transaction(async tx => {
       await this.session(tx, principal); const source = await this.owned(tx, principal, sourceId); this.usable(source);
+      if (source.provider === "RESEND") fail("MANAGED_EMAIL_SOURCE", 409, "Reconcile email history through its persisted send.");
       const event = await tx.trackingEvent.findFirst({ where: { id: eventId, sourceId, ownerId: principal.userId } });
       if (!event || ["REDACTED", "QUARANTINED"].includes(event.status)) fail("REPLAY_UNAVAILABLE", 409, "Redacted or quarantined evidence cannot be replayed. Reconcile the source instead.");
       await tx.trackingEvent.update({ where: { id: eventId }, data: { status: "QUEUED", processingMode: "REPLAY" } });
@@ -419,6 +425,7 @@ export class TrackingService {
   }
   async reconcile(principal: CustomerPrincipal, sourceId: string, value: unknown, fetcher?: typeof fetch) {
     await this.auth.assertSession(principal); const source = await this.owned(this.db, principal, sourceId); this.usable(source);
+    if (source.provider === "RESEND") fail("MANAGED_EMAIL_SOURCE", 409, "Reconcile a persisted email send through its original connection.");
     const input = object(value); fields(input, ["kind", "id"]);
     const kind = text(input.kind), id = text(input.id, 500);
     if (!["BOOKING", "ORDER", "REFUND"].includes(kind)) fail("INVALID_TRACKING_INPUT", 400, "Choose an explicit booking, order or refund.");
@@ -460,6 +467,7 @@ export class TrackingService {
       await this.session(tx, principal);
       const contact = await tx.funnelContact.findFirst({ where: { id: contactId, ownerId: principal.userId } });
       if (!contact) fail("NOT_FOUND", 404, "Contact not found.");
+      await eraseEmailContact(tx, contactId, this.now());
       const identities = await tx.funnelIdentity.findMany({ where: { contactId } });
       for (const identity of identities) await tx.trackingDeletion.upsert({ where: { ownerId_sourceId_namespace_externalIdDigest: {
         ownerId: contact.ownerId, sourceId: identity.sourceId, namespace: `CONTACT:${identity.namespace}`, externalIdDigest: sha256(identity.externalId) } },

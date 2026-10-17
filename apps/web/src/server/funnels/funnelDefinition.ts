@@ -19,7 +19,9 @@ export type FunnelRoute = {
   branches: { id: string; to: string; when?: Condition }[];
   fallback: { kind: "WAIT" } | { kind: "MOVE"; to: string };
 };
-export type FunnelDefinition = { schemaVersion: 1; stages: FunnelStage[]; entryStages: string[]; routes: FunnelRoute[] };
+export type FunnelCampaignLink = { id: string; stageId: string; campaignId: string; purpose: "ATTRIBUTION" };
+export type FunnelDefinition = { schemaVersion: 1; stages: FunnelStage[]; entryStages: string[]; routes: FunnelRoute[];
+  campaignLinks?: FunnelCampaignLink[]; stageActions?: never[] };
 export type EvaluationInput = {
   currentStage: string | null;
   event: { sourceId: string; type: string; properties: Record<string, Scalar>; occurredAt: string };
@@ -155,7 +157,7 @@ function parseCondition(value: unknown, path: string, depth: number, budget: { n
 
 export function validateDefinition(value: unknown): FunnelDefinition {
   const body = object(jsonClone(value), "definition");
-  keys(body, ["schemaVersion", "stages", "entryStages", "routes"], "definition");
+  keys(body, ["schemaVersion", "stages", "entryStages", "routes", "campaignLinks", "stageActions"], "definition");
   if (body.schemaVersion !== 1) invalid("schemaVersion", "must be 1");
   const stages = list(body.stages, "stages", 256).map((item, index): FunnelStage => {
     const path = `stages[${index}]`, stage = object(item, path);
@@ -216,7 +218,20 @@ export function validateDefinition(value: unknown): FunnelDefinition {
     visiting.delete(id); visited.add(id);
   }
   for (const stage of stages) visit(stage.id);
-  return { schemaVersion: 1, stages, entryStages, routes };
+  const campaignLinks = body.campaignLinks === undefined ? undefined : list(body.campaignLinks, "campaignLinks", 512).map((item, index): FunnelCampaignLink => {
+    const path = `campaignLinks[${index}]`, link = object(item, path);
+    keys(link, ["id", "stageId", "campaignId", "purpose"], path);
+    if (link.purpose !== "ATTRIBUTION") invalid(`${path}.purpose`, "campaign associations support attribution; actions require separate enablement");
+    const stageId = text(link.stageId, `${path}.stageId`);
+    if (!ids.has(stageId)) invalid(`${path}.stageId`, "references a missing stage");
+    return { id: text(link.id, `${path}.id`), stageId, campaignId: text(link.campaignId, `${path}.campaignId`), purpose: "ATTRIBUTION" };
+  });
+  if (campaignLinks) unique(campaignLinks.map(link => link.id), "campaignLinks");
+  if (body.stageActions !== undefined && list(body.stageActions, "stageActions", 512).length)
+    invalid("stageActions", "automatic stage actions require the durable automation runner; a campaign link alone never sends");
+  // Preserve absent fields so existing published definition digests remain stable.
+  return { schemaVersion: 1, stages, entryStages, routes, ...(campaignLinks === undefined ? {} : { campaignLinks }),
+    ...(body.stageActions === undefined ? {} : { stageActions: [] }) };
 }
 
 type Truth = "TRUE" | "FALSE" | "UNKNOWN";

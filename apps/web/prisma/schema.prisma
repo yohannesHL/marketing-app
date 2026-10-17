@@ -85,6 +85,22 @@ model User {
   funnelEvaluationReceipts FunnelEvaluationReceipt[]
   funnelEvidenceEffects FunnelEvidenceEffect[]
   funnelActionOutbox  FunnelActionOutbox[]
+  emailConnectionRecords EmailConnection[]
+  emailSenderRecords EmailSender[]
+  marketingCampaignRecords MarketingCampaign[]
+  campaignRevisionRecords CampaignRevision[]
+  campaignStepRecords CampaignStep[]
+  stageCampaignLinkRecords StageCampaignLink[]
+  campaignMembershipRecords CampaignMembership[]
+  campaignMembershipReasonRecords CampaignMembershipReason[]
+  emailSubscriptionRecords EmailSubscription[]
+  emailSuppressionRecords EmailSuppression[]
+  emailPolicyAuditRecords EmailPolicyAudit[]
+  messageSendRecords MessageSend[]
+  messageSendAttributionRecords MessageSendAttribution[]
+  deliveryAttemptRecords DeliveryAttempt[]
+  emailDeliveryReceiptRecords EmailDeliveryReceipt[]
+  emailUnsubscribeTokenRecords EmailUnsubscribeToken[]
 }
 
 model Asset {
@@ -794,6 +810,9 @@ model TrackingSource {
   @@unique([id, ownerId, environment])
   @@unique([ownerId, environment, provider, externalAccountId])
   @@index([ownerId, environment, status])
+  emailConnection EmailConnection?
+  emailPolicyAudits EmailPolicyAudit[]
+  @@unique([id, provider, ownerId, environment])
 }
 
 model FunnelContact {
@@ -811,6 +830,8 @@ model FunnelContact {
 
   @@unique([id, ownerId, environment])
   @@index([ownerId, environment, email])
+  campaignMemberships CampaignMembership[]
+  messageSends MessageSend[]
 }
 
 model FunnelIdentity {
@@ -850,6 +871,7 @@ model FunnelSubject {
 
   @@unique([id, ownerId, environment])
   @@index([ownerId, environment, kind, contactId])
+  campaignMemberships CampaignMembership[]
 }
 
 model FunnelSubjectReference {
@@ -1056,6 +1078,7 @@ model FunnelVersion {
   @@unique([id, ownerId, environment])
   @@unique([id, funnelId, ownerId, environment])
   @@unique([funnelId, number])
+  campaignLinks StageCampaignLink[]
 }
 
 model FunnelStage {
@@ -1075,6 +1098,7 @@ model FunnelStage {
 
   @@unique([versionId, key])
   @@unique([key, versionId, ownerId, environment])
+  campaignLinks StageCampaignLink[]
 }
 
 model FunnelJourney {
@@ -1106,6 +1130,7 @@ model FunnelJourney {
   @@unique([funnelId, subjectId, cycle])
   @@index([ownerId, environment, subjectId, status])
   @@index([funnelId, status])
+  campaignMembershipReasons CampaignMembershipReason[]
 }
 
 model FunnelStageTransition {
@@ -1145,6 +1170,8 @@ model FunnelStageTransition {
   @@unique([ownerId, commandKey])
   @@index([ownerId, environment, recordedAt])
   @@index([eventId])
+  campaignMembershipReasons CampaignMembershipReason[]
+  @@unique([id, journeyId, versionId, toStageKey, ownerId, environment], map: "FunnelStageTransition_campaign_reason_binding_key")
 }
 
 model FunnelPropertySnapshot {
@@ -1232,4 +1259,430 @@ model FunnelActionOutbox {
 
   @@unique([transitionId, kind, actionKey])
   @@index([ownerId, environment, status, createdAt])
+}
+
+model EmailConnection {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  sourceId String @unique
+  provider String @default("RESEND")
+  @@unique([sourceId, provider, ownerId, environment])
+  credentialCiphertext String
+  credentialVersion Int @default(1)
+  providerWebhookId String?
+  expectedWebhookUrlDigest String?
+  capabilities Json
+  readiness Json
+  verifiedAt DateTime?
+  updatedAt DateTime @updatedAt
+  source TrackingSource @relation(fields: [sourceId, provider, ownerId, environment], references: [id, provider, ownerId, environment], onDelete: NoAction)
+  senders EmailSender[]
+  sends MessageSend[]
+  receipts EmailDeliveryReceipt[]
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailSender {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  connectionId String
+  address String
+  name String?
+  replyTo String?
+  domainId String?
+  status String @default("UNVERIFIED")
+  verifiedAt DateTime?
+  readiness Json
+  updatedAt DateTime @updatedAt
+  connection EmailConnection @relation(fields: [connectionId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  revisions CampaignRevision[]
+  sends MessageSend[]
+  @@unique([id, connectionId, ownerId, environment])
+  @@index([connectionId, status])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model MarketingCampaign {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  name String
+  category String @default("EMAIL")
+  membershipScope String @default("SUBJECT")
+  draft Json
+  draftRevision Int @default(1)
+  publishedRevisionId String?
+  enrolmentEnabled Boolean @default(false)
+  dispatchEnabled Boolean @default(false)
+  status String @default("DRAFT")
+  updatedAt DateTime @updatedAt
+  revisions CampaignRevision[] @relation("MarketingCampaignRevisions")
+  publishedRevision CampaignRevision? @relation("MarketingCampaignPublication", fields: [publishedRevisionId, id, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  stageLinks StageCampaignLink[]
+  memberships CampaignMembership[]
+  @@unique([id, membershipScope, ownerId, environment])
+  @@index([ownerId, environment, status])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model CampaignRevision {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  campaignId String
+  number Int
+  schemaVersion Int @default(1)
+  definition Json
+  digest String
+  senderId String
+  subscriptionCategory String
+  timeZone String @default("UTC")
+  sendWindow Json
+  publishedAt DateTime
+  campaign MarketingCampaign @relation("MarketingCampaignRevisions", fields: [campaignId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  publications MarketingCampaign[] @relation("MarketingCampaignPublication")
+  sender EmailSender @relation(fields: [senderId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  steps CampaignStep[]
+  memberships CampaignMembership[]
+  requestedReasons CampaignMembershipReason[]
+  sends MessageSend[]
+  @@unique([campaignId, number])
+  @@unique([id, campaignId, ownerId, environment])
+  @@unique([id, senderId, subscriptionCategory, ownerId, environment], map: "CampaignRevision_sender_category_binding_key")
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model CampaignStep {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  revisionId String
+  key String
+  position Int
+  subject String
+  html String?
+  text String?
+  wait Json @default("{\"kind\":\"IMMEDIATE\"}")
+  expiresAfterDueSeconds Int @default(604800)
+  revision CampaignRevision @relation(fields: [revisionId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  sends MessageSend[]
+  @@unique([revisionId, key])
+  @@unique([revisionId, position])
+  @@unique([id, revisionId, ownerId, environment])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model StageCampaignLink {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  versionId String
+  stageKey String
+  key String
+  campaignId String
+  purpose String @default("ATTRIBUTION")
+  version FunnelVersion @relation(fields: [versionId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  stage FunnelStage @relation(fields: [stageKey, versionId, ownerId, environment], references: [key, versionId, ownerId, environment], onDelete: NoAction)
+  campaign MarketingCampaign @relation(fields: [campaignId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  membershipReasons CampaignMembershipReason[]
+  @@unique([versionId, key])
+  @@unique([id, versionId, stageKey, campaignId, ownerId, environment], map: "StageCampaignLink_membership_binding_key")
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model CampaignMembership {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  campaignId String
+  revisionId String
+  scopeKind String
+  scopeKey String
+  subjectId String?
+  contactId String
+  addressDigest String
+  cycle Int @default(1)
+  status String @default("ACTIVE")
+  revision Int @default(1)
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  stoppedAt DateTime?
+  stopReason String?
+  campaign MarketingCampaign @relation(fields: [campaignId, scopeKind, ownerId, environment], references: [id, membershipScope, ownerId, environment], onDelete: NoAction)
+  campaignRevision CampaignRevision @relation(fields: [revisionId, campaignId, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  subject FunnelSubject? @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  contact FunnelContact @relation(fields: [contactId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  reasons CampaignMembershipReason[]
+  sends MessageSend[]
+  @@unique([campaignId, scopeKey, cycle])
+  @@unique([id, campaignId, ownerId, environment])
+  @@unique([id, revisionId, contactId, addressDigest, ownerId, environment], map: "CampaignMembership_recipient_binding_key")
+  @@index([ownerId, environment, contactId, status])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model CampaignMembershipReason {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  membershipId String
+  campaignId String
+  requestedRevisionId String
+  kind String
+  requestKey String
+  requestDigest String
+  journeyId String?
+  transitionId String?
+  versionId String?
+  stageKey String?
+  linkId String?
+  actorId String?
+  note String?
+  endedAt DateTime?
+  endReason String?
+  redactedAt DateTime?
+  membership CampaignMembership @relation(fields: [membershipId, campaignId, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  requestedRevision CampaignRevision @relation(fields: [requestedRevisionId, campaignId, ownerId, environment], references: [id, campaignId, ownerId, environment], onDelete: NoAction)
+  journey FunnelJourney? @relation(fields: [journeyId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  transition FunnelStageTransition? @relation(fields: [transitionId, journeyId, versionId, stageKey, ownerId, environment], references: [id, journeyId, versionId, toStageKey, ownerId, environment], onDelete: NoAction)
+  link StageCampaignLink? @relation(fields: [linkId, versionId, stageKey, campaignId, ownerId, environment], references: [id, versionId, stageKey, campaignId, ownerId, environment], onDelete: NoAction)
+  sendAttributions MessageSendAttribution[]
+  @@unique([ownerId, environment, requestKey])
+  @@unique([id, membershipId, ownerId, environment])
+  @@index([membershipId, endedAt])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailSubscription {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  addressDigest String
+  category String
+  state String @default("UNKNOWN")
+  revision Int @default(1)
+  changedAt DateTime
+  provenance Json
+  @@unique([ownerId, environment, addressDigest, category])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailSuppression {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  addressDigest String
+  category String
+  reason String
+  active Boolean @default(true)
+  revokedAt DateTime?
+  @@unique([ownerId, environment, addressDigest, category, reason])
+  @@index([ownerId, environment, addressDigest, active])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailPolicyAudit {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  addressDigest String
+  category String
+  action String
+  reason String
+  requestKey String
+  requestDigest String
+  actorId String?
+  sourceId String?
+  receiptId String?
+  provenance Json
+  redactedAt DateTime?
+  source TrackingSource? @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  receipt EmailDeliveryReceipt? @relation(fields: [receiptId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  @@unique([ownerId, environment, requestKey])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model MessageSend {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  membershipId String
+  revisionId String
+  stepId String
+  iteration Int @default(1)
+  connectionId String
+  senderId String
+  contactId String
+  recipientDigest String
+  subscriptionCategory String
+  payloadCiphertext String?
+  requestDigest String
+  idempotencyKey String
+  providerMessageId String?
+  providerMessageIdDigest String?
+  dueAt DateTime
+  expiresAt DateTime
+  status String @default("PENDING")
+  deliveryState String @default("UNKNOWN")
+  cancelRequestedAt DateTime?
+  acceptedAt DateTime?
+  firstSubmittedAt DateTime?
+  idempotencyExpiresAt DateTime?
+  nextAttemptAt DateTime?
+  leaseTokenHash String?
+  leaseUntil DateTime?
+  connectionGeneration Int
+  membershipRevision Int
+  revision Int @default(1)
+  redactedAt DateTime?
+  updatedAt DateTime @updatedAt
+  membership CampaignMembership @relation(fields: [membershipId, revisionId, contactId, recipientDigest, ownerId, environment], references: [id, revisionId, contactId, addressDigest, ownerId, environment], onDelete: NoAction)
+  campaignRevision CampaignRevision @relation(fields: [revisionId, senderId, subscriptionCategory, ownerId, environment], references: [id, senderId, subscriptionCategory, ownerId, environment], onDelete: NoAction)
+  step CampaignStep @relation(fields: [stepId, revisionId, ownerId, environment], references: [id, revisionId, ownerId, environment], onDelete: NoAction)
+  connection EmailConnection @relation(fields: [connectionId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  sender EmailSender @relation(fields: [senderId, connectionId, ownerId, environment], references: [id, connectionId, ownerId, environment], onDelete: NoAction)
+  contact FunnelContact @relation(fields: [contactId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  attributions MessageSendAttribution[]
+  attempts DeliveryAttempt[]
+  receipts EmailDeliveryReceipt[]
+  unsubscribeTokens EmailUnsubscribeToken[]
+  @@unique([membershipId, stepId, iteration])
+  @@unique([connectionId, idempotencyKey])
+  @@unique([connectionId, providerMessageId])
+  @@unique([connectionId, providerMessageIdDigest])
+  @@unique([id, connectionId, ownerId, environment])
+  @@unique([id, membershipId, ownerId, environment])
+  @@unique([id, recipientDigest, subscriptionCategory, ownerId, environment], map: "MessageSend_unsubscribe_binding_key")
+  @@index([ownerId, environment, status, dueAt])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model MessageSendAttribution {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  sendId String
+  membershipId String
+  reasonId String
+  send MessageSend @relation(fields: [sendId, membershipId, ownerId, environment], references: [id, membershipId, ownerId, environment], onDelete: NoAction)
+  reason CampaignMembershipReason @relation(fields: [reasonId, membershipId, ownerId, environment], references: [id, membershipId, ownerId, environment], onDelete: NoAction)
+  @@unique([sendId, reasonId])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model DeliveryAttempt {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  sendId String
+  number Int
+  connectionGeneration Int
+  credentialVersion Int
+  membershipRevision Int
+  sendRevision Int
+  leaseTokenHash String?
+  startedAt DateTime
+  completedAt DateTime?
+  outcome String @default("IN_FLIGHT")
+  providerMessageId String?
+  errorCode String?
+  send MessageSend @relation(fields: [sendId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  @@unique([sendId, number])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailDeliveryReceipt {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  connectionId String
+  connectionGeneration Int
+  providerDeliveryId String
+  type String
+  rawPayloadDigest String
+  envelope Json
+  providerMessageId String?
+  providerMessageIdDigest String?
+  addressDigest String?
+  sendId String?
+  opaqueSendRef String?
+  verificationKeyVersion Int
+  status String @default("QUEUED")
+  reason String?
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  expiresAt DateTime
+  duplicateCount Int @default(0)
+  conflictCount Int @default(0)
+  connection EmailConnection @relation(fields: [connectionId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  send MessageSend? @relation(fields: [sendId, connectionId, ownerId, environment], references: [id, connectionId, ownerId, environment], onDelete: NoAction)
+  policyAudits EmailPolicyAudit[]
+  @@unique([connectionId, providerDeliveryId])
+  @@index([status, receivedAt])
+  @@index([connectionId, providerMessageIdDigest])
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
+}
+
+model EmailUnsubscribeToken {
+  id String @id @default(cuid())
+  ownerId String
+  environment String
+  createdAt DateTime @default(now())
+
+  tokenHash String @unique
+  addressDigest String
+  category String
+  sendId String?
+  revokedAt DateTime?
+  send MessageSend? @relation(fields: [sendId, addressDigest, category, ownerId, environment], references: [id, recipientDigest, subscriptionCategory, ownerId, environment], onDelete: NoAction)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@unique([id, ownerId, environment])
 }

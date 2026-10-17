@@ -94,6 +94,11 @@ export class FunnelService {
       const definition = validateDefinition(funnel.draft);
       if (!definition.stages.length || !definition.entryStages.length) fail("INVALID_FUNNEL_DEFINITION", 400, "Add a stage and at least one allowed entry stage.");
       await this.validateSources(tx, funnel, definition);
+      for (const link of definition.campaignLinks ?? []) {
+        if (!await tx.marketingCampaign.findFirst({ where: { id: link.campaignId, ownerId: funnel.ownerId,
+          environment: funnel.environment, status: { not: "ARCHIVED" } } }))
+          fail("FUNNEL_CAMPAIGN_UNAVAILABLE", 409, "Link an owned marketing campaign in the same environment.");
+      }
       const prior = await tx.funnelVersion.findFirst({ where: { funnelId: id }, orderBy: { number: "desc" } });
       const digest = sha256(JSON.stringify(definition));
       if (prior?.digest === digest) return { version: prior, existing: true, publicationPolicy: "FUTURE_EVENTS_ONLY" };
@@ -101,6 +106,9 @@ export class FunnelService {
         number: (prior?.number ?? 0) + 1, definition: jsonValue(definition), digest, publishedAt: this.now() } });
       for (const stage of definition.stages) await tx.funnelStage.create({ data: { ownerId: funnel.ownerId, environment: funnel.environment,
         versionId: version.id, key: stage.id, name: stage.name, goal: stage.goal, terminal: stage.terminal } });
+      for (const link of definition.campaignLinks ?? []) await tx.stageCampaignLink.create({ data: { ownerId: funnel.ownerId,
+        environment: funnel.environment, versionId: version.id, stageKey: link.stageId, key: link.id, campaignId: link.campaignId,
+        purpose: "ATTRIBUTION", createdAt: this.now() } });
       await tx.funnel.update({ where: { id }, data: { publishedVersionId: version.id } });
       return { version, existing: false, publicationPolicy: "FUTURE_EVENTS_ONLY", existingRuns: "PINNED_VERSION", externalActions: false };
     });

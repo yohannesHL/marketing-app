@@ -13,6 +13,7 @@
     "security:prune": "tsx scripts/customer-security.ts prune"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "0.5.1",
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",
