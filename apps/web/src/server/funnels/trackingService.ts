@@ -118,43 +118,79 @@ export class TrackingService {
     });
     return { source: this.dto(source), ...(ingressToken ? { ingressToken } : {}) };
   }
-  async listSources(principal: CustomerPrincipal) {
-    await this.auth.assertSession(principal);
-    const sources = await this.db.trackingSource.findMany({ where: { ownerId: principal.userId }, orderBy: { createdAt: "desc" }, take: 100 });
-    return Promise.all(sources.map(async source => {
-      const [last, matched, unresolved, conflicts] = await Promise.all([
-        this.db.trackingEvent.findFirst({ where: { sourceId: source.id }, orderBy: { receivedAt: "desc" }, select: { receivedAt: true, type: true } }),
-        this.db.trackingEvent.count({ where: { sourceId: source.id, status: "MATCHED" } }),
-        this.db.trackingEvent.count({ where: { sourceId: source.id, status: { in: ["UNMATCHED", "QUARANTINED", "BLOCKED"] } } }),
-        this.db.trackingEvent.count({ where: { sourceId: source.id, conflictCount: { gt: 0 } } }),
-      ]);
-      return { ...this.dto(source), health: { configured: source.status === "ACTIVE", receivingEvents: !!last, matchedEvents: matched,
-        unresolvedEvents: unresolved, conflictingEvents: conflicts, lastReceipt: last, readyForAutomation: false,
-        explanation: source.status !== "ACTIVE" ? "Source is paused or disconnected." : !last ? "Configured; no accepted traffic yet." :
-          !matched ? "Events received; identity matching is not yet established." : "Verified matching is available. Publish a compatible funnel and enable actions separately." } };
-    }));
+  private environment(value: string) {
+    if (!["TEST", "LIVE"].includes(value)) fail("INVALID_TRACKING_INPUT", 400, "Choose an environment.");
+    return value;
   }
-  async events(principal: CustomerPrincipal, sourceId: string, cursor?: string) {
-    await this.auth.assertSession(principal); await this.owned(this.db, principal, sourceId);
-    if (cursor) { const found = await this.db.trackingEvent.findFirst({ where: { id: cursor, sourceId, ownerId: principal.userId } });
-      if (!found) fail("NOT_FOUND", 404, "Event cursor not found."); }
-    const events = await this.db.trackingEvent.findMany({ where: { sourceId, ownerId: principal.userId }, orderBy: { id: "asc" },
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), take: 50 });
-    return { events: events.map(e => ({ id: e.id, type: e.type, environment: e.environment, status: e.status, reason: e.reason,
+  private async sourceSummary(source: TrackingSource) {
+    const [last, matched, unresolved, conflicts] = await Promise.all([
+      this.db.trackingEvent.findFirst({ where: { sourceId: source.id }, orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+        select: { id: true, receivedAt: true, occurredAt: true, type: true, status: true, reason: true, subjectId: true } }),
+      this.db.trackingEvent.count({ where: { sourceId: source.id, status: "MATCHED" } }),
+      this.db.trackingEvent.count({ where: { sourceId: source.id, status: { in: ["UNMATCHED", "QUARANTINED", "BLOCKED"] } } }),
+      this.db.trackingEvent.count({ where: { sourceId: source.id, conflictCount: { gt: 0 } } }),
+    ]);
+    return { ...this.dto(source), health: { configured: source.status === "ACTIVE", receivingEvents: !!last, matchedEvents: matched,
+      unresolvedEvents: unresolved, conflictingEvents: conflicts, lastReceipt: last, readyForAutomation: false,
+      explanation: source.status !== "ACTIVE" ? "Source is paused or disconnected." : !last ? "Configured; no accepted traffic yet." :
+        !matched ? "Events received; identity matching is not yet established." : "Verified matching is available. Publish a compatible funnel and enable actions separately." } };
+  }
+  async listSources(principal: CustomerPrincipal, environment?: string) {
+    await this.auth.assertSession(principal);
+    const sources = await this.db.trackingSource.findMany({ where: { ownerId: principal.userId,
+      ...(environment === undefined ? {} : { environment: this.environment(environment) }) }, orderBy: { createdAt: "desc" }, take: 100 });
+    return Promise.all(sources.map(source => this.sourceSummary(source)));
+  }
+  async source(principal: CustomerPrincipal, id: string, environment?: string) {
+    await this.auth.assertSession(principal); const source = await this.owned(this.db, principal, id);
+    if (environment !== undefined && source.environment !== this.environment(environment)) fail("NOT_FOUND", 404, "Tracking source not found in this environment.");
+    return this.sourceSummary(source);
+  }
+  async events(principal: CustomerPrincipal, sourceId: string, cursor?: string, options: { order?: string; environment?: string; eventId?: string } = {}) {
+    await this.auth.assertSession(principal); const source = await this.owned(this.db, principal, sourceId);
+    if (options.environment !== undefined && source.environment !== this.environment(options.environment)) fail("NOT_FOUND", 404, "Tracking source not found in this environment.");
+    if (options.order !== undefined && !["newest", "oldest"].includes(options.order)) fail("INVALID_TRACKING_INPUT", 400, "Choose newest or oldest event order.");
+    if (cursor && options.eventId) fail("INVALID_TRACKING_INPUT", 400, "Choose a cursor or a specific event.");
+    if (cursor || options.eventId) {
+      const found = await this.db.trackingEvent.findFirst({ where: { id: text(cursor ?? options.eventId), sourceId, ownerId: principal.userId } });
+      if (!found) fail("NOT_FOUND", 404, "Event not found.");
+    }
+    const events = await this.db.trackingEvent.findMany({ where: { sourceId, ownerId: principal.userId,
+      ...(options.eventId ? { id: options.eventId } : {}) },
+      orderBy: options.order === "newest" ? [{ receivedAt: "desc" }, { id: "desc" }] : { id: "asc" },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), take: 51 });
+    const page = events.slice(0, 50);
+    return { events: page.map(e => ({ id: e.id, type: e.type, environment: e.environment, status: e.status, reason: e.reason,
       subjectId: e.subjectId, contactId: e.contactId, factId: e.factId, occurredAt: e.occurredAt, receivedAt: e.receivedAt,
       ingestionMode: e.ingestionMode, processingMode: e.processingMode, late: e.late, duplicates: e.duplicateCount, conflicts: e.conflictCount,
       evidence: e.status === "REDACTED" ? null : (() => {
         const value = e.envelope as unknown as NormalizedTrackingEvent;
-        return { resource: value.resource, references: value.references, authority: value.authority, verification: value.verification,
-          properties: value.properties, providerTopic: value.providerTopic, resourceUpdatedAt: value.resourceUpdatedAt };
-      })() })),
-      nextCursor: events.length === 50 ? events.at(-1)!.id : null };
+        return { resource: value.resource, references: value.references, subjectKind: value.subjectKind ?? (e.type.startsWith("booking.") ? "SALES" : e.type.startsWith("refund.") ? "PURCHASE" : "CONTACT"),
+          authority: value.authority, verification: value.verification, properties: value.properties,
+          providerTopic: value.providerTopic, resourceUpdatedAt: value.resourceUpdatedAt };
+      })() })), nextCursor: events.length > 50 ? page.at(-1)!.id : null };
   }
   async subjects(principal: CustomerPrincipal, environment: string) {
-    await this.auth.assertSession(principal);
-    if (!["TEST", "LIVE"].includes(environment)) fail("INVALID_TRACKING_INPUT", 400, "Choose an environment.");
-    return this.db.funnelSubject.findMany({ where: { ownerId: principal.userId, environment }, orderBy: { createdAt: "desc" }, take: 100,
-      select: { id: true, kind: true, contactId: true, environment: true, createdAt: true } });
+    await this.auth.assertSession(principal); this.environment(environment);
+    const subjects = await this.db.funnelSubject.findMany({ where: { ownerId: principal.userId, environment }, orderBy: { createdAt: "desc" }, take: 100,
+      select: { id: true, kind: true, contactId: true, environment: true, createdAt: true,
+        contact: { select: { id: true, name: true, email: true, deletedAt: true } } } });
+    return subjects.map(({ contact, ...subject }) => ({ ...subject,
+      contact: contact && !contact.deletedAt ? { id: contact.id, name: contact.name, email: contact.email } : null }));
+  }
+  async contacts(principal: CustomerPrincipal, environment: string, options: { cursor?: string; query?: string } = {}) {
+    await this.auth.assertSession(principal); this.environment(environment);
+    if (options.query !== undefined && (options.query.length > 100 || /[\u0000-\u001f]/.test(options.query)))
+      fail("INVALID_TRACKING_INPUT", 400, "Use a short contact search without control characters.");
+    const query = options.query?.trim() ?? "";
+    const where = { ownerId: principal.userId, environment, deletedAt: null,
+      ...(query ? { OR: [{ name: { contains: query } }, { email: { contains: query } }] } : {}) };
+    if (options.cursor && !await this.db.funnelContact.findFirst({ where: { ...where, id: text(options.cursor, 128) }, select: { id: true } }))
+      fail("NOT_FOUND", 404, "Contact cursor not found.");
+    const contacts = await this.db.funnelContact.findMany({ where, orderBy: { id: "asc" },
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}), take: 51,
+      select: { id: true, environment: true, name: true, email: true, createdAt: true } });
+    return { contacts: contacts.slice(0, 50), nextCursor: contacts.length > 50 ? contacts[49].id : null };
   }
   private async rate(source: TrackingSource) {
     const bucket = new Date(Math.floor(this.now().getTime() / 60_000) * 60_000);

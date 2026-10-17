@@ -86,8 +86,11 @@ export async function connectionRequest<T>(path: string, method = "GET", body?: 
   return data as T;
 }
 export function safeReturnTo(value: string | null) {
-  return value && (["/", "/connections", "/campaigns/create", "/social", "/social/create"].includes(value)
-    || /^\/social\/posts\/[A-Za-z0-9_-]{1,128}$/.test(value)) ? value : "/connections";
+  return value && (["/", "/connections", "/campaigns/create", "/social", "/social/create", "/funnels", "/funnels/create", "/tracking", "/email", "/email/create", "/email/connections"].includes(value)
+    || /^\/social\/posts\/[A-Za-z0-9_-]{1,128}$/.test(value)
+    || /^\/funnels\/[A-Za-z0-9_-]{1,128}(?:\/journeys\/[A-Za-z0-9_-]{1,128})?$/.test(value)
+    || /^\/tracking\/[A-Za-z0-9_-]{1,128}$/.test(value)
+    || /^\/email\/(?:campaigns|memberships)\/[A-Za-z0-9_-]{1,128}$/.test(value)) ? value : "/connections";
 }
 export function providerLabel(provider: string) {
   return ({ GOOGLE: "Google Ads", META: "Meta Ads", YOUTUBE: "YouTube", TIKTOK: "TikTok", LINKEDIN: "LinkedIn", X: "X" } as Record<string, string>)[provider] ?? provider;

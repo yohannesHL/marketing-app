@@ -21,9 +21,11 @@ export function createFunnelApi(auth: CustomerAuth, service: FunnelService) {
         if (request.method === "GET") return privateJson(await service.get(principal, funnel[1]));
         if (request.method === "PATCH") return privateJson(await service.updateDraft(principal, funnel[1], await definitionBody(request)));
       }
-      const action = path.match(new RegExp(`^/api/funnels/${ID}/(publish|status|controls|journeys|move|simulate)$`));
+      const action = path.match(new RegExp(`^/api/funnels/${ID}/(publish|status|controls|readiness|journeys|move|simulate)$`));
       if (action) {
         const [, id, operation] = action;
+        if (operation === "readiness" && request.method === "GET")
+          return privateJson(await service.readiness(principal, id, url.searchParams.get("scope") ?? "draft"));
         if (operation === "publish" && request.method === "POST")
           return privateJson(await service.publish(principal, id, await definitionBody(request)));
         if (operation === "status" && request.method === "PATCH")

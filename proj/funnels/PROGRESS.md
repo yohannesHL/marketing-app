@@ -1,6 +1,6 @@
 # Funnel implementation progress
 
-Status: #36–#39 implementation merged; #40 durable automation in progress. User authorized sequential PR creation and merges for #36–#42.
+Status: #36–#40 implementation merged; #41 builder in progress. User authorized sequential PR creation and merges for #36–#42.
 
 | Issue | State | Evidence |
 | --- | --- | --- |
@@ -8,8 +8,8 @@ Status: #36–#39 implementation merged; #40 durable automation in progress. Use
 | #37 | Implementation merged; live evidence pending | [PR #44](https://github.com/yohannesHL/marketing-app/pull/44), commit `c9b1649`; all required CI passed; actual provider/pilot evidence remains open |
 | #38 | Merged | [PR #45](https://github.com/yohannesHL/marketing-app/pull/45), commit `293c91c`; all 14 CI jobs passed; 490 security tests pass |
 | #39 | Implementation merged; live evidence pending | [PR #46](https://github.com/yohannesHL/marketing-app/pull/46), commit `e0b6d7d`; all 14 CI jobs and 550 local tests passed |
-| [#40](https://github.com/yohannesHL/marketing-app/issues/40) | Implementation and validation in progress; PR pending | Durable stage actions, authorized cadence, waits, leases and cancellation; [operations guide](../../docs/funnels/automation-setup.md) |
-| #41 | Not started | Depends on runtime slices for production behaviour |
+| #40 | Merged | [PR #47](https://github.com/yohannesHL/marketing-app/pull/47), commit `68f0425`; all 14 CI jobs passed, 616 local regressions plus 26 tests for the final simulator correction |
+| #41 | In progress | Custom canvas/list builder, tracking inspector, email workspace, no-send simulation and pinned journey history |
 | #42 | Not started | Reporting and integrated validation |
 
 ## Decisions and evidence, 17 October 2026
@@ -67,7 +67,17 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - Send/refresh leases are durable and bounded. An interrupted submission becomes UNKNOWN, never a fresh send; known retryable rejection retains its body/key and retry limits. Positive readback preserves actual acceptance without reviving stopped work, and readiness rotation invalidates stale worker authority.
 - Independent review reproduced a dispatch gap after a stop condition evaluated UNKNOWN and its receipt was consumed. The fix retains an immutable owned event/stage/journey-revision/occurrence snapshot on each new evaluation effect and fences applicable reasons with `STOP_CONDITION_UNKNOWN`. The original reproducer now remains blocked with zero pending receipts. Older or unrelated evidence cannot clear that hold; same-millisecond clearance remains deliberately conservative.
 - All nine direct automation schema checks passed, including populated legacy migration, preservation of previous triggers/indexes, owned bindings, immutable terminal/redaction paths, original LIVE event evidence, fixed clocks, explicit command authority and account-deletion cascades. Prisma validation/client generation and a fresh actual deployment of all 14 migrations passed with no foreign-key violations.
-- Focused service tests cover concurrent consumers, stage/goal cancellation, CONTACT backlog fences, shared reasons, explicit start, waits, lease recovery, readiness, deletion and retention. Full regression passed 616/616 tests. A final historical-goal simulation correction passed all 26 affected API/rules tests; app and strict worker/test TypeScript checks and whitespace validation pass. Required CI remains pending.
+- Focused service tests cover concurrent consumers, stage/goal cancellation, CONTACT backlog fences, shared reasons, explicit start, waits, lease recovery, readiness, deletion and retention. Full regression passed 616/616 tests. A final historical-goal simulation correction passed all 26 affected API/rules tests; app and strict worker/test TypeScript checks and whitespace validation pass. All 14 CI jobs passed on PR #47 before merging.
 - A real Node 24 worker subprocess test refreshes stale sender readiness and sends once after session deletion, then performs no HTTP on two subsequent process restarts. Legacy unstarted pending sends remain untouched and worker output contains no credentials, message content or recipient data.
-- [Automation setup](../../docs/funnels/automation-setup.md) and the updated [email setup](../../docs/funnels/email-setup.md) document diagrams, controls, timing, workers, APIs, simulations, current recovery limits and rollout. PR is pending; no merge or actual LIVE delivery validation is claimed here.
+- [Automation setup](../../docs/funnels/automation-setup.md) and the updated [email setup](../../docs/funnels/email-setup.md) document diagrams, controls, timing, workers, APIs, simulations, current recovery limits and rollout. PR #47 merged at `68f0425`. Actual LIVE delivery validation remains pending.
 - Live provider/domain/webhook configuration, an authorized integrated recipient pilot and real callback correlation remain pending. The visual builder and reporting work remain separate in #41/#42.
+
+## Issue #41 implementation evidence
+
+- Custom React Flow canvas and keyboard form editor use the same bounded definition DSL, editable templates, explicit routing order, report-only campaign links and separately authorized actions. Local drafts survive CAS conflicts; publication review and automation activation fence the visible revision/version.
+- Owned source/event/contact inspectors distinguish configuration, receipt, matching and replay. Email setup, campaign editing, explicit sequence start and uncertain delivery recovery expose the existing service contracts. Pinned journey history keeps enquiries/orders and cycles separate; audited manual correction rejects a newer cycle or revision.
+- Full backend/security regression passed 632 tests. Final activation-version fencing passed all 12 affected inspector/automation API tests, including one additional test. App TypeScript, production build and whitespace checks pass.
+- Eight production Chromium journeys pass against a disposable migrated database and loopback provider with LIVE transport disabled. Desktop, 320px/390px and light/dark screenshots were inspected; keyboard editing, conflicts, no-effect simulation, source recovery and separate journey histories pass. The existing Chromium, Firefox and WebKit app-journey CI jobs also run the isolated funnel suite after the existing suite.
+- [Builder guide](../../docs/funnels/builder-guide.md) records scope, diagrams, controls, setup, verification and known limits. These are fixture results; live provider and authorized recipient evidence remain pending.
+
+- The GitHub connection cannot modify workflow files. The existing CI entry point runs the funnel suite in each browser job; workflow permissions and job definitions remain unchanged.

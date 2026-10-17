@@ -1,0 +1,36 @@
+"use client";
+import { useState } from "react";
+import { Button } from "@launchpad/ui";
+import { OneTimeValue } from "./SourceForm";
+import { subjectLabel, type SourceSummary, type TrackingSubject } from "./trackingUi";
+export function SourceTools({ source, subjects, busy, onAction, onCorrelation }: { source: SourceSummary; subjects: TrackingSubject[]; busy: boolean;
+  onAction: (path: string, body: unknown, notice: string) => Promise<void>;
+  onCorrelation: (subjectId: string) => Promise<{ token: string; expiresAt: string } | null> }) {
+  const [kind, setKind] = useState(source.provider === "CALENDLY" ? "BOOKING" : "ORDER"), [resource, setResource] = useState("");
+  const [subjectId, setSubjectId] = useState(""), [token, setToken] = useState<{ token: string; expiresAt: string } | null>(null);
+  const sales = subjects.filter(s => s.kind === "SALES" && s.contact?.email);
+  if (!["CALENDLY", "SHOPIFY"].includes(source.provider)) return null;
+  return <div className="grid gap-6">
+    <section className="space-y-3"><h3 className="text-lg font-semibold">Recover a provider record</h3><p>Read one booking, order or refund from the configured account. It creates BACKFILL evidence for history and cancellation; it does not send emails or re-enrol a campaign.</p>
+      <form className="grid gap-3" onSubmit={e => { e.preventDefault(); void onAction(`/api/tracking/sources/${source.id}/reconcile`, { kind, id: resource.trim() }, "Provider record received as historical backfill. Refresh its matching result."); }}>
+        <label className="grid gap-2"><span>Record kind</span><select className="select select-bordered min-h-11 w-full bg-base-100" value={kind} onChange={e => setKind(e.target.value)}>{(source.provider === "CALENDLY" ? ["BOOKING"] : ["ORDER", "REFUND"]).map(option => <option key={option}>{option}</option>)}</select></label>
+        <label className="grid gap-2"><span>{source.provider === "CALENDLY" ? "Full Calendly invitee URI" : "Shopify numeric ID or GraphQL GID"}</span><input className="input input-bordered min-h-11 w-full bg-base-100" required value={resource} onChange={e => setResource(e.target.value)} maxLength={500} /></label><p className="text-sm">Requires a saved provider API token and read permissions. A missing record or failed read does not prove a negative business outcome.</p>
+        <Button type="submit" className="min-h-11 justify-self-start" variant="secondary" disabled={busy || source.status !== "ACTIVE" || !resource.trim()}>Read provider history</Button>
+      </form>
+    </section>
+    {source.provider === "CALENDLY" && <section className="space-y-3"><h3 className="text-lg font-semibold">Link a booking to an enquiry</h3><p>Generate a seven-day opaque token for a known recipient enquiry. Add it as the booking link’s utm_content value; email corroboration is also required. Do not put contact or enquiry IDs in the public link.</p>
+      {source.config.correlationField !== "utm_content" ? <p>Enable enquiry correlation in source settings first.</p> : <form className="grid gap-3" onSubmit={async e => { e.preventDefault(); setToken(await onCorrelation(subjectId)); }}>
+        <label className="grid gap-2"><span>Owned sales enquiry</span><select className="select select-bordered min-h-11 w-full bg-base-100" value={subjectId} onChange={e => setSubjectId(e.target.value)} required><option value="">Choose an enquiry</option>{sales.map(subject => <option key={subject.id} value={subject.id}>{subjectLabel(subject)}</option>)}</select></label>
+        <Button type="submit" className="min-h-11 justify-self-start" variant="secondary" disabled={busy || source.status !== "ACTIVE" || !subjectId}>Create booking correlation</Button>
+      </form>}
+      {token && <><p>Expires {new Date(token.expiresAt).toLocaleString()}.</p><OneTimeValue label="utm_content correlation token" value={token.token} onDismiss={() => setToken(null)} /></>}
+    </section>}
+  </div>;
+}
+export function SourceInstallation({ source }: { source: SourceSummary }) {
+  if (source.provider === "NATIVE") return <div className="space-y-3"><p>Load the consent-gated SDK from your LaunchPad origin at <code className="break-all">/launchpad-tracking.js</code>. Loading it collects nothing. Your site must explicitly request tracking after measurement consent.</p><pre className="whitespace-pre-wrap break-all rounded-box bg-base-200 p-3 text-sm">{`const tracking = LaunchPadTracking.create({\n  sourceId: "${source.id}",\n  endpoint: "YOUR_LAUNCHPAD_HTTPS_ORIGIN",\n  consent: false\n});\n// After your site's consent decision:\ntracking.setConsent(true);\nawait tracking.track("page.viewed", { path: "/pricing" });`}</pre><p>For a form independent of optional measurement, POST an explicit submission to <code className="break-all">/api/tracking/ingest/{source.id}/form</code> with schemaVersion: 1, a stable eventId, email, optional name and configured properties. Use your form’s required disclosures. Do not mark it successful before the request is accepted.</p></div>;
+  if (source.provider === "API") return <div className="space-y-3"><p>Send server-side events to <code className="break-all">/api/tracking/ingest/{source.id}/events</code>. Keep the signing secret on that server.</p><p>Set X-LaunchPad-Timestamp (Unix seconds), X-LaunchPad-Id (stable delivery ID), and X-LaunchPad-Signature as hex HMAC-SHA256 of <code>{'timestamp + "." + requestId + "." + rawBody'}</code>. Timestamp freshness is three minutes; retries retain the original delivery ID and exact body.</p><pre className="whitespace-pre-wrap break-all rounded-box bg-base-200 p-3 text-sm">{JSON.stringify({ schemaVersion: 1, type: "enquiry.accepted", occurredAt: "ACTUAL_ISO_TIMESTAMP_WITH_OFFSET", resource: { kind: "ENQUIRY", id: "STABLE_ENQUIRY_ID" }, subjectKind: "SALES", contactIdentity: { kind: "CRM_CONTACT", id: "STABLE_CONTACT_ID" }, contact: { email: "recipient@example.test" }, properties: {} }, null, 2)}</pre><p>The example must match your configured event/property allowlist. Never sign browser-controlled owner IDs or financial claims.</p></div>;
+  if (source.provider === "CALENDLY") return <div className="space-y-3"><p>Configure a user-scoped webhook for <code>invitee.created</code> and <code>invitee.canceled</code> with the one-time LaunchPad webhook URL and the matching signing key. LaunchPad does not create the subscription for you.</p><p>The configured user must appear in the scheduled event’s membership. Inspect a real booking event and, when using correlation, verify the booking page returns utm_content. Reschedules retain distinct old/new invitee identities.</p></div>;
+  if (source.provider === "SHOPIFY") return <div className="space-y-3"><p>Configure <code>orders/paid</code> and <code>refunds/create</code> webhooks using API version <strong>2026-10</strong>, your app signing secret, and the one-time LaunchPad URL. Other webhook API versions are not accepted by this adapter.</p><p>Configure the required order-read/customer-data permissions separately. TEST/LIVE evidence must match this source. A refund record does not establish a successful refund; only a successful refund transaction does.</p></div>;
+  return <p>This managed source receives verified callbacks through its email connection and saved message ledger. Edit it in Email campaigns.</p>;
+}
