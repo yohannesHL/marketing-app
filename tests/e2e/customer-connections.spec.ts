@@ -70,6 +70,8 @@ test("customer signs in with a keyboard and manages isolated advertising permiss
     await page.route("**/api/connections", async (route) => { await initialDiscovery; await route.continue(); }, { times: 1 });
     try {
       await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await page.getByRole("link", { name: "Integrations / channels", exact: true }).click();
       await expect(page).toHaveURL(/\/connections$/);
       await expect(page.getByTestId("connections-page").getByRole("status")).toContainText("Loading your connections");
     } finally { releaseLoading(); }

@@ -141,21 +141,21 @@ test("scheduling resolves daylight-saving gaps, repeated times, and half-hour zo
   ]);
   expect(scheduleInstants("2026-02-31T12:00", "UTC")).toEqual([]);
 });
-test("social sign-in return routes reject external, query, fragment, and separator destinations", () => {
+test("social sign-in return routes reject external destinations and strip unknown query or fragment data", () => {
   for (const path of ["/social", "/social/create", "/social/posts/owned_123"]) {
     expect(safeReturnTo(path)).toBe(path);
   }
   for (const path of [
     "//evil.example",
-    "/social?redirect=evil",
-    "/social/posts/a#fragment",
-    "/social/posts/a?x=1",
     "/social/posts/a/b",
     "/social/posts/\\evil",
     "https://evil.example",
   ]) {
     expect(safeReturnTo(path)).toBe("/dashboard");
   }
+  expect(safeReturnTo("/social?redirect=evil")).toBe("/social");
+  expect(safeReturnTo("/social/posts/a#fragment")).toBe("/social/posts/a");
+  expect(safeReturnTo("/social/posts/a?x=1")).toBe("/social/posts/a");
 });
 
 test("customer saves and reviews social revisions without pretending disabled publishing succeeded", async ({

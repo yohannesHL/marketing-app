@@ -60,7 +60,7 @@ test.describe("durable campaign builder", () => {
     await expect(wizard.root.getByRole("checkbox", { name: /^Google Ads/ })).toHaveCount(0);
     await wizard.continueToNextStep();
     await page.getByLabel("Planned posts per week").fill("4"); await wizard.continueToNextStep();
-    const caption = page.getByLabel("Caption and video direction");
+    const caption = page.getByLabel("Published caption / description");
     await caption.fill("My original video caption.");
     await wizard.generateCreatives();
     await expect(page.getByRole("region", { name: "Generated drafts preview" })).toContainText("Demo");
@@ -93,7 +93,7 @@ test.describe("durable campaign builder", () => {
     await wizard.continueToNextStep();
     await expect(wizard.stepTitle).toHaveText("Set your budget and timing");
     await page.getByLabel("Total planned budget").fill("1275.50");
-    await page.getByLabel("Currency", { exact: true }).selectOption("GBP");
+    await page.getByRole("combobox", { name: "Currency", exact: true }).selectOption("GBP");
     await wizard.continueToNextStep(); await applyGenerated(wizard); await wizard.continueToNextStep();
     await expect(wizard.root).toContainText("Campaign creation and ad spending are currently disabled");
     await expect(page.getByRole("button", { name: "Check connected ad accounts" })).toBeDisabled();

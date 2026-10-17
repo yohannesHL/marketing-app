@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
-export type WorkspaceIconName = "home" | "campaigns" | "chat" | "workflow" | "studio" | "affiliate" | "social" | "analytics" | "settings" | "search" | "plus" | "chevron" | "collapse" | "more" | "arrow" | "logout";
+export type WorkspaceIconName = "funnel" | "home" | "campaigns" | "chat" | "workflow" | "studio" | "affiliate" | "social" | "analytics" | "settings" | "search" | "plus" | "chevron" | "collapse" | "more" | "arrow" | "logout";
 const paths: Record<WorkspaceIconName, React.ReactNode> = {
+  funnel: <><path d="M3 4h18l-7 8v7l-4 2v-9Z"/></>,
   home: <><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></>,
   campaigns: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 9v11m4-7h5m-5 3h3"/></>,
   chat: <><path d="M4 4h16v12H9l-5 4Z"/><path d="M8 8h8m-8 4h5"/></>,

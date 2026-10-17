@@ -13,3 +13,9 @@ test("workspace sign-in cannot redirect off-site or forward arbitrary queries",(
     assert.equal(safeReturnTo(path),"/dashboard");
   assert.equal(safeReturnTo("/social/create?token=private&id=valid&campaignId=https://evil.test"),"/social/create?id=valid");
 });
+
+test("workspace sign-in preserves funnel, tracking and email routes with only valid environments", () => {
+  for (const path of ["/funnels", "/funnels/create", "/funnels/example", "/funnels/example/journeys/journey", "/tracking", "/tracking/source", "/email", "/email/connections", "/email/campaigns/campaign", "/email/memberships/member"])
+    assert.equal(safeReturnTo(`${path}?environment=LIVE&token=private`), `${path}?environment=LIVE`);
+  assert.equal(safeReturnTo("/funnels?environment=invalid"), "/funnels");
+});

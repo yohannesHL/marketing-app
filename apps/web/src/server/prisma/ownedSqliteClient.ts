@@ -17,11 +17,14 @@ interface NativeDatabase {
   readonly isTransaction: boolean;
   prepare(sql: string): NativeStatement;
   exec(sql: string): void;
+  setAuthorizer(callback: ((actionCode: number) => number) | null): void;
   close(): void;
 }
-const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as {
+const { DatabaseSync, constants } = createRequire(import.meta.url)("node:sqlite") as {
   DatabaseSync: new (path: string, options: { timeout: number }) => NativeDatabase;
+  constants: { SQLITE_OK: number; SQLITE_SELECT: number; SQLITE_READ: number; SQLITE_FUNCTION: number };
 };
+const retryableReadErrors = new WeakSet<object>();
 
 const codes = ["SQLITE_OK", "SQLITE_ERROR", "SQLITE_INTERNAL", "SQLITE_PERM", "SQLITE_ABORT", "SQLITE_BUSY", "SQLITE_LOCKED", "SQLITE_NOMEM", "SQLITE_READONLY", "SQLITE_INTERRUPT", "SQLITE_IOERR", "SQLITE_CORRUPT", "SQLITE_NOTFOUND", "SQLITE_FULL", "SQLITE_CANTOPEN", "SQLITE_PROTOCOL", "SQLITE_EMPTY", "SQLITE_SCHEMA", "SQLITE_TOOBIG", "SQLITE_CONSTRAINT", "SQLITE_MISMATCH", "SQLITE_MISUSE", "SQLITE_NOLFS", "SQLITE_AUTH", "SQLITE_FORMAT", "SQLITE_RANGE", "SQLITE_NOTADB", "SQLITE_NOTICE", "SQLITE_WARNING"];
 
@@ -86,13 +89,24 @@ function results(columns: string[], columnTypes: string[], rows: Row[], rowsAffe
   };
 }
 
-function execute(db: NativeDatabase, statement: InStatement, intMode: IntMode): ResultSet {
+function execute(db: NativeDatabase, statement: InStatement, intMode: IntMode, classifyAutocommitRead = false): ResultSet {
   const normalized = typeof statement === "string" ? { sql: statement, args: [] } : statement;
   const args: (NativeValue | Record<string, NativeValue>)[] = Array.isArray(normalized.args)
     ? normalized.args.map(value => input(value, intMode))
     : normalized.args ? [Object.fromEntries(Object.entries(normalized.args).map(([key, value]) => [key, input(value, intMode)]))] : [];
-  return io(() => {
+  // The authorizer classifies SQLite's compiled operations, not an SQL prefix:
+  // RETURNING, PRAGMAs and writes hidden behind a CTE are never read retries.
+  // This client exposes neither custom functions nor extension loading.
+  const classify = classifyAutocommitRead && !db.isTransaction;
+  let selected = false, readOnly = true, prepared = false;
+  if (classify) db.setAuthorizer(action => {
+    if (action === constants.SQLITE_SELECT) selected = true;
+    else if (action !== constants.SQLITE_READ && action !== constants.SQLITE_FUNCTION) readOnly = false;
+    return constants.SQLITE_OK;
+  });
+  try { return io(() => {
     const stmt = db.prepare(normalized.sql);
+    prepared = true;
     stmt.setReadBigInts(true);
     stmt.setReturnArrays(true);
     const columns = stmt.columns();
@@ -110,7 +124,13 @@ function execute(db: NativeDatabase, statement: InStatement, intMode: IntMode): 
     const changes = before === counter.all()[0][0] ? 0 : Number(info.changes);
     if (!Number.isSafeInteger(changes)) throw new RangeError("SQLite affected-row count exceeds safe integers");
     return results([], [], [], changes, BigInt(info.lastInsertRowid));
-  });
+  }); } catch (error) {
+    // A failed prepare has not proved the full statement read-only. Retry only
+    // exact BUSY from a completely compiled, autocommit SELECT, after yielding.
+    if (classify && prepared && selected && readOnly && !db.isTransaction &&
+      error instanceof LibsqlError && error.code === "SQLITE_BUSY" && error.rawCode === 5) retryableReadErrors.add(error);
+    throw error;
+  } finally { if (classify) db.setAuthorizer(null); }
 }
 
 function batchError(error: unknown, index: number): unknown {
@@ -170,7 +190,18 @@ class OwnedSqliteClient implements Client {
   }
   async execute(statement: InStatement): Promise<ResultSet>;
   async execute(sql: string, args?: InArgs): Promise<ResultSet>;
-  async execute(statement: InStatement, args?: InArgs) { return execute(this.current(), typeof statement === "string" ? { sql: statement, args } : statement, this.intMode); }
+  async execute(statement: InStatement, args?: InArgs) {
+    const normalized = typeof statement === "string" ? { sql: statement, args } : statement;
+    for (let attempt = 0; ; attempt++) {
+      try { return execute(this.current(), normalized, this.intMode, true); }
+      catch (error) {
+        if (!(error instanceof Error) || !retryableReadErrors.has(error) || attempt >= 3) throw error;
+        // A synchronous busy timeout cannot release a same-process holder.
+        // Retry this read only; transaction statements and mutations run once.
+        await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+      }
+    }
+  }
   async transaction(mode: TransactionMode = "write") {
     if (!["write", "read", "deferred"].includes(mode)) throw new LibsqlError("Unsupported SQLite transaction mode", "TRANSACTION_MODE_UNSUPPORTED");
     const db = this.current();

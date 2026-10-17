@@ -1,0 +1,390 @@
+{
+  "contractVersion": 1,
+  "description": "Synthetic internal envelopes. Owner/trust/resolved identifiers are assigned by ingestion; these are not public client request bodies.",
+  "contacts": [
+    {
+      "id": "contact_maya",
+      "ownerId": "customer_alpha",
+      "email": "maya@example.test"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "sales_a",
+      "ownerId": "customer_alpha",
+      "kind": "SALES",
+      "contactId": "contact_maya"
+    },
+    {
+      "id": "sales_b",
+      "ownerId": "customer_alpha",
+      "kind": "SALES",
+      "contactId": "contact_maya"
+    },
+    {
+      "id": "purchase_101",
+      "ownerId": "customer_alpha",
+      "kind": "PURCHASE",
+      "contactId": "contact_maya"
+    },
+    {
+      "id": "purchase_102",
+      "ownerId": "customer_alpha",
+      "kind": "PURCHASE",
+      "contactId": "contact_maya"
+    }
+  ],
+  "events": [
+    {
+      "schemaVersion": 1,
+      "id": "event_enquiry_a",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_form",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "LAUNCHPAD",
+      "providerTopic": "enquiry.accepted",
+      "dedupeKey": "event_enquiry_a",
+      "dedupeKeyVersion": 1,
+      "type": "enquiry.accepted",
+      "resource": {
+        "kind": "ENQUIRY",
+        "id": "enquiry_A"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "SERVER_ASSERTED",
+      "verification": {
+        "method": "NATIVE_SUBMISSION",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {},
+      "subjectId": "sales_a",
+      "contactId": "contact_maya",
+      "factKey": "enquiry:enquiry_A:accepted"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_enquiry_b",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_form",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "LAUNCHPAD",
+      "providerTopic": "enquiry.accepted",
+      "dedupeKey": "event_enquiry_b",
+      "dedupeKeyVersion": 1,
+      "type": "enquiry.accepted",
+      "resource": {
+        "kind": "ENQUIRY",
+        "id": "enquiry_B"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "SERVER_ASSERTED",
+      "verification": {
+        "method": "NATIVE_SUBMISSION",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {},
+      "subjectId": "sales_b",
+      "contactId": "contact_maya",
+      "factKey": "enquiry:enquiry_B:accepted"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_booking_a",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_calendly",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "CALENDLY",
+      "providerTopic": "invitee.created",
+      "dedupeKey": "invitee.created:invitee_A",
+      "dedupeKeyVersion": 1,
+      "type": "booking.confirmed",
+      "resource": {
+        "kind": "BOOKING",
+        "id": "https://api.calendly.com/scheduled_events/event_A/invitees/invitee_A"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "PROVIDER_VERIFIED",
+      "verification": {
+        "method": "HMAC",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {
+        "rescheduled": false
+      },
+      "subjectId": "sales_a",
+      "contactId": "contact_maya",
+      "journeyReference": "opaque_validated_reference_A",
+      "references": [
+        {
+          "kind": "SCHEDULED_EVENT",
+          "id": "https://api.calendly.com/scheduled_events/event_A"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_order_101",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_shopify",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "SHOPIFY",
+      "providerTopic": "orders/paid",
+      "dedupeKey": "webhook_101",
+      "dedupeKeyVersion": 1,
+      "type": "order.paid",
+      "resource": {
+        "kind": "ORDER",
+        "id": "gid://shopify/Order/101"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "PROVIDER_VERIFIED",
+      "verification": {
+        "method": "HMAC",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {
+        "amount": "149.00",
+        "currency": "GBP",
+        "test": true
+      },
+      "providerApiVersion": "2026-10",
+      "providerDeliveryId": "webhook_101",
+      "providerEventId": "merchant_action_101",
+      "factKey": "order:101:paid",
+      "subjectId": "purchase_101",
+      "contactId": "contact_maya",
+      "references": [
+        {
+          "kind": "CHECKOUT_TOKEN",
+          "id": "checkout_one"
+        },
+        {
+          "kind": "CUSTOMER",
+          "id": "gid://shopify/Customer/201"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_order_102",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_shopify",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "SHOPIFY",
+      "providerTopic": "orders/paid",
+      "dedupeKey": "webhook_102",
+      "dedupeKeyVersion": 1,
+      "type": "order.paid",
+      "resource": {
+        "kind": "ORDER",
+        "id": "gid://shopify/Order/102"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "PROVIDER_VERIFIED",
+      "verification": {
+        "method": "HMAC",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {
+        "amount": "50.00",
+        "currency": "GBP",
+        "test": true
+      },
+      "providerApiVersion": "2026-10",
+      "providerDeliveryId": "webhook_102",
+      "providerEventId": "merchant_action_102",
+      "factKey": "order:102:paid",
+      "subjectId": "purchase_102",
+      "contactId": "contact_maya",
+      "references": [
+        {
+          "kind": "CUSTOMER",
+          "id": "gid://shopify/Customer/201"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_refund_pending",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_shopify",
+      "environment": "TEST",
+      "ingestionMode": "LIVE",
+      "provider": "SHOPIFY",
+      "providerTopic": "refunds/create",
+      "dedupeKey": "webhook_refund_301",
+      "dedupeKeyVersion": 1,
+      "type": "refund.created",
+      "resource": {
+        "kind": "REFUND",
+        "id": "gid://shopify/Refund/301"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "PROVIDER_VERIFIED",
+      "verification": {
+        "method": "HMAC",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {
+        "amount": "149.00",
+        "currency": "GBP",
+        "financialStatus": "PENDING",
+        "test": true
+      },
+      "providerDeliveryId": "webhook_refund_301",
+      "factKey": "refund:301:created",
+      "subjectId": "purchase_101",
+      "references": [
+        {
+          "kind": "ORDER",
+          "id": "gid://shopify/Order/101"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "event_refund_succeeded",
+      "ownerId": "customer_alpha",
+      "sourceId": "source_shopify",
+      "environment": "TEST",
+      "ingestionMode": "BACKFILL",
+      "provider": "SHOPIFY",
+      "providerTopic": "verified.transaction.reconciliation",
+      "dedupeKey": "refund.transaction:401:SUCCESS",
+      "dedupeKeyVersion": 1,
+      "type": "refund.succeeded",
+      "resource": {
+        "kind": "REFUND_TRANSACTION",
+        "id": "gid://shopify/OrderTransaction/401"
+      },
+      "occurredAt": "2026-10-17T10:00:00.000Z",
+      "receivedAt": "2026-10-17T10:00:01.000Z",
+      "authority": "PROVIDER_VERIFIED",
+      "verification": {
+        "method": "AUTHENTICATED_PROVIDER_API",
+        "keyVersion": "fixture_v1",
+        "outcome": "VERIFIED"
+      },
+      "normalizationVersion": 1,
+      "rawPayloadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attributes": {
+        "amount": "149.00",
+        "currency": "GBP",
+        "kind": "REFUND",
+        "status": "SUCCESS",
+        "test": true
+      },
+      "factKey": "refund.transaction:401:succeeded",
+      "subjectId": "purchase_101",
+      "references": [
+        {
+          "kind": "ORDER",
+          "id": "gid://shopify/Order/101"
+        },
+        {
+          "kind": "REFUND",
+          "id": "gid://shopify/Refund/301"
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "parallel_enquiries",
+      "events": [
+        "event_enquiry_a",
+        "event_enquiry_b",
+        "event_booking_a"
+      ],
+      "expected": "Only sales_a enters the booked stage and stops its booking reminders; sales_b remains independent."
+    },
+    {
+      "id": "duplicate_webhook",
+      "events": [
+        "event_order_101",
+        "event_order_101"
+      ],
+      "expected": "One accepted delivery/effect; paid gross 149.00 GBP, not 298.00; no repeated local welcome intent."
+    },
+    {
+      "id": "repeated_purchase",
+      "events": [
+        "event_order_101",
+        "event_order_102"
+      ],
+      "expected": "Two distinct purchase subjects; gross 199.00 GBP. Order 102 has unknown checkout attribution."
+    },
+    {
+      "id": "pending_refund",
+      "events": [
+        "event_order_101",
+        "event_refund_pending"
+      ],
+      "expected": "Refund is pending; confirmed returned money remains 0.00 GBP."
+    },
+    {
+      "id": "successful_refund",
+      "events": [
+        "event_order_101",
+        "event_refund_pending",
+        "event_refund_succeeded"
+      ],
+      "expected": "Original paid fact is preserved; returned money 149.00 GBP and net 0.00 GBP."
+    },
+    {
+      "id": "same_id_other_owner",
+      "input": {
+        "ownerId": "customer_beta",
+        "sourceId": "beta_shopify",
+        "externalOrderId": "gid://shopify/Order/101"
+      },
+      "expected": "Independent owned fact/subject; never resolves customer_alpha records."
+    },
+    {
+      "id": "browser_payment_claim",
+      "input": {
+        "sourceId": "browser_source",
+        "type": "order.paid"
+      },
+      "expected": "Reject unsupported authoritative event; no paid fact, transition or send."
+    },
+    {
+      "id": "ambiguous_booking",
+      "input": {
+        "sourceId": "source_calendly",
+        "emailHint": "maya@example.test",
+        "journeyReference": null
+      },
+      "expected": "Retain unmatched booking; email does not select sales_a or sales_b."
+    }
+  ]
+}

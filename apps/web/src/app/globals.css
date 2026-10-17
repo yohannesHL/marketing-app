@@ -4,6 +4,8 @@
 
 :root { --canvas: #f8f9f6; --paper: #fff; --ink: #272e28; --muted: #677064; --line: #e0e5dc; --accent: #365c43; --accent-soft: #e9f0e8; --sidebar-width: 15rem; }
 html { scroll-behavior: smooth; }
+/* Editor focus and validation must land before the next pointer interaction. */
+html:has(.workspace-shell) { scroll-behavior: auto; }
 body { margin: 0; font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; font-size: 14px; font-variant-numeric: tabular-nums; }
 h1, h2, h3 { letter-spacing: -.035em; text-wrap: balance; }
 p { text-wrap: pretty; }

@@ -88,8 +88,15 @@ test('SQLite durable worker persists accepted IDs encrypted and reconciles only 
  const registry=new SocialProviderRegistry();registry.register(metaPublishingRegistration('INSTAGRAM_PROFILE',{...config('page-post-processing'),now:time}));const flags={mode:'mock' as const,writesEnabled:true,approvedProviders:['META:INSTAGRAM_PROFILE']};const service=new SocialPostService(db,auth,flags,registry,time);
  const post=await service.create(principal,{title:'Meta durable fixture',body:'Reviewed caption',mediaIds:[media.id],variants:[{destinationId:destination.id,format:'IMAGE'}]});await service.approve(principal,post.id,post.revision!.id,[destination.id]);const queued=await service.enqueue(principal,post.id,{revisionId:post.revision!.id,destinationIds:[destination.id],enqueueId:'meta-durable',dueAt:time().toISOString(),timeZone:'UTC'});
  const worker=()=>new SocialDeliveryWorker(db,vault,registry,flags,async({media:assets})=>assets.map(asset=>({id:asset.id,url:`https://media.test/api/social/media/${asset.id}/content?expires=2000000000&signature=fixture`})),time);
- assert.equal((await worker().runOnce())?.status,'UNCERTAIN');const id=queued.deliveries[0].id;const encrypted=await db.socialDeliveryProgress.findUniqueOrThrow({where:{deliveryId:id}});assert.doesNotMatch(encrypted.encryptedState,/701|page-post-processing|social/);
- const progress=JSON.parse(vault.decrypt(encrypted.encryptedState,`social-progress-v1:${id}`));assert.equal(progress.externalId,'701');assert.ok((await db.socialDelivery.findUniqueOrThrow({where:{id}})).publishStartedAt);
+ assert.equal((await worker().runOnce())?.status,'UNCERTAIN');const id=queued.deliveries[0].id;const encrypted=await db.socialDeliveryProgress.findUniqueOrThrow({where:{deliveryId:id}});
+ // Random ciphertext may contain short identifier substrings; verify its authenticated envelope instead.
+ assert.match(encrypted.encryptedState,/^enc1\.test\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]+$/);
+ const plaintext=vault.decrypt(encrypted.encryptedState,`social-progress-v1:${id}`),progress=JSON.parse(plaintext);
+ assert.equal(progress.externalId,'701');assert.notEqual(encrypted.encryptedState,plaintext);
+ assert.notDeepEqual(Buffer.from(encrypted.encryptedState.split('.')[4],'base64url'),Buffer.from(plaintext));
+ assert.doesNotMatch(plaintext,/page-post-processing|"social"|accessToken|signature=/);
+ assert.throws(()=>vault.decrypt(encrypted.encryptedState,`social-progress-v1:${id}-other`),{code:'CREDENTIAL_UNAVAILABLE'});
+ assert.ok((await db.socialDelivery.findUniqueOrThrow({where:{id}})).publishStartedAt);
  assert.equal(await worker().runOnce(),null);clock=new Date(clock.getTime()+60_000);assert.equal((await worker().reconcileNext())?.status,'UNCERTAIN');assert.equal((await counts()).igPublishes,1);
  registry.register(metaPublishingRegistration('INSTAGRAM_PROFILE',{...config(),now:time}));clock=new Date(clock.getTime()+120_000);assert.equal((await worker().reconcileOnce(id))?.status,'SUCCEEDED');assert.equal((await counts()).igPublishes,1);
  const dto=await service.get(principal,post.id);assert.doesNotMatch(JSON.stringify(dto),/social"|page-post-processing|signature=|uploadUrl|encryptedState/);

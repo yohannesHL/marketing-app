@@ -1,5 +1,14 @@
 # LaunchPad
 
+## Custom funnels and optional automation
+
+- [Funnel builder and working views](docs/funnels/builder-guide.md)
+- [Tracking setup and provider connections](docs/funnels/tracking-setup.md)
+- [Email campaigns](docs/funnels/email-setup.md) and [automation operations](docs/funnels/automation-setup.md)
+- [Reporting glossary and operating guide](docs/funnels/reporting-guide.md)
+- [Controlled release evidence and pending live pilots](docs/funnels/release-evidence.md)
+- [Implementation tracker](https://github.com/yohannesHL/marketing-app/issues/35)
+
 ## Customer ad account connections
 
 - [Google and Meta setup guide](docs/customer-ad-account-setup.md)

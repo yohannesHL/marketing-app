@@ -5,7 +5,7 @@
     "dev": "npm --workspace @launchpad/web run dev",
     "webinstall": "npm --workspace @launchpad/web install",
     "test:e2e:app": "tsx tests/support/start-test-app.ts",
-    "test:e2e": "playwright test --config=playwright.config.ts",
+    "test:e2e": "tsx tests/support/run-app-journeys.ts",
     "test:e2e:headed": "playwright test --config=playwright.config.ts --headed",
     "test:e2e:debug": "playwright test --config=playwright.config.ts --debug",
     "test:e2e:ui": "playwright test --config=playwright.config.ts --ui",
@@ -21,7 +21,13 @@
     "mock:linkedin": "mockoon-cli start --data tests/mockoon/linkedin.json --port 3915 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "mock:x": "mockoon-cli start --data tests/mockoon/x.json --port 3916 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "test:e2e:delivery": "playwright test --config=playwright.social-delivery.config.ts",
-    "test:e2e:delivery-app": "tsx tests/support/start-social-delivery-app.ts"
+    "test:e2e:delivery-app": "tsx tests/support/start-social-delivery-app.ts",
+    "tracking:worker": "tsx apps/web/scripts/tracking-worker.ts",
+    "funnels:worker": "tsx apps/web/scripts/funnel-worker.ts",
+    "email:worker": "tsx apps/web/scripts/email-worker.ts",
+    "automation:worker": "tsx apps/web/scripts/automation-worker.ts",
+    "test:e2e:funnels": "playwright test --config=playwright.funnels.config.ts",
+    "test:e2e:funnels-app": "tsx tests/support/start-funnel-app.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
