@@ -3,6 +3,7 @@ import "@xyflow/react/dist/style.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { LaunchpadProvider } from "@launchpad/ui";
+import { AppShell } from "../components/navigation/AppShell";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <LaunchpadProvider>{children}</LaunchpadProvider>
+        <LaunchpadProvider><AppShell>{children}</AppShell></LaunchpadProvider>
       </body>
     </html>
   );

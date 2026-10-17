@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FunnelLayout } from "./FunnelLayout";
 import { buttonClass, dateLabel, funnelRequest, inputClass, message, panelClass, type Environment, type UiFunnel } from "./funnelUi";
-export function FunnelList() {
-  const [environment, setEnvironment] = useState<Environment>("TEST"), [items, setItems] = useState<UiFunnel[]>([]);
+export function FunnelList({ initialEnvironment = "TEST" }: { initialEnvironment?: Environment }) {
+  const [environment, setEnvironment] = useState<Environment>(initialEnvironment), [items, setItems] = useState<UiFunnel[]>([]);
   const [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
   useEffect(() => { let active = true; setLoading(true); setError(null); setItems([]);
     funnelRequest<UiFunnel[]>(`/api/funnels?environment=${environment}`).then(value => { if (active) setItems(value); })

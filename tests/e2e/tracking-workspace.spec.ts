@@ -91,6 +91,10 @@ test("API signing setup is shown once and environment switching cannot lose an u
   const secret = await secretField.inputValue(); expect(secret.length).toBeGreaterThanOrEqual(16);
   await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Close source setup", exact: true })).toBeDisabled();
+  await page.getByRole("navigation", { name: "Main navigation", exact: true }).getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracking(?:\?|$)/);
+  await expect(page.getByRole("status").filter({ hasText: "Complete the current source setup and save any one-time credentials before leaving." })).toBeVisible();
+  await expect(secretField).toHaveValue(secret);
   await page.getByRole("button", { name: "I have saved it", exact: true }).click();
   await expect(secretField).toHaveCount(0);
   await page.getByRole("link", { name: "Open source diagnostics", exact: true }).click();

@@ -1,10 +1,4 @@
 .funnel-workspace { --funnel-line: oklch(var(--bc) / .13); }
-.funnel-workspace-navigation { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; padding-bottom:20px; border-bottom:1px solid var(--funnel-line); }
-.funnel-workspace-brand { font-size:18px; font-weight:650; letter-spacing:-.04em; }
-.funnel-workspace-brand span { display:block; font-size:11px; font-weight:400; color:oklch(var(--bc) / .65); letter-spacing:0; margin-top:2px; }
-.funnel-workspace-menu { position:relative; }
-.funnel-workspace-menu > div { position:absolute; z-index:20; top:100%; right:0; width:290px; max-width:calc(100vw - 32px); padding:12px; border:1px solid var(--funnel-line); border-radius:12px; background:oklch(var(--b1)); box-shadow:0 8px 24px oklch(var(--bc) / .1); }
-.funnel-workspace-menu nav { flex-direction:column; align-items:stretch; }
 .funnel-workspace .funnel-command-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; background:oklch(var(--b1)); border:1px solid var(--funnel-line); border-radius:16px; }
 .funnel-command-status { display:flex; flex-wrap:wrap; gap:7px 16px; align-items:center; font-size:13px; }
 .funnel-command-status strong { font-weight:600; }
@@ -73,4 +67,4 @@
 .funnel-list-stages span { font-size:12px; padding:5px 8px; border:1px solid var(--funnel-line); border-radius:6px; overflow-wrap:anywhere; }
 .funnel-list-card-footer { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-top:auto; padding-top:16px; border-top:1px solid var(--funnel-line); }
 @media(min-width:1100px) { .funnel-editor-grid.has-canvas { grid-template-columns:minmax(0,1fr) minmax(340px,410px); } .funnel-editor-grid.has-canvas > .funnel-visual-column { position:sticky; top:20px; } }
-@media(max-width:639px) { .funnel-canvas-viewport { height:420px; } .funnel-inspector { padding:16px; } .funnel-workspace .funnel-command-bar { padding:16px; } .funnel-stage-list { gap:6px; } .funnel-editor-top > nav { flex-basis:100%; } .funnel-details > div, .funnel-workspace-menu > div { left:0; right:auto; } }
+@media(max-width:639px) { .funnel-canvas-viewport { height:420px; } .funnel-inspector { padding:16px; } .funnel-workspace .funnel-command-bar { padding:16px; } .funnel-stage-list { gap:6px; } .funnel-editor-top > nav { flex-basis:100%; } .funnel-details > div { left:0; right:auto; } }

@@ -286,7 +286,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
     expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: info.outputPath(`funnel-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
-  for (const summary of ["Workspace menu", "Funnel details"]) {
+  for (const summary of ["Main menu", "Funnel details"]) {
     await page.getByText(summary, { exact: true }).click();
     await noHorizontalOverflow(page);
     await page.getByText(summary, { exact: true }).click();
@@ -311,7 +311,7 @@ test("two enquiries retain separate pinned histories and manual correction affec
   const savedFunnel = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Consultation journey", exact: true }) });
   await expect(savedFunnel).toBeVisible();
   for (const name of ["Funnels", "Tracking sources", "Email campaigns"]) {
-    await page.getByRole("navigation", { name: "Journey workspace", exact: true }).getByRole("link", { name, exact: true }).hover();
+    await page.getByRole("navigation", { name: "Main navigation", exact: true }).getByRole("link", { name, exact: true }).hover();
   }
   await page.getByRole("link", { name: "Create funnel", exact: true }).hover();
   await savedFunnel.getByRole("link", { name: "Consultation journey", exact: true }).hover();
@@ -367,6 +367,62 @@ test("two enquiries retain separate pinned histories and manual correction affec
   await expect(page.getByRole("alert").filter({ hasText: /journey|cycle|changed/i })).toBeVisible();
   const after = (await (await page.request.get(`/api/funnels/${customer.funnelId}/journeys`)).json()).journeys;
   expect(after.find((journey: { id: string }) => journey.id === secondCycle.id)).toEqual(secondCycle);
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("main app navigation opens funnels and protects unfinished edits on desktop and mobile", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  await page.goto("/");
+  const navigation = page.getByRole("navigation", { name: "Main navigation", exact: true });
+  await expect(page.getByTestId("marketing-home")).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
+  await navigation.getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/funnels$/);
+  await expect(navigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "Consultation journey", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
+  await expect(navigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  const stageName = page.getByLabel("Stage name", { exact: true });
+  await stageName.fill("Unfinished navigation review");
+  page.once("dialog", dialog => dialog.dismiss());
+  await navigation.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
+  await expect(stageName).toHaveValue("Unfinished navigation review");
+  await page.screenshot({ path: info.outputPath("integrated-funnel-desktop.png"), fullPage: true, animations: "disabled" });
+  await page.setViewportSize({ width: 320, height: 740 });
+  const menu = page.getByRole("button", { name: "Main menu", exact: true });
+  await menu.focus(); await page.keyboard.press("Enter");
+  await expect(navigation).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  await noHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath("integrated-funnel-menu-320.png"), animations: "disabled" });
+  page.once("dialog", dialog => dialog.dismiss());
+  await navigation.getByRole("link", { name: "Campaigns", exact: true }).click();
+  await expect(stageName).toHaveValue("Unfinished navigation review");
+  page.once("dialog", dialog => dialog.accept());
+  await navigation.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId("marketing-home")).toBeVisible();
+  expect((await readFunnel(page, customer.funnelId)).draft.stages[0].name).not.toBe("Unfinished navigation review");
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("main navigation keeps the selected environment across funnels, tracking and email", async ({ page }, info) => {
+  await signIn(page, info);
+  const before = await providerStats(page), navigation = page.getByRole("navigation", { name: "Main navigation", exact: true });
+  await page.getByRole("combobox", { name: "Environment", exact: true }).selectOption("LIVE");
+  await navigation.getByRole("link", { name: "Tracking sources", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracking\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await navigation.getByRole("link", { name: "Email campaigns", exact: true }).click();
+  await expect(page).toHaveURL(/\/email\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await navigation.getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/funnels\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await page.getByRole("combobox", { name: "Environment", exact: true }).selectOption("TEST");
+  await expect(page.getByRole("link", { name: "Consultation journey", exact: true })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Tracking sources", exact: true })).toHaveAttribute("href", "/tracking?environment=TEST");
   expect(await providerStats(page)).toEqual(before);
 });
 

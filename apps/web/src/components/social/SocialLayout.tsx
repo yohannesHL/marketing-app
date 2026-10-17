@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Alert, Badge, Container, Stack, Typography } from "@launchpad/ui";
 import { AccountNavigation } from "../connections/AccountNavigation";
+import { useAppNavigationGuard } from "../navigation/AppShell";
 export function SocialLayout({
   title,
   description,
@@ -27,6 +28,11 @@ export function SocialLayout({
   children: ReactNode;
 }) {
   const errorRef = useRef<HTMLDivElement>(null);
+  useAppNavigationGuard(href => {
+    if (busy) return "Wait for the current post update to finish before leaving.";
+    if (onNavigate) { onNavigate(href); return false; }
+    return true;
+  });
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);

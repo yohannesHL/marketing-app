@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import { AccountNavigation } from "../connections/AccountNavigation";
 import type { Environment } from "./funnelUi";
-import { WorkspaceTheme } from "./WorkspaceTheme";
+import { useAppNavigationEnvironment, useAppNavigationGuard } from "../navigation/AppShell";
 import "./funnel-workspace.css";
 
 export function FunnelLayout({ title, description, environment, children, loading, busy, error, notice, onError, dirty = false }: {
@@ -12,20 +12,17 @@ export function FunnelLayout({ title, description, environment, children, loadin
   error?: string | null; notice?: string | null; onError?: (error: unknown) => void; dirty?: boolean;
 }) {
   const errorRef = useRef<HTMLDivElement>(null), pathname = usePathname();
+  useAppNavigationEnvironment(environment);
+  useAppNavigationGuard(() => busy ? "Wait for the current funnel update to finish before leaving." : !dirty || window.confirm("Leave this page and discard unsaved funnel edits?"));
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   useEffect(() => { if (!dirty) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [dirty]);
-  return <WorkspaceTheme><main className="funnel-workspace mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 space-y-6" onClickCapture={event => {
+  return <main className="funnel-workspace mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 space-y-6" onClickCapture={event => {
     const href = (event.target as HTMLElement).closest("a")?.getAttribute("href");
     if (dirty && href && !href.startsWith("#") && !event.metaKey && !event.ctrlKey && !window.confirm("Leave this page and discard unsaved funnel edits?")) event.preventDefault();
   }}>
     <a href="#funnel-content" className="sr-only focus:not-sr-only focus:btn">Skip to workspace</a>
-    <div className="funnel-workspace-navigation"><Link prefetch={false} className="funnel-workspace-brand" href="/funnels">LaunchPad<span>Journey workspace</span></Link>
-    <nav aria-label="Journey workspace" className="flex flex-wrap gap-1">
-      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/funnels">Funnels</Link>
-      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href={`/tracking${environment ? `?environment=${environment}` : ""}`}>Tracking sources</Link>
-      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href={`/email${environment ? `?environment=${environment}` : ""}`}>Email campaigns</Link>
-    </nav><details className="funnel-workspace-menu"><summary className="btn btn-ghost min-h-11 normal-case">Workspace menu</summary><div><AccountNavigation signedIn={!error?.includes("session ended")} busy={busy || dirty} onError={onError} /></div></details></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href={environment ? `/funnels?environment=${environment}` : "/funnels"}>All funnels</Link><AccountNavigation signedIn={!error?.includes("session ended")} busy={busy || dirty} onError={onError} /></div>
     <header className="space-y-2 min-w-0"><div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight break-words min-w-0">{title}</h1>
       {environment && <span className="badge badge-outline">{environment}</span>}</div>
       {description && <p className="max-w-4xl text-base-content/75">{description}</p>}
@@ -35,5 +32,5 @@ export function FunnelLayout({ title, description, environment, children, loadin
     {notice && <p role="status" className="rounded-box border border-success p-3">{notice}</p>}
     <div id="funnel-content" className="min-w-0" aria-busy={busy || loading}>{loading ? <p role="status">Loading workspace…</p> : children}</div>
     {busy && <p role="status" aria-live="polite">Updating workspace…</p>}
-  </main></WorkspaceTheme>;
+  </main>;
 }
