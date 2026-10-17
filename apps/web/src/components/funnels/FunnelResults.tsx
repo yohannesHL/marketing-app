@@ -78,7 +78,7 @@ function Overview({ report }: { report: FunnelReport }) {
   return <div className="space-y-6">
     <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Journey totals">
       <Metric label="Journey cycles" value={total.journeys} note={`${total.repeatCycles} additional cycles for the same subjects`} />
-      <Metric label="Distinct subjects" value={total.distinctSubjects} note="Enquiries, purchases or people; not a unique-contact count" />
+      <Metric label="Distinct subjects" value={total.distinctSubjects} note="Enquiries, purchases, subscriptions or people; not a unique-contact count" />
       <Metric label="Reached any goal" value={`${reportPercent(total.goalRate)} (${total.goalJourneys} / ${total.journeys})`} note="A goal can remain active for later stages" />
       <Metric label="Active / pending" value={total.active} note="Unfinished journeys are not assumed abandoned" />
       <Metric label="Succeeded" value={total.succeeded} note="Recorded successful terminal outcomes" />

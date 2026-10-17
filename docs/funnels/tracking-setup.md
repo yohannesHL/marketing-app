@@ -148,6 +148,10 @@ if (!response.ok) throw new Error("Review the safe tracking error code before re
 
 The timestamp must be within 180 seconds of server time. Request IDs are 8–128 letters, digits, hyphens or underscores; signatures are lowercase SHA-256 hex. Synchronize sender clocks. Reusing a delivery key with identical bytes returns a duplicate receipt; different bytes produce a conflict and an audit entry without overwriting the original event. A business identity (`resource`, such as an enquiry or order) is separate from a delivery identity (`X-LaunchPad-Id`). Use stable source contact identities, never email-only guessing, to associate repeat enquiries with one person. Multiple business objects still create separate subjects.
 
+A durable producer can include a positive integer `expectedSourceGeneration` in the signed body to require the source generation captured during setup. A mismatch returns `409 TRACKING_SOURCE_GENERATION_MISMATCH` before receipt/duplicate mutation. Keep this value frozen with the outgoing event and review configuration changes explicitly; omission preserves existing client behavior.
+
+For existing subscribers and other historical business facts, signed API bodies may include `ingestionMode: "BACKFILL"`. Omit it for normal live ingestion; no other explicit value is accepted. The mode is part of the immutable signed bytes and cannot be upgraded by changing a duplicate request. BACKFILL retains subjects/evidence and can correct eligible existing journeys; it does not automatically start a new acquisition journey or enqueue external campaign effects. This does not change the source's TEST/LIVE environment. See the [subscription bridge contract](subscription-bridge.md) for subscription identity, activation deduplication, cutover and reporting limits.
+
 API and provider-hook endpoints expose no browser CORS. The source ID selects the owner/environment on the server; the caller cannot provide them. JSON source envelopes with extra authority, owner or contact-ID fields are rejected.
 
 ## Authenticated handoff between sources

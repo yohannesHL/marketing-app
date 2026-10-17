@@ -88,7 +88,7 @@ export class FunnelReportingService {
         WHERE e.ownerId=${principal.userId} AND e.environment=${funnel.environment} AND e.subjectId IN (${Prisma.join(subjectIds)})
         AND e.status IN ('MATCHED','REDACTED') AND e.occurredAt<=${asOf} AND e.receivedAt<=${asOf}`, this.limits.events, budget) : [];
       const report: FunnelReport = {
-        schemaVersion: 1, funnel: { id: funnel.id, name: funnel.name, environment: funnel.environment as "TEST" | "LIVE", subjectKind: funnel.subjectKind as "SALES" | "PURCHASE" | "CONTACT" },
+        schemaVersion: 1, funnel: { id: funnel.id, name: funnel.name, environment: funnel.environment as "TEST" | "LIVE", subjectKind: funnel.subjectKind as "SALES" | "PURCHASE" | "CONTACT" | "SUBSCRIPTION" },
         version: { id: version.id, number: version.number, publishedAt: version.publishedAt.toISOString() },
         cohort: { from: range.from.toISOString(), to: range.to.toISOString(), asOf: asOf.toISOString(), basis: "JOURNEY_STARTED_AT", interval: "FROM_INCLUSIVE_TO_EXCLUSIVE", unit: "JOURNEY_CYCLE", entryPolicy: "ANY_CONFIGURED_ENTRY" },
         totals: { journeys: journeys.length, distinctSubjects: subjectIds.length, repeatCycles: journeys.length - subjectIds.length, active: 0, succeeded: 0, failed: 0, cancelled: 0,

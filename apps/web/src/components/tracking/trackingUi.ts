@@ -6,7 +6,7 @@ export type SourceSummary = { id: string; name: string; provider: TrackingProvid
   credentialsManagedBy?: string; createdAt: string; health: { configured: boolean; receivingEvents: boolean; matchedEvents: number;
     unresolvedEvents: number; conflictingEvents: number; explanation: string; readyForAutomation: false;
     lastReceipt: { id: string; receivedAt: string; occurredAt: string; type: string; status: string; reason: string | null; subjectId: string | null } | null } };
-export type TrackingSubject = { id: string; kind: "CONTACT" | "SALES" | "PURCHASE"; contactId: string | null; environment: TrackingEnvironment;
+export type TrackingSubject = { id: string; kind: "CONTACT" | "SALES" | "PURCHASE" | "SUBSCRIPTION"; contactId: string | null; environment: TrackingEnvironment;
   createdAt: string; contact: { id: string; name: string | null; email: string | null } | null };
 export type TrackingEvent = { id: string; type: string; environment: TrackingEnvironment; status: string; reason: string | null;
   subjectId: string | null; contactId: string | null; factId: string | null; occurredAt: string; receivedAt: string;
@@ -65,12 +65,15 @@ export function trackingSignIn(error: unknown) {
   return false;
 }
 export function dateLabel(value: string | null | undefined) { return value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Not observed"; }
-export function subjectLabel(subject: TrackingSubject) { return `${subject.contact?.name || subject.contact?.email || "Unidentified contact"} · ${subject.kind.toLowerCase()} · ${subject.id.slice(-10)}`; }
+export function subjectLabel(subject: TrackingSubject) {
+  const name = subject.contact?.name || subject.contact?.email, kind = { CONTACT: "Person", SALES: "Sales enquiry", PURCHASE: "Purchase", SUBSCRIPTION: "Subscription" }[subject.kind];
+  return `${name ? `${name} · ` : ""}${kind} · ${subject.id.slice(-10)}`;
+}
 export function sourceLink(source: Pick<SourceSummary, "id" | "environment">) { return `/tracking/${encodeURIComponent(source.id)}?environment=${source.environment}`; }
 export const EVENT_STATUS: Record<string, string> = { QUEUED: "Waiting for matching", MATCHED: "Matched", UNMATCHED: "Needs identity review", QUARANTINED: "Evidence needs review", BLOCKED: "Source changed", REDACTED: "Evidence removed" };
 export function identityHelp(provider: TrackingProvider) {
   return { NATIVE: "An accepted form creates a separate enquiry. Consented visitor observations can be linked to that enquiry. A form does not grant marketing consent.",
-    API: "Send a stable enquiry, deal or order reference. Keep the stable contact identity separate; matching does not merge people by email address.",
+    API: "Send a stable enquiry, deal, order or subscription reference. Keep contact identity separate; matching never merges people by email. For Fluxsoft activation, add custom.fluxsoft.subscription_active under Additional custom event names and use SUBSCRIPTION as both the subject kind and resource kind.",
     CALENDLY: "A booking uses its invitee identity. To link an existing enquiry, use a short-lived utm_content token plus matching recipient evidence. Shared email addresses alone are insufficient.",
     SHOPIFY: "Order and refund references identify each purchase journey. A checkout token can link earlier checkout evidence; successful refund transactions are distinct from refund creation.",
     RESEND: "Email evidence is bound to its saved message send and recipient scope. CONTACT delivery does not select an arbitrary sales enquiry." }[provider];

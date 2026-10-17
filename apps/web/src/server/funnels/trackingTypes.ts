@@ -31,7 +31,7 @@ export type NormalizedTrackingEvent = {
   verification: string;
   resource: Reference;
   references: BusinessReference[];
-  subjectKind?: "CONTACT" | "SALES" | "PURCHASE";
+  subjectKind?: "CONTACT" | "SALES" | "PURCHASE" | "SUBSCRIPTION";
   createsSubject?: boolean;
   contactIdentity?: Reference;
   contact?: { email?: string; name?: string };

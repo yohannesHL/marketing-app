@@ -1,7 +1,7 @@
 import { fail } from "../security/errors";
 import { validateDefinition, type FunnelDefinition, type FunnelRoute, type FunnelStage } from "./funnelDefinition";
 
-export type FunnelTemplateKind = "blank" | "sales" | "ecommerce" | "events" | "subscription";
+export type FunnelTemplateKind = "blank" | "sales" | "ecommerce" | "events" | "subscription" | "subscription-activation";
 export type FunnelTemplateBindings = { primarySourceId: string; bookingSourceId?: string };
 
 function source(value: unknown): string {
@@ -20,9 +20,12 @@ function route(id: string, from: string | null, to: string, sourceId: string, ty
 export function createFunnelTemplate(kind: FunnelTemplateKind, bindings?: FunnelTemplateBindings): FunnelDefinition {
   if (kind === "blank") return validateDefinition({ schemaVersion: 1,
     stages: [stage("lead", "Lead")], entryStages: ["lead"], routes: [] });
-  if (!["sales", "ecommerce", "events", "subscription"].includes(kind))
+  if (!["sales", "ecommerce", "events", "subscription", "subscription-activation"].includes(kind))
     fail("INVALID_FUNNEL_TEMPLATE", 400, "Choose a supported funnel template.");
   const primary = source(bindings?.primarySourceId);
+  if (kind === "subscription-activation") return validateDefinition({ schemaVersion: 1,
+    stages: [stage("active", "Subscription active", true)], entryStages: ["active"],
+    routes: [route("subscription-activation-entry", null, "active", primary, "custom.fluxsoft.subscription_active")] });
   if (kind === "sales") {
     const booking = bindings?.bookingSourceId === undefined ? undefined : source(bindings.bookingSourceId);
     const stages = [stage("enquiry", "Enquiry received"), ...(booking ? [stage("call", "Call booked")] : []),

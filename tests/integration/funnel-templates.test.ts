@@ -8,7 +8,7 @@ function evaluate(definition: FunnelDefinition, currentStage: string | null, typ
 }
 
 test("each template is a fresh editable definition with explicit source bindings and no alternate engine", () => {
-  for (const kind of ["blank", "sales", "ecommerce", "events", "subscription"] as FunnelTemplateKind[]) {
+  for (const kind of ["blank", "sales", "ecommerce", "events", "subscription", "subscription-activation"] as FunnelTemplateKind[]) {
     const definition = createFunnelTemplate(kind, { primarySourceId: "primary", bookingSourceId: "booking" });
     assert.deepEqual(validateDefinition(definition), definition);
     definition.stages[0].name = "A user's custom stage name";
@@ -71,4 +71,19 @@ test("event and subscription templates require their instrumented custom events 
   assert.equal(evaluate(subscription, "setup", "custom.trial.feature_used").to, "activated");
   assert.equal(evaluate(subscription, "activated", "custom.subscription.started").to, "subscribed");
   assert.equal(evaluate(subscription, "subscribed", "custom.subscription.cancelled").to, "cancelled");
+});
+
+test("Fluxsoft activation enters one subscription goal without inventing trial, setup or renewal evidence", () => {
+  const activation = createFunnelTemplate("subscription-activation", { primarySourceId: "fluxsoft" });
+  assert.equal(evaluate(activation, null, "custom.fluxsoft.subscription_active", "fluxsoft").to, "active");
+  assert.equal(evaluate(activation, null, "custom.fluxsoft.subscription_active", "another-source").outcome, "WAIT");
+  for (const event of ["custom.trial.started", "custom.trial.setup", "custom.trial.feature_used", "custom.subscription.started", "invoice.paid"])
+    assert.equal(evaluate(activation, null, event, "fluxsoft").outcome, "WAIT");
+  assert.equal(evaluate(activation, "active", "custom.fluxsoft.subscription_active", "fluxsoft").outcome, "WAIT");
+  assert.deepEqual(activation.stages, [{ id: "active", name: "Subscription active", goal: true, terminal: "NONE" }]);
+  assert.deepEqual(activation.entryStages, ["active"]);
+  assert.equal(activation.stageActions?.length ?? 0, 0);
+  assert.equal(activation.campaignLinks?.length ?? 0, 0);
+  const trial = createFunnelTemplate("subscription", { primarySourceId: "fluxsoft" });
+  assert.equal(evaluate(trial, null, "custom.fluxsoft.subscription_active", "fluxsoft").outcome, "WAIT");
 });
