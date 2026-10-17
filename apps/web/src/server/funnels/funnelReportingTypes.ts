@@ -1,6 +1,6 @@
 /** Public aggregate reporting contract; contact summaries use the separate operational API. */
 export type FunnelReportEnvironment = "TEST" | "LIVE";
-export type FunnelReportSubjectKind = "CONTACT" | "SALES" | "PURCHASE";
+export type FunnelReportSubjectKind = "CONTACT" | "SALES" | "PURCHASE" | "SUBSCRIPTION";
 export type FunnelReportJourneyStatus = "ACTIVE" | "SUCCEEDED" | "FAILED" | "CANCELLED";
 export type FunnelReportAuthority = "PROVIDER_VERIFIED" | "SERVER_ASSERTED" | "USER_RECORDED";
 

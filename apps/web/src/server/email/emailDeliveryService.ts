@@ -546,7 +546,7 @@ export class EmailDeliveryService {
         const normalized: NormalizedTrackingEvent = { type: event.type, dedupeKey: `email-receipt:${receipt.id}`, providerTopic: event.type,
           providerDeliveryId: event.providerDeliveryId, occurredAt: receipt.occurredAt.toISOString(), authority: "PROVIDER_VERIFIED",
           verification: `SVIX:${receipt.verificationKeyVersion}`, resource: { kind: "MESSAGE", id: receipt.providerMessageId! }, references: [],
-          subjectKind: subject.kind as "CONTACT" | "SALES" | "PURCHASE", properties: { ...(state ? { deliveryState: state } : {}),
+          subjectKind: subject.kind as "CONTACT" | "SALES" | "PURCHASE" | "SUBSCRIPTION", properties: { ...(state ? { deliveryState: state } : {}),
             sendId: send.id, campaignId: membership.campaignId, campaignRevisionId: send.revisionId, stepId: send.stepId } };
         const terminalFact = ["email.sent", "email.delivered", "email.bounced", "email.complained", "email.failed", "email.suppressed"].includes(event.type);
         let factId: string | undefined;

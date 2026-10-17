@@ -40,7 +40,7 @@ export class FunnelService {
   async create(principal: CustomerPrincipal, value: unknown) {
     await this.auth.assertSession(principal); const input = object(value); fields(input, ["name", "environment", "subjectKind", "definition"]);
     const name = text(input.name, 120), environment = this.environment(input.environment), subjectKind = text(input.subjectKind);
-    if (!["CONTACT", "SALES", "PURCHASE"].includes(subjectKind)) fail("INVALID_FUNNEL_INPUT", 400, "Choose people, sales enquiries or purchases.");
+    if (!["CONTACT", "SALES", "PURCHASE", "SUBSCRIPTION"].includes(subjectKind)) fail("INVALID_FUNNEL_INPUT", 400, "Choose people, sales enquiries, purchases or subscriptions.");
     const definition = validateDefinition(input.definition);
     return this.db.$transaction(async tx => {
       await this.session(tx, principal);
@@ -342,7 +342,7 @@ export class FunnelService {
       if (event.status !== "MATCHED" || event.subjectId !== subject.id || event.matchRevision !== receipt.matchRevision) return cancel("EVIDENCE_CHANGED");
       if (subject.contactId && (await tx.funnelContact.findUnique({ where: { id: subject.contactId } }))?.deletedAt) return cancel("CONTACT_DELETED");
       const source = await tx.trackingSource.findUniqueOrThrow({ where: { id: event.sourceId } });
-      if (source.status !== "ACTIVE" || receipt.mode === "LIVE" && source.generation !== event.sourceGeneration) return cancel("SOURCE_CHANGED");
+      if (source.status !== "ACTIVE" || receipt.mode !== "REPLAY" && source.generation !== event.sourceGeneration) return cancel("SOURCE_CHANGED");
       const projection = await this.snapshot(tx, event, subject.id), envelope = event.envelope as unknown as NormalizedTrackingEvent;
       const funnels = await tx.funnel.findMany({ where: { ownerId: receipt.ownerId, environment: receipt.environment, subjectKind: subject.kind, publishedVersionId: { not: null } }, orderBy: { id: "asc" }, take: 100 });
       for (const funnel of funnels) {

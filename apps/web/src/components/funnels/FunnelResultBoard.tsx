@@ -36,7 +36,7 @@ export function FunnelResultBoard({ report }: { report: FunnelReport }) {
   return <section className="space-y-4" aria-label="Stage board">
     <div className="flex flex-wrap gap-3 items-center justify-between"><h3 className="text-xl font-semibold">Stage board</h3>
       <button className={buttonClass} disabled={loading || moreBusy} onClick={() => setRefresh(value => value + 1)}>Refresh board</button></div>
-    <p className="text-sm">Independent {report.funnel.subjectKind === "SALES" ? "sales enquiries" : report.funnel.subjectKind === "PURCHASE" ? "purchase journeys" : "people"} and their cycles. Open a card to inspect evidence or record a correction with a reason.</p>
+    <p className="text-sm">Independent {report.funnel.subjectKind === "SALES" ? "sales enquiries" : report.funnel.subjectKind === "PURCHASE" ? "purchase journeys" : report.funnel.subjectKind === "SUBSCRIPTION" ? "subscriptions" : "people"} and their cycles. Open a card to inspect evidence or record a correction with a reason.</p>
     <p className="text-sm">Cards show current operational state and load in pages. They can change after the report snapshot at {reportUtc(report.cohort.asOf)}. Stage totals below belong to that report snapshot.</p>
     {loadedAt && <p className="text-sm" role="status">Loaded {rows.length} of {total} matching journeys · Last card fetch {reportUtc(loadedAt)}.</p>}
     {error && <p role="alert" className="border border-error rounded-box p-3">{error}</p>}
@@ -46,7 +46,7 @@ export function FunnelResultBoard({ report }: { report: FunnelReport }) {
         return <section key={stage.stageId} aria-label={`Board stage: ${stage.name}`} className={`${panelClass} space-y-3 bg-base-200/30`}>
           <header><h4 className="font-semibold break-words">{stage.name}</h4><p className="text-sm">{stage.currentJourneys} current in report · {cards.length} cards loaded here</p></header>
           {cards.length ? <ul className="space-y-3">{cards.map(row => <li key={row.id} className="rounded-box bg-base-100 border border-base-300 p-3 space-y-2 break-words">
-            <p className="font-semibold">{row.subject.contact?.name || row.subject.contact?.email || "Contact unavailable"}</p>
+            <p className="font-semibold">{row.subject.contact?.name || row.subject.contact?.email || (report.funnel.subjectKind === "SUBSCRIPTION" ? "Subscription" : "Contact unavailable")}</p>
             {row.subject.contact?.name && row.subject.contact.email && <p className="text-sm break-all">{row.subject.contact.email}</p>}
             <p className="text-xs break-all">Subject {row.subjectId} · Cycle {row.cycle}</p>
             <p className="text-sm">{reportLabel(row.status)} · Entered {reportUtc(row.startedAt)}</p>

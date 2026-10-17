@@ -13,8 +13,9 @@ type Tx = Prisma.TransactionClient;
 const jsonValue = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 const DAY = 86_400_000;
 const browserTypes = ["page.viewed", "product.viewed", "checkout.observed"];
+const subscriptionActivationType = "custom.fluxsoft.subscription_active";
 const sourceTypes = ["enquiry.accepted", "deal.won", "deal.lost", "order.paid", ...browserTypes];
-const subjectReferences: Record<string, string[]> = { CONTACT: ["CONTACT"], SALES: ["ENQUIRY", "DEAL", "BOOKING"], PURCHASE: ["ORDER", "CHECKOUT", "REFUND", "REFUND_TRANSACTION"] };
+const subjectReferences: Record<string, string[]> = { CONTACT: ["CONTACT"], SALES: ["ENQUIRY", "DEAL", "BOOKING"], PURCHASE: ["ORDER", "CHECKOUT", "REFUND", "REFUND_TRANSACTION"], SUBSCRIPTION: ["SUBSCRIPTION"] };
 const matchingKinds = Object.values(subjectReferences).flat();
 const handoffKinds: Record<string, string[]> = { NATIVE: ["ENQUIRY"], API: matchingKinds,
   CALENDLY: ["BOOKING"], SHOPIFY: ["ORDER", "CHECKOUT", "REFUND", "REFUND_TRANSACTION"] };
@@ -194,13 +195,14 @@ export class TrackingService {
       select: { id: true, environment: true, name: true, email: true, createdAt: true } });
     return { contacts: contacts.slice(0, 50), nextCursor: contacts.length > 50 ? contacts[49].id : null };
   }
-  private async rate(source: TrackingSource) {
+  private async rate(source: TrackingSource, transaction?: Tx) {
     const bucket = new Date(Math.floor(this.now().getTime() / 60_000) * 60_000);
-    const result = await this.db.$transaction(async tx => {
+    const count = async (tx: Tx) => {
       await tx.trackingRateLimit.deleteMany({ where: { sourceId: source.id, bucket: { lt: new Date(bucket.getTime() - 3_600_000) } } });
       return tx.trackingRateLimit.upsert({ where: { sourceId_bucket: { sourceId: source.id, bucket } },
         create: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, bucket, count: 1 }, update: { count: { increment: 1 } } });
-    });
+    };
+    const result = transaction ? await count(transaction) : await this.db.$transaction(count);
     if (result.count > (source.provider === "NATIVE" ? 120 : 600)) fail("TRACKING_RATE_LIMIT", 429, "Source rate limit reached. Retry later.");
   }
   async publicSource(sourceId: string, origin: string | null) {
@@ -247,8 +249,16 @@ export class TrackingService {
       fail("INVALID_TRACKING_SIGNATURE", 401, "Invalid source authentication.");
     const expected = createHmac("sha256", this.credentials(source).signingSecret!).update(`${seconds}.${requestId}.${raw}`).digest("hex");
     if (!equalSecret(signature, expected)) fail("INVALID_TRACKING_SIGNATURE", 401, "Invalid source authentication.");
-    await this.rate(source);
-    const input = json(raw); fields(input, ["schemaVersion", "type", "occurredAt", "resource", "references", "subjectKind", "contactIdentity", "contact", "properties"]);
+    const input = json(raw); fields(input, ["schemaVersion", "type", "occurredAt", "resource", "references", "subjectKind", "contactIdentity", "contact", "properties", "ingestionMode", "expectedSourceGeneration"]);
+    const expectedGeneration = input.expectedSourceGeneration;
+    if (expectedGeneration !== undefined && (typeof expectedGeneration !== "number" || !Number.isSafeInteger(expectedGeneration) || expectedGeneration < 1))
+      fail("INVALID_TRACKING_INPUT", 400, "Expected source generation must be a positive safe integer.");
+    if (expectedGeneration !== undefined && expectedGeneration !== source.generation)
+      fail("TRACKING_SOURCE_GENERATION_MISMATCH", 409, "This queued event belongs to a different source generation. Review the producer backlog before retrying.");
+    // A pinned request counts against quota only in its successful acceptance transaction.
+    if (expectedGeneration === undefined) await this.rate(source);
+    if (input.ingestionMode !== undefined && input.ingestionMode !== "BACKFILL")
+      fail("INVALID_TRACKING_INPUT", 400, "Only the explicit BACKFILL history downgrade is supported; omit ingestionMode for new events.");
     const type = text(input.type), config = source.config as unknown as TrackingSourceConfig;
     if (input.schemaVersion !== 1 || !config.allowedEvents.includes(type)) fail("UNSUPPORTED_EVENT", 400, "Use the configured event schema and types.");
     const ref = (value: unknown, qualified = false): BusinessReference => { const r = object(value); fields(r, qualified ? ["kind", "id", "sourceId"] : ["kind", "id"]); const kind = text(r.kind, 30);
@@ -257,10 +267,10 @@ export class TrackingService {
     const resource = ref(input.resource), references = input.references === undefined ? [] : input.references;
     if (!Array.isArray(references) || references.length > 10) fail("INVALID_TRACKING_INPUT", 400, "Supply at most ten references.");
     const subjectKind = text(input.subjectKind);
-    if (!["CONTACT", "SALES", "PURCHASE"].includes(subjectKind)) fail("INVALID_TRACKING_INPUT", 400, "Choose the subject kind.");
+    if (!["CONTACT", "SALES", "PURCHASE", "SUBSCRIPTION"].includes(subjectKind)) fail("INVALID_TRACKING_INPUT", 400, "Choose the subject kind.");
     const parsedReferences = references.map(value => ref(value, true));
     if (![resource, ...parsedReferences].every(r => subjectReferences[subjectKind].includes(r.kind)))
-      fail("INVALID_TRACKING_INPUT", 400, "Keep contact identity separate from enquiry/order business references.");
+      fail("INVALID_TRACKING_INPUT", 400, "Keep contact and account context separate from business references.");
     let contactIdentity: { kind: string; id: string } | undefined, contact: { name?: string; email?: string } | undefined;
     if (input.contactIdentity !== undefined) { const c = object(input.contactIdentity); fields(c, ["kind", "id"]); contactIdentity = { kind: text(c.kind, 50), id: text(c.id, 500) }; }
     if (input.contact !== undefined) { const c = object(input.contact); fields(c, ["email", "name"]);
@@ -269,12 +279,14 @@ export class TrackingService {
     const attrs = properties(input.properties, config.propertyKeys);
     if (["order.paid", "deal.won"].includes(type) && (typeof attrs.amount !== "string" || !/^\d{1,15}(\.\d{1,6})?$/.test(attrs.amount) || typeof attrs.currency !== "string" || !/^[A-Z]{3}$/.test(attrs.currency)))
       fail("INVALID_TRACKING_INPUT", 400, "Financial events require a decimal amount and explicit currency.");
-    if (type === "order.paid" && subjectKind !== "PURCHASE" || type.startsWith("deal.") && subjectKind !== "SALES")
+    if (type === "order.paid" && subjectKind !== "PURCHASE" || type.startsWith("deal.") && subjectKind !== "SALES" ||
+      type === subscriptionActivationType && (subjectKind !== "SUBSCRIPTION" || resource.kind !== "SUBSCRIPTION"))
       fail("INVALID_TRACKING_INPUT", 400, "The event does not match the business subject kind.");
     return this.accept(source, [{ type, dedupeKey: requestId, providerTopic: type, occurredAt: timestamp(input.occurredAt),
       authority: "SERVER_ASSERTED", verification: "HMAC_SHA256_TIMESTAMP_REQUEST_BODY", resource, references: parsedReferences,
-      subjectKind: subjectKind as "CONTACT" | "SALES" | "PURCHASE", createsSubject: true, contactIdentity, contact, properties: attrs,
-      ...(["order.paid", "deal.won"].includes(type) ? { factKey: type } : {}) }], sha256(raw), "LIVE");
+      subjectKind: subjectKind as "CONTACT" | "SALES" | "PURCHASE" | "SUBSCRIPTION", createsSubject: true, contactIdentity, contact, properties: attrs,
+      // The unique fact is scoped to the resolved business subject, not a delivery or invoice.
+      ...(["order.paid", "deal.won", subscriptionActivationType].includes(type) ? { factKey: type } : {}) }], sha256(raw), input.ingestionMode === "BACKFILL" ? "BACKFILL" : "LIVE", undefined, undefined, expectedGeneration);
   }
   async collectHook(ingressToken: string, headers: Headers, raw: string) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(ingressToken)) fail("TRACKING_SOURCE_UNAVAILABLE", 404, "Webhook source not found.");
@@ -284,12 +296,15 @@ export class TrackingService {
     const receipt = verifyProviderReceipt(this.adapterSource(source), this.credentials(source), headers, raw, this.now());
     return this.accept(source, receipt.events, receipt.rawPayloadDigest, "LIVE");
   }
-  private async accept(source: TrackingSource, events: NormalizedTrackingEvent[], rawPayloadDigest: string, mode: TrackingMode, visitorId?: string, actor?: CustomerPrincipal) {
+  private async accept(source: TrackingSource, events: NormalizedTrackingEvent[], rawPayloadDigest: string, mode: TrackingMode, visitorId?: string, actor?: CustomerPrincipal, expectedGeneration?: number) {
     if (!events.length || events.length > 200) fail("INVALID_TRACKING_INPUT", 400, "Unsupported event batch size.");
     const result = await this.db.$transaction(async tx => {
       if (actor) await this.session(tx, actor);
-      const current = await tx.trackingSource.findFirst({ where: { id: source.id, generation: source.generation, status: "ACTIVE" } });
-      if (!current) fail("TRACKING_SOURCE_CHANGED", 409, "Source changed before receipt. Retry with current credentials.");
+      const current = await tx.trackingSource.findUnique({ where: { id: source.id } });
+      if (expectedGeneration !== undefined && current?.generation !== expectedGeneration)
+        fail("TRACKING_SOURCE_GENERATION_MISMATCH", 409, "This queued event belongs to a different source generation. Review the producer backlog before retrying.");
+      if (!current || current.generation !== source.generation || current.status !== "ACTIVE") fail("TRACKING_SOURCE_CHANGED", 409, "Source changed before receipt. Retry with current credentials.");
+      if (expectedGeneration !== undefined) await this.rate(source, tx);
       const receipts: { id: string; duplicate: boolean; conflict: boolean }[] = [];
       for (const event of events) {
         const existing = await tx.trackingEvent.findUnique({ where: { ownerId_sourceId_type_dedupeKey: {
@@ -356,7 +371,7 @@ export class TrackingService {
       const event = await tx.trackingEvent.findFirst({ where: { status: "QUEUED" }, orderBy: [{ receivedAt: "asc" }, { id: "asc" }] });
       if (!event) return null;
       const source = await tx.trackingSource.findUniqueOrThrow({ where: { id: event.sourceId } });
-      if (source.status !== "ACTIVE" || (event.processingMode === "LIVE" && source.generation !== event.sourceGeneration) || source.environment === "LIVE" && !this.liveEnabled)
+      if (source.status !== "ACTIVE" || (event.processingMode !== "REPLAY" && source.generation !== event.sourceGeneration) || source.environment === "LIVE" && !this.liveEnabled)
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "BLOCKED", reason: "SOURCE_CHANGED", processedAt: this.now() } });
       const envelope = event.envelope as unknown as NormalizedTrackingEvent;
       const kind = envelope.subjectKind ?? (event.type.startsWith("booking.") ? "SALES" : event.type.startsWith("refund.") ? "PURCHASE" : "CONTACT");
@@ -397,15 +412,15 @@ export class TrackingService {
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason, processedAt: this.now() } });
       if (subject && (subject.ownerId !== event.ownerId || subject.environment !== event.environment || subject.kind !== kind && envelope.authority !== "BROWSER_OBSERVED"))
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "SUBJECT_BOUNDARY_MISMATCH", processedAt: this.now() } });
-      // Receipt-only manual choices cannot copy canonical money to a different business subject.
+      // Receipt-only manual choices cannot copy canonical payment or activation proof to another subject.
       const selectedSubjectId = subject?.id;
       if (selectedSubjectId && envelope.factKey && mappings.some(mapping => mapping.subjectId !== selectedSubjectId))
-        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "FINANCIAL_REFERENCE_CONFLICT", processedAt: this.now() } });
-      for (const ref of refs.filter(ref => ref.kind === "ORDER")) {
-        const multipleOrders = refs.some(other => other.kind === "ORDER" && other.sourceId === ref.sourceId && other.id !== ref.id);
-        const otherOrder = subject && await tx.funnelSubjectReference.findFirst({ where: { sourceId: ref.sourceId, subjectId: subject.id, kind: "ORDER", externalId: { not: ref.id } } });
-        const boundElsewhere = selectedSubjectId && mappings.some(mapping => mapping.sourceId === ref.sourceId && mapping.kind === "ORDER" && mapping.externalId === ref.id && mapping.subjectId !== selectedSubjectId);
-        if (multipleOrders || otherOrder || boundElsewhere) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "ORDER_REFERENCE_CONFLICT", processedAt: this.now() } });
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: kind === "SUBSCRIPTION" ? "SUBSCRIPTION_REFERENCE_CONFLICT" : "FINANCIAL_REFERENCE_CONFLICT", processedAt: this.now() } });
+      for (const ref of refs.filter(ref => ref.kind === "ORDER" || ref.kind === "SUBSCRIPTION")) {
+        const multipleIds = refs.some(other => other.kind === ref.kind && other.sourceId === ref.sourceId && other.id !== ref.id);
+        const otherId = subject && await tx.funnelSubjectReference.findFirst({ where: { sourceId: ref.sourceId, subjectId: subject.id, kind: ref.kind, externalId: { not: ref.id } } });
+        const boundElsewhere = selectedSubjectId && mappings.some(mapping => mapping.sourceId === ref.sourceId && mapping.kind === ref.kind && mapping.externalId === ref.id && mapping.subjectId !== selectedSubjectId);
+        if (multipleIds || otherId || boundElsewhere) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: `${ref.kind}_REFERENCE_CONFLICT`, processedAt: this.now() } });
       }
       // Resolve identity even when a business reference already found a subject. Never merge by email.
       const incomingIdentity = envelope.contactIdentity;
@@ -429,7 +444,7 @@ export class TrackingService {
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "CONTACT_RECIPIENT_CONFLICT", processedAt: this.now() } });
       const existingFact = subject && envelope.factKey && envelope.authority !== "BROWSER_OBSERVED" ?
         await tx.trackingFact.findUnique({ where: { ownerId_subjectId_key: { ownerId: source.ownerId, subjectId: subject.id, key: envelope.factKey } } }) : null;
-      if (existingFact) {
+      if (existingFact && existingFact.type !== subscriptionActivationType) {
         const oldMoney = existingFact.attributes as Record<string, unknown>;
         const moneyChanged = ["amount", "currency", "presentmentAmount", "presentmentCurrency"].some(key =>
           oldMoney[key] !== undefined && envelope.properties[key] !== undefined && oldMoney[key] !== envelope.properties[key]);
@@ -494,7 +509,7 @@ export class TrackingService {
       if (!event || !subject) fail("NOT_FOUND", 404, "Unmatched event or compatible subject not found.");
       const envelope = event.envelope as unknown as NormalizedTrackingEvent;
       const kind = envelope.subjectKind ?? (event.type.startsWith("booking.") ? "SALES" : event.type.startsWith("refund.") ? "PURCHASE" : "CONTACT");
-      if (subject.kind !== kind && envelope.authority !== "BROWSER_OBSERVED") fail("INVALID_MATCH", 400, "Choose the matching sales, purchase or contact subject kind.");
+      if (subject.kind !== kind && envelope.authority !== "BROWSER_OBSERVED") fail("INVALID_MATCH", 400, "Choose the matching sales, purchase, subscription or contact subject kind.");
       await tx.trackingEvent.update({ where: { id: event.id }, data: { subjectId, status: "QUEUED", processingMode: "REPLAY" } });
       await tx.trackingAudit.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId, eventId,
         actorId: principal.userId, action: "MANUAL_MATCH", reason } });

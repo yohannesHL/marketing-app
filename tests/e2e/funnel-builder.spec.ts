@@ -25,7 +25,7 @@ async function signIn(page: Page, info: TestInfo): Promise<FunnelBrowserCustomer
 }
 async function readFunnel(page: Page, id: string) {
   const response = await page.request.get(`/api/funnels/${id}`); expect(response.status()).toBe(200);
-  return response.json() as Promise<{ id: string; name: string; draftRevision: number; draft: FunnelDefinition;
+  return response.json() as Promise<{ id: string; name: string; subjectKind: string; draftRevision: number; draft: FunnelDefinition;
     publishedVersionId: string | null; automationEnrolmentEnabled: boolean; automationDispatchEnabled: boolean }>;
 }
 async function providerStats(page: Page) {
@@ -59,6 +59,88 @@ async function addRule(page: Page, sourceId: string, to: string, entry = false) 
   await form.getByRole("combobox", { name: "Go to stage", exact: true }).selectOption({ label: to });
   await form.getByRole("button", { name: "Add rule", exact: true }).click();
 }
+
+test("subscription activation source and template require only the signed activation event", async ({ page }, info) => {
+  await signIn(page, info);
+  const before = await providerStats(page);
+  await page.goto("/tracking?environment=TEST");
+  await page.getByRole("button", { name: "Connect source", exact: true }).click();
+  await page.getByRole("combobox", { name: "Source type", exact: true }).selectOption("API");
+  await page.getByLabel("Source name", { exact: true }).fill("Fluxsoft subscription activations");
+  await page.getByLabel("Stable source identity", { exact: true }).fill(`fluxsoft-${info.project.name}`);
+  const accepted = page.getByRole("group", { name: "Accepted event types", exact: true });
+  for (const checkbox of await accepted.getByRole("checkbox").all()) await checkbox.uncheck();
+  await page.getByRole("textbox", { name: /^Additional custom event names/ }).fill("custom.fluxsoft.subscription_active");
+  await page.getByLabel("Allowed property names", { exact: true }).fill("");
+  await page.getByRole("button", { name: "Create source", exact: true }).click();
+  await expect(page.getByLabel("Server signing secret", { exact: true })).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "I have saved it", exact: true }).click();
+  await page.getByRole("link", { name: "Open source diagnostics", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracking\/[^/?]+\?environment=TEST$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Fluxsoft subscription activations");
+  const sourceId = new URL(page.url()).pathname.split("/").at(-1)!;
+  await page.getByText("Installation instructions", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Subscription activation events", exact: true })).toBeVisible();
+  await expect(page.getByText(/the Fluxsoft activation bridge supplies no recipient or marketing consent/)).toBeVisible();
+  const example = page.locator("pre").filter({ hasText: "STABLE_SUBSCRIPTION_ID" });
+  await expect(example).toBeVisible();
+  expect(JSON.parse(await example.innerText())).toMatchObject({
+    type: "custom.fluxsoft.subscription_active", subjectKind: "SUBSCRIPTION", resource: { kind: "SUBSCRIPTION" }, properties: {},
+  });
+  expect(await example.innerText()).not.toMatch(/contactIdentity|invoice|amount|trial/);
+  await page.setViewportSize({ width: 320, height: 740 });
+  await noHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath("subscription-source-320.png"), fullPage: true, animations: "disabled" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  await page.goto("/funnels/create?environment=TEST");
+  await page.getByLabel("Funnel name", { exact: true }).fill("Fluxsoft activation tracking");
+  const template = page.getByRole("combobox", { name: "Starting template", exact: true });
+  const subject = page.getByRole("combobox", { name: "Count a journey for", exact: true });
+  await template.selectOption("subscription");
+  await expect(subject).toHaveValue("SUBSCRIPTION");
+  await expect(page.getByText(/The Fluxsoft activation bridge does not supply those trial events/)).toBeVisible();
+  await subject.selectOption("CONTACT");
+  await template.selectOption("subscription-activation");
+  await expect(subject).toHaveValue("SUBSCRIPTION");
+  const source = page.getByRole("combobox", { name: "Primary data source", exact: true });
+  await expect(source.locator("option")).toHaveCount(2);
+  await source.selectOption(sourceId);
+  await page.setViewportSize({ width: 320, height: 740 });
+  await noHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath("subscription-activation-template-320.png"), fullPage: true, animations: "disabled" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole("button", { name: "Create draft", exact: true }).click();
+  await expect(page).toHaveURL(/\/funnels\/[^/?]+$/);
+  const funnelId = new URL(page.url()).pathname.split("/").at(-1)!;
+  const draft = await readFunnel(page, funnelId);
+  expect(draft.subjectKind).toBe("SUBSCRIPTION");
+  expect(draft.draft.stages).toEqual([{ id: "active", name: "Subscription active", goal: true, terminal: "NONE" }]);
+  expect(draft.draft.routes).toHaveLength(1);
+  expect(draft.draft.routes[0].trigger).toEqual({ kind: "EVENT", sourceId, type: "custom.fluxsoft.subscription_active" });
+  expect(draft.draft.stageActions ?? []).toEqual([]);
+  await page.getByRole("button", { name: "Review & publish", exact: true }).click();
+  await page.getByRole("button", { name: "Publish reviewed revision", exact: true }).click();
+  await expect(page.getByText("Published for future events. Existing journeys retain their original version.", { exact: true })).toBeVisible();
+  const published = await readFunnel(page, funnelId);
+  expect(published.automationEnrolmentEnabled).toBe(false); expect(published.automationDispatchEnabled).toBe(false);
+  const views = page.getByRole("navigation", { name: "Funnel views", exact: true });
+  await views.getByRole("button", { name: "Test journey", exact: true }).click();
+  const simulator = page.getByRole("region", { name: "Test journey", exact: true });
+  await simulator.getByRole("button", { name: "Add sample event", exact: true }).click();
+  await simulator.getByRole("combobox", { name: "Sample source", exact: true }).selectOption(sourceId);
+  await simulator.getByRole("button", { name: "Run no-send simulation", exact: true }).click();
+  await expect(simulator.getByRole("heading", { name: "Simulated result: Subscription active", exact: true })).toBeVisible();
+  expect((await (await page.request.get(`/api/funnels/${funnelId}/journeys`)).json()).journeys).toEqual([]);
+  await views.getByRole("button", { name: "People / journeys", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Subscription journeys", exact: true })).toBeVisible();
+  await views.getByRole("button", { name: "Results", exact: true }).click();
+  await page.getByRole("navigation", { name: "Result views", exact: true }).getByRole("button", { name: "Stage board", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Stage board", exact: true })).toContainText("Independent subscriptions and their cycles.");
+  await page.goto("/funnels");
+  await expect(page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Fluxsoft activation tracking", exact: true }) })).toContainText("Subscriptions");
+  expect(await providerStats(page)).toEqual(before);
+});
 
 test("custom funnel forms keep branch order, retain conflicting edits, publish tracking only and simulate without effects", async ({ page, context }, info) => {
   const customer = await signIn(page, info), before = await providerStats(page);

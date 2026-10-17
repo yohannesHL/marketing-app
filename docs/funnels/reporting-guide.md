@@ -6,7 +6,7 @@ Results describe recorded evidence for one published funnel version and one entr
 
 | Term | Definition |
 | --- | --- |
-| Subject | The business object a funnel tracks: a person, one enquiry, or one checkout/order. Two enquiries/orders for the same contact are two subjects. |
+| Subject | The business object a funnel tracks: a person, one enquiry, one checkout/order, or one subscription. Two enquiries/orders/subscriptions for the same contact are two subjects. |
 | Journey | One explicit cycle of one subject in one funnel. A new cycle counts again as a journey, but financial facts are deduplicated across selected cycles. |
 | Published version | The immutable rules retained by those journeys. Reused stage names/IDs across versions are not silently combined. |
 | Entry cohort | Journeys with recorded `startedAt` in the UTC half-open interval `[from, to)`. Exactly `from` is included; exactly `to` is excluded. |
@@ -45,6 +45,10 @@ If one enquiry entered Lead and later reached Booked, Lead has one ever-reached 
 An independently entered second enquiry for the same person increases the journey and subject counts. An explicit new cycle for the original enquiry increases journeys but not distinct subjects. An old paid fact attached to that subject is not counted twice within the report.
 
 The branch denominator is visible with each numerator. Routes with missing conditions wait according to their saved rules; reporting does not infer that every reached journey was eligible for every branch. Parallel observed edges and manual corrections may make rows non-additive. A rule whose trace cannot distinguish same-destination branches is reported at the supported rule/edge level rather than assigned a fictional branch.
+
+## Subscription outcomes
+
+A subscription activation funnel counts subscription subjects, not unique people. Activation retries and later renewals do not create another acquisition automatically. Activation alone provides no monetary facts: recurring revenue, MRR and subscription payments remain unavailable. Existing-subscriber BACKFILL imports retain subjects/evidence without automatically starting new acquisition journeys. They can correct eligible existing journeys; reconstructing historical acquisition cohorts is outside this release. See the [subscription bridge contract](subscription-bridge.md).
 
 ## Financial outcomes
 
