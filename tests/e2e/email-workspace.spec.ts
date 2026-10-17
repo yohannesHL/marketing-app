@@ -35,6 +35,17 @@ async function campaignFromUi(page: Page, name: string, category: string) {
     .check();
   await page.getByLabel("Saturday", { exact: true }).check();
   await page.getByLabel("Sunday", { exact: true }).check();
+  const expiry = page.getByLabel("Expire unsent message after due time", {
+    exact: true,
+  });
+  await expect(expiry).toHaveValue("7");
+  // Firefox must accept ordinary whole-day values before native form submission.
+  expect(
+    await expiry.evaluate((input: HTMLInputElement) => ({
+      valid: input.validity.valid,
+      message: input.validationMessage,
+    })),
+  ).toEqual({ valid: true, message: "" });
   await page.getByRole("button", { name: "Create draft", exact: true }).click();
   await expect(page).toHaveURL(/\/email\/campaigns\/[A-Za-z0-9_-]+$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);

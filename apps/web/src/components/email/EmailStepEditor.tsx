@@ -42,7 +42,7 @@ export function DurationField({
             type="number"
             min={1 / unit}
             max={31536000 / unit}
-            step={1 / unit}
+            step="any"
             required
             className={inputClass}
             value={Number.isFinite(seconds) ? seconds / unit : ""}

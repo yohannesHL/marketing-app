@@ -81,3 +81,5 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - [Builder guide](../../docs/funnels/builder-guide.md) records scope, diagrams, controls, setup, verification and known limits. These are fixture results; live provider and authorized recipient evidence remain pending.
 
 - The GitHub connection cannot modify workflow files. The existing CI entry point runs the funnel suite in each browser job; workflow permissions and job definitions remain unchanged.
+
+- PR #48 CI passed all 633 backend/security tests and the Chromium/WebKit workspace suites. Firefox revealed a fractional native number-step mismatch blocking valid seven-day email durations; the input now permits precise numeric entry while the campaign validator retains whole-second bounds. Sign-in controls stay disabled until handlers attach, with a delayed-script regression. The eight original production Firefox scenarios pass after these fixes; the added delayed-script test also passes in a focused production run, including exact login body and supported deep-link return.

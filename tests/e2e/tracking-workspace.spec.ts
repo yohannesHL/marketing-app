@@ -130,6 +130,36 @@ test("source inbox supports an audited manual match and history replay without c
   expect((await page.request.get(`/api/marketing-campaigns/${account.campaignId}/memberships`).then(r => r.json())).memberships).toEqual([]);
 });
 
+test("sign-in waits for its handlers before accepting input when the page script is delayed", async ({ page }, info) => {
+  const account = await customer(info);
+  let releaseScript!: () => void, markBlocked!: () => void;
+  const scriptGate = new Promise<void>(resolve => { releaseScript = resolve; });
+  const scriptBlocked = new Promise<void>(resolve => { markBlocked = resolve; });
+  const loginBodies: unknown[] = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/auth/login") loginBodies.push(request.postDataJSON());
+  });
+  await page.route("**/_next/static/chunks/app/sign-in/**", async route => {
+    markBlocked(); await scriptGate; await route.continue();
+  });
+  const returnTo = `/tracking/${account.sourceId}`;
+  try {
+    await page.goto(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`, { waitUntil: "commit" });
+    await scriptBlocked;
+    await expect(page.getByLabel(/^Email/)).toBeDisabled();
+    await expect(page.getByLabel(/^Password/)).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeDisabled();
+    expect(loginBodies).toEqual([]);
+  } finally { releaseScript(); }
+  await expect(page.getByLabel(/^Email/)).toBeEnabled();
+  await page.getByLabel(/^Email/).fill(account.email);
+  await page.getByLabel(/^Password/).fill(account.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Fixture CRM");
+  await expect(page).toHaveURL(new URL(returnTo, page.url()).href);
+  expect(loginBodies).toEqual([{ email: account.email, password: account.password }]);
+});
+
 test("source deep links require authentication and hide another customer's source", async ({ page, browser }, info) => {
   const account = await customer(info);
   await page.goto(`/tracking/${account.sourceId}?environment=TEST`);
