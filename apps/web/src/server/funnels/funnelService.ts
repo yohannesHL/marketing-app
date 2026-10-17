@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient, Funnel, FunnelJourney, FunnelVersion, TrackingEvent } from "../../generated/prisma/client";
 import { CustomerAuth, type CustomerPrincipal } from "../auth/customerAuth";
-import { fail } from "../security/errors";
+import { fail, SecurityError } from "../security/errors";
 import { fields, object, properties as scalarProperties, sha256, text, timestamp } from "./trackingValidation";
 import { evaluateFunnel, fieldKey, validateDefinition, type FunnelDefinition, type PropertyValues, type Scalar } from "./funnelDefinition";
 import type { NormalizedTrackingEvent } from "./trackingTypes";
@@ -134,14 +134,54 @@ export class FunnelService {
   }
   async controls(principal: CustomerPrincipal, id: string, value: unknown) {
     await this.auth.assertSession(principal); const input = object(value);
-    fields(input, ["automationEnrolmentEnabled", "automationDispatchEnabled"]);
-    for (const key of Object.keys(input)) if (typeof input[key] !== "boolean") fail("INVALID_FUNNEL_INPUT", 400, "Use explicit automation control booleans.");
+    fields(input, ["automationEnrolmentEnabled", "automationDispatchEnabled", "expectedPublishedVersionId"]);
+    const expectedVersion = input.expectedPublishedVersionId === undefined ? undefined : text(input.expectedPublishedVersionId, 128);
+    for (const key of Object.keys(input).filter(key => key !== "expectedPublishedVersionId")) if (typeof input[key] !== "boolean") fail("INVALID_FUNNEL_INPUT", 400, "Use explicit automation control booleans.");
     return this.db.$transaction(async tx => {
       await this.session(tx, principal); const funnel = await this.owned(tx, principal, id);
       if ((input.automationEnrolmentEnabled || input.automationDispatchEnabled) && !funnel.publishedVersionId)
         fail("FUNNEL_UNPUBLISHED", 409, "Publish a funnel before enabling its automation.");
+      if (expectedVersion !== undefined && expectedVersion !== funnel.publishedVersionId)
+        fail("PUBLISHED_VERSION_CHANGED", 409, "The published version changed. Reload and review its actions before enabling automation.");
       return tx.funnel.update({ where: { id }, data: { automationEnrolmentEnabled: input.automationEnrolmentEnabled as boolean | undefined,
         automationDispatchEnabled: input.automationDispatchEnabled as boolean | undefined } });
+    });
+  }
+  /** A configuration observation, never recipient consent or permission to send. No provider calls. */
+  async readiness(principal: CustomerPrincipal, id: string, scope: string) {
+    await this.auth.assertSession(principal);
+    if (scope !== "draft" && scope !== "published") fail("INVALID_FUNNEL_INPUT", 400, "Choose draft or published readiness.");
+    return this.db.$transaction(async tx => {
+      await this.session(tx, principal); const funnel = await this.owned(tx, principal, id);
+      const version = scope === "published" && funnel.publishedVersionId ? await tx.funnelVersion.findUnique({ where: { id: funnel.publishedVersionId } }) : null;
+      if (scope === "published" && !version) fail("FUNNEL_UNPUBLISHED", 409, "Publish a funnel before checking activation.");
+      const definition = validateDefinition(version?.definition ?? funnel.draft);
+      let tracking = { configured: true, code: "CONFIGURED", message: "Sources accept the configured rules. Event reception and matching are separate observations." };
+      try { await this.validateSources(tx, funnel, definition); }
+      catch (error) { if (!(error instanceof SecurityError)) throw error; tracking = { configured: false, code: error.code, message: error.message }; }
+      const actions = [];
+      for (const action of definition.stageActions ?? []) {
+        const blockers: string[] = [];
+        const campaign = await tx.marketingCampaign.findFirst({ where: { id: action.campaignId, ownerId: principal.userId, environment: funnel.environment } });
+        let observedAt: string | null = null;
+        if (!campaign || campaign.status !== "ACTIVE" || campaign.category !== "EMAIL" || !campaign.publishedRevisionId) blockers.push("CAMPAIGN_UNAVAILABLE");
+        if (action.kind === "EMAIL_ENROLL" && campaign) {
+          const revision = await tx.campaignRevision.findFirst({ where: { id: action.revisionId, campaignId: campaign.id }, include: { sender: { include: { connection: { include: { source: true } } } } } });
+          if (!revision) blockers.push("CAMPAIGN_REVISION_UNAVAILABLE");
+          else {
+            const sender = revision.sender, connection = sender.connection, source = connection.source;
+            const readiness = sender.readiness as { ready?: boolean; generation?: number; credentialVersion?: number; checkedAt?: string };
+            observedAt = readiness.checkedAt ?? null;
+            if (source.status !== "ACTIVE" || !connection.providerWebhookId || !sender.domainId) blockers.push("EMAIL_SETUP_REQUIRED");
+            if (sender.status !== "VERIFIED" || !readiness.ready || readiness.generation !== source.generation || readiness.credentialVersion !== connection.credentialVersion) blockers.push("EMAIL_READINESS_REQUIRED");
+          }
+          if (!campaign.enrolmentEnabled) blockers.push("CAMPAIGN_ENROLMENT_PAUSED");
+          if (!campaign.dispatchEnabled) blockers.push("CAMPAIGN_DISPATCH_PAUSED");
+        }
+        actions.push({ actionId: action.id, stageId: action.stageId, campaignId: action.campaignId, kind: action.kind, configured: blockers.length === 0, blockers, observedAt });
+      }
+      return { scope, draftRevision: funnel.draftRevision, versionId: version?.id ?? null, checkedAt: this.now(), tracking, actions,
+        note: "Configuration only. Current source state, sender permission, readiness age, consent and suppression are checked again for each send. No provider was contacted." };
     });
   }
   async cancelJourney(principal: CustomerPrincipal, id: string, journeyId: string, value: unknown) {
@@ -168,11 +208,18 @@ export class FunnelService {
     await this.auth.assertSession(principal); await this.owned(this.db, principal, id);
     const journey = await this.db.funnelJourney.findFirst({ where: { id: journeyId, funnelId: id, ownerId: principal.userId } });
     if (!journey) fail("NOT_FOUND", 404, "Journey not found.");
-    const transitions = await this.db.funnelStageTransition.findMany({ where: { journeyId }, orderBy: { sequence: "asc" }, take: 1000 });
+    const transitions = await this.db.funnelStageTransition.findMany({ where: { journeyId }, orderBy: { sequence: "asc" }, take: 1000,
+      include: { event: { select: { id: true, sourceId: true, type: true, status: true, envelope: true } } } });
     const effects = await this.db.funnelEvidenceEffect.findMany({ where: { funnelId: id, subjectId: journey.subjectId, cycle: journey.cycle }, orderBy: { createdAt: "desc" }, take: 100 });
     const actions = await this.db.funnelActionExecution.findMany({ where: { journeyId }, orderBy: { createdAt: "asc" }, take: 500 });
     const associations = await this.db.campaignMembershipReason.findMany({ where: { journeyId }, orderBy: { createdAt: "asc" }, take: 200 });
-    return { journey, transitions, effects, actions, associations, externalActions: "EXPLICIT_EMAIL_ACTIONS" };
+    const version = await this.db.funnelVersion.findUniqueOrThrow({ where: { id: journey.versionId }, select: { id: true, number: true, definition: true, publishedAt: true } });
+    const subject = await this.db.funnelSubject.findUniqueOrThrow({ where: { id: journey.subjectId }, select: { id: true, kind: true,
+      contact: { select: { id: true, name: true, email: true } }, references: { select: { kind: true, externalId: true } } } });
+    return { journey, version, subject, transitions: transitions.map(transition => ({ ...transition, event: transition.event ? {
+      id: transition.event.id, sourceId: transition.event.sourceId, type: transition.event.type, status: transition.event.status,
+      authority: (transition.event.envelope as { authority?: string }).authority ?? "REDACTED",
+    } : null })), effects, actions, associations, externalActions: "EXPLICIT_EMAIL_ACTIONS" };
   }
 
   private async transition(tx: Tx, funnel: Funnel, version: FunnelVersion, subjectId: string, existing: FunnelJourney | null, input: {
@@ -199,10 +246,13 @@ export class FunnelService {
     return { journey, transition };
   }
   async move(principal: CustomerPrincipal, id: string, value: unknown) {
-    await this.auth.assertSession(principal); const input = object(value); fields(input, ["subjectId", "stageId", "reason", "commandKey", "newCycle"]);
+    await this.auth.assertSession(principal); const input = object(value); fields(input, ["subjectId", "stageId", "reason", "commandKey", "newCycle", "expectedJourneyId", "expectedRevision"]);
     const subjectId = text(input.subjectId), stageId = text(input.stageId), reason = text(input.reason, 500), commandKey = text(input.commandKey, 128);
     if (input.newCycle !== undefined && typeof input.newCycle !== "boolean") fail("INVALID_FUNNEL_INPUT", 400, "Choose whether to start a new cycle.");
-    const commandDigest = sha256(JSON.stringify([id, subjectId, stageId, reason, input.newCycle ?? false]));
+    const expectedJourneyId = input.expectedJourneyId === undefined ? undefined : text(input.expectedJourneyId, 128);
+    if ((expectedJourneyId !== undefined) !== (input.expectedRevision !== undefined) || input.expectedRevision !== undefined && (!Number.isSafeInteger(input.expectedRevision) || Number(input.expectedRevision) < 1))
+      fail("INVALID_FUNNEL_INPUT", 400, "Supply both the inspected journey ID and its positive revision.");
+    const commandDigest = sha256(JSON.stringify([id, subjectId, stageId, reason, input.newCycle ?? false, ...(expectedJourneyId ? [expectedJourneyId, input.expectedRevision] : [])]));
     return this.db.$transaction(async tx => {
       await this.session(tx, principal); const funnel = await this.owned(tx, principal, id);
       const previous = await tx.funnelStageTransition.findUnique({ where: { ownerId_commandKey: { ownerId: principal.userId, commandKey } } });
@@ -213,6 +263,8 @@ export class FunnelService {
       const subject = await tx.funnelSubject.findFirst({ where: { id: subjectId, ownerId: principal.userId, environment: funnel.environment, kind: funnel.subjectKind } });
       if (!subject || subject.contactId && (await tx.funnelContact.findUnique({ where: { id: subject.contactId } }))?.deletedAt) fail("NOT_FOUND", 404, "Compatible subject not found.");
       const prior = await tx.funnelJourney.findFirst({ where: { funnelId: id, subjectId }, orderBy: { cycle: "desc" } });
+      if (expectedJourneyId && (prior?.id !== expectedJourneyId || prior.revision !== input.expectedRevision))
+        fail("JOURNEY_CHANGED", 409, "This journey changed or a newer cycle exists. Refresh and inspect the current cycle before recording a correction.");
       if (prior?.status === "ACTIVE" && input.newCycle) fail("ACTIVE_JOURNEY", 409, "Finish the active journey before starting another cycle.");
       if (prior && prior.status !== "ACTIVE" && !input.newCycle) fail("NEW_CYCLE_REQUIRED", 409, "Explicitly request a new cycle for a finished journey.");
       const active = prior?.status === "ACTIVE" ? prior : null;

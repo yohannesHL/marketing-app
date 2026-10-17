@@ -4,11 +4,16 @@ import { mkdtemp,rm,stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn,type ChildProcess } from "node:child_process";
+import { createRequire } from "node:module";
 import type { Client, Config, Transaction } from "@libsql/client";
 import { setTimeout as pause } from "node:timers/promises";
 import { LocalSqliteAdapter } from "../../apps/web/src/server/prisma/localSqliteAdapter";
 import { PrismaClient } from "../../apps/web/src/generated/prisma/client";
 import { socialAllPlatformFixture,type AllPlatformFixture } from "../support/social-all-platform-fixture";
+import { CustomerAuth } from "../../apps/web/src/server/auth/customerAuth";
+import { CustomerConnections } from "../../apps/web/src/server/connections/customerConnections";
+import { LinkedInConnectionService } from "../../apps/web/src/server/connections/linkedinConnectionApi";
+import { LinkedInConnectionState } from "../../apps/web/src/server/connections/linkedinConnectionState";
 
 const providers=["youtube","meta-publishing","tiktok","linkedin","x"] as const;
 function safeCode(value:unknown){const code=(value as {code?:unknown}|null)?.code;return typeof code==="string"&&/^[A-Z][A-Z_0-9]{0,63}$/.test(code)?code:"UNCLASSIFIED";}
@@ -349,14 +354,60 @@ async function checked(response:Response,status=200){
  return response.json();
 }
 async function connect(owner:Owner,name:typeof providers[number]){
- const api=owner.providerApi(name),start=await checked(await api(owner.request(`/api/connections/${name}/start`,name==="x"?{maxApiCostMicros:10000}:{})));
+ const api=owner.providerApi(name);
+ const response=async(request:Request,phase:string)=>{try{return await checked(await api(request));}catch(error){throw Object.assign(error as Error,{phase});}};
+ const start=await response(owner.request(`/api/connections/${name}/start`,name==="x"?{maxApiCostMicros:10000}:{}),"start");
  const state=new URL(start.authorizationUrl).searchParams.get("state")!;
- const result=await checked(await api(owner.request(`/api/connections/${name}/callback?state=${encodeURIComponent(state)}&code=${name==="linkedin"?"organization-code":name==="tiktok"?"private":"success"}`,{},"GET")));
+ const result=await response(owner.request(`/api/connections/${name}/callback?state=${encodeURIComponent(state)}&code=${name==="linkedin"?"organization-code":name==="tiktok"?"private":"success"}`,{},"GET"),"callback");
  let connection=result.connection;
  for(const destination of result.connection.destinations.filter((row:any)=>row.available&&row.metadata?.canWrite==="ALLOWED"))
-  connection=(await checked(await api(owner.request(`/api/connections/${name}/${result.connection.id}/select`,{destinationId:destination.id})))).connection;
+  connection=(await response(owner.request(`/api/connections/${name}/${result.connection.id}/select`,{destinationId:destination.id}),"select")).connection;
  return connection;
 }
+
+/** Observe the real error before API masking; never retain messages, arguments or SQL. */
+const nativeSqlite=createRequire(import.meta.url)("node:sqlite") as {DatabaseSync:{prototype:object};StatementSync:{prototype:object}};
+function observeStressBoundaries(boundaries:[object,string,string[]][]=[
+  [CustomerAuth.prototype,"CustomerAuth",["requireSession","assertSession"]],
+  [CustomerConnections.prototype,"CustomerConnections",["beginOAuth","claimOAuthExchange","completeAuthorization","get"]],
+  [LinkedInConnectionService.prototype,"LinkedInConnectionService",["start","complete","refresh"]],
+  [LinkedInConnectionState.prototype,"LinkedInConnectionState",["snapshot","verifyCurrent","verifyExchange","invalidateAuthor"]],
+  [nativeSqlite.DatabaseSync.prototype,"SQLite",["prepare","exec"]],
+  [nativeSqlite.StatementSync.prototype,"SQLite.statement",["all","run"]],
+ ]) {
+ const errors:{boundary:string;name:string;code:string;causeCode:string;adapterCode:string;sqliteCode?:number}[]=[],restore:(()=>void)[]=[];
+ for(const [prototype,label,methods] of boundaries)for(const method of methods){
+  const descriptor=Object.getOwnPropertyDescriptor(prototype,method)!;
+  assert.ok(descriptor&&typeof descriptor.value==="function"&&descriptor.configurable,"A diagnostic boundary must be restorable");
+  const record=(error:unknown):never=>{
+    const value=error as {name?:unknown;cause?:unknown;errcode?:unknown;rawCode?:unknown;meta?:{driverAdapterError?:{cause?:unknown}}}|null;
+    const names=["SecurityError","LinkedInError","LibsqlError","PrismaClientKnownRequestError","PrismaClientUnknownRequestError","PrismaClientInitializationError","Error"];
+    const raw=value?.errcode??value?.rawCode;
+    if(errors.length<100)errors.push({boundary:`${label}.${method}`,name:typeof value?.name==="string"&&names.includes(value.name)?value.name:"UNCLASSIFIED",
+      code:safeCode(error),causeCode:safeCode(value?.cause),adapterCode:safeCode(value?.meta?.driverAdapterError?.cause),
+      ...(typeof raw==="number"&&Number.isInteger(raw)&&raw>=0&&raw<=65535?{sqliteCode:raw}:{})});
+    throw error;
+  };
+  Object.defineProperty(prototype,method,{...descriptor,value:function(this:unknown,...args:unknown[]){
+   // Native SQLite APIs are synchronous. Preserve that boundary as well as
+   // the exact exception object; asynchronous service errors are observed only.
+   try{const result=Reflect.apply(descriptor.value,this,args);return result instanceof Promise?result.catch(record):result;}
+   catch(error){return record(error);}
+  }});
+  restore.push(()=>Object.defineProperty(prototype,method,descriptor));
+ }
+ return {errors,restore:()=>{for(const reset of restore.reverse())reset();}};
+}
+test("stress diagnostics preserve the original failure and omit messages, arguments and provider payloads",async()=>{
+ const secret="must-not-appear-in-storage-diagnostics",failure=Object.assign(new Error(secret),{code:"SQLITE_BUSY",errcode:5,cause:{code:"SQLITE_BUSY",message:secret},meta:{driverAdapterError:{cause:{code:"SQLITE_BUSY",payload:secret}}}});
+ let calls=0;class Probe{async run(_credential:string){calls++;throw failure;}prepare(_sql:string){calls++;throw failure;}}
+ const original=Probe.prototype.run,originalPrepare=Probe.prototype.prepare,observations=observeStressBoundaries([[Probe.prototype,"Probe",["run","prepare"]]]);
+ try{await assert.rejects(new Probe().run(secret),error=>error===failure);assert.equal(calls,1);
+  assert.throws(()=>new Probe().prepare(secret),error=>error===failure);assert.equal(calls,2);
+  assert.deepEqual(observations.errors,["Probe.run","Probe.prepare"].map(boundary=>({boundary,name:"Error",code:"SQLITE_BUSY",causeCode:"SQLITE_BUSY",adapterCode:"SQLITE_BUSY",sqliteCode:5})));
+  assert.equal(JSON.stringify(observations.errors).includes(secret),false);
+ }finally{observations.restore();assert.equal(Probe.prototype.run,original);assert.equal(Probe.prototype.prepare,originalPrepare);}
+});
 async function stop(child:ChildProcess|undefined){
  if(!child||!child.pid||child.exitCode!==null||child.signalCode!==null)return;
  await new Promise<void>(resolve=>{const timer=setTimeout(()=>{child.kill("SIGKILL");},5000);child.once("exit",()=>{clearTimeout(timer);resolve();});child.kill("SIGTERM");});
@@ -364,7 +415,9 @@ async function stop(child:ChildProcess|undefined){
 
 test("real global CLI and owned polling survive five concurrent OAuth selections while all seven reviewed destinations publish once",{timeout:120000},async()=>{
  const q=await socialAllPlatformFixture({origin:"http://127.0.0.1:3989",realClock:true});let worker:ChildProcess|undefined,workerExit:{code:number|null;signal:string|null}|undefined;
- const failures:{operation:string;code:string;status?:number}[]=[],reports:string[]=[];let rawOutput="",activeOAuthSelections=0,ownedPostPolls=0;
+ const observations=observeStressBoundaries(),previousDiagnostics=process.env.LOCAL_SQLITE_DIAGNOSTICS,previousRole=process.env.LOCAL_SQLITE_ROLE;
+ process.env.LOCAL_SQLITE_DIAGNOSTICS="true";process.env.LOCAL_SQLITE_ROLE="fixture";
+ const failures:{operation:string;code:string;status?:number;phase?:string}[]=[],reports:string[]=[],storageDiagnostics:Record<string,unknown>[]=[];let rawOutput="",activeOAuthSelections=0,ownedPostPolls=0;
  try{
   const owner=await q.customer("runtime-job-owner"),grants=[];
   for(const name of providers)grants.push(await connect(owner,name));
@@ -386,16 +439,22 @@ test("real global CLI and owned polling survive five concurrent OAuth selections
   const post=await checked(await owner.api("/api/social/posts",{title:"Active global worker storage",body:"Reviewed source caption",mediaIds:[image.id,video.id],variants}),201);
   await checked(await owner.api(`/api/social/posts/${post.id}/approve`,{revisionId:post.revision.id,destinationIds:destinations.map(destination=>destination.id)}));
   const active=await q.customer("runtime-active-owner");
-  worker=spawn(process.execPath,["--import","tsx","apps/web/scripts/social-worker.ts","run"],{env:{...process.env,...q.environment(),CONNECTION_MODE:"mock",ADS_MODE:"mock"},stdio:["ignore","pipe","pipe"]});
+  worker=spawn(process.execPath,["--import","tsx","apps/web/scripts/social-worker.ts","run"],{env:{...process.env,...q.environment(),CONNECTION_MODE:"mock",ADS_MODE:"mock",LOCAL_SQLITE_ROLE:"worker"},stdio:["ignore","pipe","pipe"]});
   const buffered={stdout:"",stderr:""};
   const inspect=(chunk:Buffer,channel:keyof typeof buffered)=>{
    rawOutput+=String(chunk);const lines=(buffered[channel]+String(chunk)).split("\n");buffered[channel]=lines.pop()!;
-   for(const line of lines){try{const value=JSON.parse(line);if(value.status==="STOPPED")failures.push({operation:"worker",code:safeCode(value)});else if(channel==="stdout"&&typeof value.status==="string")reports.push(value.status);}catch{/* Keep unexpected exception text out of diagnostic results. */}}
+   for(const line of lines){try{const value=JSON.parse(line);if(value.status==="STOPPED")failures.push({operation:"worker",code:safeCode(value)});else if(channel==="stdout"&&typeof value.status==="string")reports.push(value.status);
+    else if(value.event==="LOCAL_SQLITE_ERROR"&&storageDiagnostics.length<100)storageDiagnostics.push({role:["fixture","worker","web"].includes(value.role)?value.role:"unknown",
+      stage:["initialize","prepare","begin","transaction","cleanup","operation"].includes(value.stage)?value.stage:"unknown",
+      operation:["execute","batch","migrate","executeMultiple","sync","transaction","commit","rollback"].includes(value.operation)?value.operation:"unknown",
+      code:safeCode(value),sqliteCode:Number.isInteger(value.sqliteCode)&&value.sqliteCode>=0&&value.sqliteCode<=65535?value.sqliteCode:undefined,
+      attempt:Number.isInteger(value.attempt)&&value.attempt>=0&&value.attempt<=4?value.attempt:undefined});
+   }catch{/* Keep unexpected exception text out of diagnostic results. */}}
   };
   worker.stdout!.on("data",chunk=>inspect(chunk,"stdout"));worker.stderr!.on("data",chunk=>inspect(chunk,"stderr"));worker.once("exit",(code,signal)=>{workerExit={code,signal};});worker.once("error",()=>{failures.push({operation:"worker-launch",code:"LAUNCH_FAILED"});});
   await pause(500);
   await checked(await owner.api(`/api/social/posts/${post.id}/enqueue`,{revisionId:post.revision.id,destinationIds:destinations.map(destination=>destination.id),enqueueId:"runtime-seven-once",dueAt:q.now().toISOString(),timeZone:"UTC"}));
-  const activeWork=(async()=>{for(const name of providers){try{await connect(active,name);activeOAuthSelections++;}catch(error){failures.push({operation:`active-${name}`,code:safeCode(error),status:(error as {status?:number}).status});}}})();
+  const activeWork=(async()=>{for(const name of providers){try{await connect(active,name);activeOAuthSelections++;}catch(error){failures.push({operation:`active-${name}`,code:safeCode(error),status:(error as {status?:number}).status,phase:(error as {phase?:string}).phase});}}})();
   let done:any;const deadline=Date.now()+60000;
   while(Date.now()<deadline){
    if(workerExit)break;ownedPostPolls++;
@@ -404,10 +463,14 @@ test("real global CLI and owned polling survive five concurrent OAuth selections
    else{done=await response.json();if(done.status==="COMPLETED"&&done.deliveries.length===7&&done.deliveries.every((delivery:any)=>delivery.status==="SUCCEEDED"))break;}
    await pause(25);
   }
-  await activeWork;assert.deepEqual(failures,[],JSON.stringify({failures,reports,workerExit}));assert.equal(workerExit,undefined);assert.equal(activeOAuthSelections,5);assert.ok(ownedPostPolls>1);
+  await activeWork;assert.deepEqual(failures,[],JSON.stringify({failures,reports,workerExit,boundaryErrors:observations.errors,storageDiagnostics}));assert.equal(workerExit,undefined);assert.equal(activeOAuthSelections,5);assert.ok(ownedPostPolls>1);
   assert.equal(done?.status,"COMPLETED");assert.equal(done.deliveries.length,7);assert.ok(done.deliveries.every((delivery:any)=>delivery.status==="SUCCEEDED"&&delivery.attempts===1));
   assert.deepEqual(await q.counts(),{youtube:{"qa-start":"1","qa-complete":"1"},"meta-publishing":{photos:"1",feeds:"1",containers:"1",igPublishes:"1"},tiktok:{"qa-init":"1"},linkedin:{"qa-image-upload":"1","qa-video-upload":"1","qa-member":"1","qa-organization":"1"},x:{"qa-create":"1","qa-image-upload":"1","qa-unknown-submit":"0"}});
   assert.equal(/x-refresh|x-access|fixture-.*secret|accessToken|refreshToken|Ciphertext/.test(rawOutput),false,"The actual CLI must not print credentials or provider payloads");
   console.info(JSON.stringify({activeOAuthSelections,ownedPostPolls,confirmedDestinations:7,attempts:1,apiErrors:0,workerStopped:false}));
- }finally{await stop(worker);await q.close();}
+ }finally{try{await stop(worker);await q.close();}finally{observations.restore();
+   if(previousDiagnostics===undefined)delete process.env.LOCAL_SQLITE_DIAGNOSTICS;else process.env.LOCAL_SQLITE_DIAGNOSTICS=previousDiagnostics;
+   if(previousRole===undefined)delete process.env.LOCAL_SQLITE_ROLE;else process.env.LOCAL_SQLITE_ROLE=previousRole;
+  }
+ }
 });

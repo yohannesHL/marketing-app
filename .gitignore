@@ -68,3 +68,6 @@ packages/ui/storybook-static/
 
 # Dedicated Mockoon delivery browser evidence
 social-delivery-report/
+
+# Dedicated funnel workspace browser evidence
+funnels-report/

@@ -56,17 +56,20 @@ export function createTrackingApi(auth: CustomerAuth, service: TrackingService) 
       const principal = await auth.requireSession(request);
       if (request.method !== "GET") auth.assertOrigin(request);
       if (path === "/api/tracking/sources") {
-        if (request.method === "GET") return privateJson(await service.listSources(principal));
+        if (request.method === "GET") return privateJson(await service.listSources(principal, url.searchParams.get("environment") ?? undefined));
         if (request.method === "POST") return privateJson(await service.createSource(principal, await readBody(request)), 201);
       }
       const source = path.match(new RegExp(`^/api/tracking/sources/${ID}$`));
+      if (source && request.method === "GET")
+        return privateJson(await service.source(principal, source[1], url.searchParams.get("environment") ?? undefined));
       if (source && request.method === "PATCH")
         return privateJson(await service.updateSource(principal, source[1], await readBody(request)));
       const sourceAction = path.match(new RegExp(`^/api/tracking/sources/${ID}/(events|audit|correlations|reconcile)$`));
       if (sourceAction) {
         const [, sourceId, action] = sourceAction;
         if (action === "events" && request.method === "GET")
-          return privateJson(await service.events(principal, sourceId, url.searchParams.get("cursor") ?? undefined));
+          return privateJson(await service.events(principal, sourceId, url.searchParams.get("cursor") ?? undefined, {
+            order: url.searchParams.get("order") ?? undefined, environment: url.searchParams.get("environment") ?? undefined, eventId: url.searchParams.get("eventId") ?? undefined }));
         if (action === "audit" && request.method === "GET") return privateJson(await service.audit(principal, sourceId));
         if (action === "correlations" && request.method === "POST")
           return privateJson(await service.createCorrelation(principal, sourceId, await readBody(request)), 201);
@@ -82,6 +85,9 @@ export function createTrackingApi(auth: CustomerAuth, service: TrackingService) 
       }
       if (path === "/api/tracking/subjects" && request.method === "GET")
         return privateJson(await service.subjects(principal, url.searchParams.get("environment") ?? ""));
+      if (path === "/api/tracking/contacts" && request.method === "GET")
+        return privateJson(await service.contacts(principal, url.searchParams.get("environment") ?? "", {
+          cursor: url.searchParams.get("cursor") ?? undefined, query: url.searchParams.get("query") ?? undefined }));
       const contact = path.match(new RegExp(`^/api/tracking/contacts/${ID}$`));
       if (contact && request.method === "DELETE") return privateJson(await service.deleteContact(principal, contact[1]));
       return privateJson({ code: "NOT_FOUND", message: "Tracking endpoint not found." }, 404);

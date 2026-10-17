@@ -20,6 +20,7 @@ export function AccountNavigation({ signedIn, busy = false, onError }: {
     <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/">Launchpad home</Link>
     <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/campaigns/create">Paid advertising · Create campaign</Link>
     <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/social">Social publishing</Link>
+    <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/funnels">Funnels</Link>
     {signedIn ? <Button className="min-h-11" variant="secondary" disabled={busy} loading={signingOut} onClick={signOut}>Sign out</Button>
       : <Link prefetch={false} className="btn btn-secondary min-h-11 normal-case" href="/sign-in?returnTo=%2Fconnections">Sign in</Link>}
   </nav>;

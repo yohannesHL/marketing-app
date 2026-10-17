@@ -9,10 +9,12 @@ export function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    setReady(true);
     let active = true;
     connectionRequest("/api/auth/session").then(() => { if (active) setSignedIn(true); }).catch(() => {});
     return () => { active = false; };
@@ -20,7 +22,9 @@ export function SignInPage() {
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   const returnTo = () => safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"));
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(null);
+    event.preventDefault();
+    if (!ready || busy) return;
+    setBusy(true); setError(null);
     try {
       await connectionRequest("/api/auth/login", "POST", { email, password });
       setPassword(""); window.location.assign(returnTo());
@@ -37,10 +41,10 @@ export function SignInPage() {
         <Typography tone="muted">Manage your advertising accounts and publishing permissions securely.</Typography></div>
       {error ? <div ref={errorRef} tabIndex={-1} className="rounded-box focus:outline focus:outline-2 focus:outline-primary"><Alert tone="danger" title="Unable to continue">{error}</Alert></div> : null}
       {signedIn ? <Card><Typography>You’re already signed in.</Typography><Button onClick={() => window.location.assign(returnTo())}>Continue to workspace</Button></Card>
-        : <Card><form onSubmit={submit} aria-busy={busy}><Stack gap={5}>
-          <Input className="focus-within:ring-2 focus-within:ring-primary" label="Email" name="email" type="email" autoComplete="username" required value={email} disabled={busy} onChange={(event) => setEmail(event.target.value)} />
-          <Input className="focus-within:ring-2 focus-within:ring-primary" label="Password" name="password" type="password" autoComplete="current-password" required value={password} disabled={busy} onChange={(event) => setPassword(event.target.value)} />
-          <Button type="submit" loading={busy} className="w-full min-h-12">{busy ? "Signing in…" : "Sign in"}</Button>
+        : <Card><form onSubmit={submit} aria-busy={!ready || busy}><Stack gap={5}>
+          <Input className="focus-within:ring-2 focus-within:ring-primary" label="Email" name="email" type="email" autoComplete="username" required value={email} disabled={!ready || busy} onChange={(event) => setEmail(event.target.value)} />
+          <Input className="focus-within:ring-2 focus-within:ring-primary" label="Password" name="password" type="password" autoComplete="current-password" required value={password} disabled={!ready || busy} onChange={(event) => setPassword(event.target.value)} />
+          <Button type="submit" disabled={!ready} loading={busy} className="w-full min-h-12">{busy ? "Signing in…" : "Sign in"}</Button>
           <Typography tone="muted">Use the account provided by your workspace administrator.</Typography>
         </Stack></form></Card>}
     </Stack></div>
