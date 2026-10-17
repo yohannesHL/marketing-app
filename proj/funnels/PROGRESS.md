@@ -6,7 +6,7 @@ Status: #36 and #37 implementation merged; #38 rules and journey history under r
 | --- | --- | --- |
 | #36 | Merged | [PR #43](https://github.com/yohannesHL/marketing-app/pull/43), commit `cfabf9d`; all required CI passed |
 | #37 | Implementation merged; live evidence pending | [PR #44](https://github.com/yohannesHL/marketing-app/pull/44), commit `c9b1649`; all required CI passed; actual provider/pilot evidence remains open |
-| #38 | Implementation review | Immutable custom definitions, durable evaluator receipts, property rules, history, internal outbox, templates and no-send simulator; 480 security tests passed before final focused regression additions |
+| #38 | Implementation review | Immutable custom definitions, durable evaluator receipts, property rules, history, internal outbox, templates and no-send simulator; 487 security tests passed locally; CI exposed an existing SQLite read-contention gap under the social stress test |
 | #39 | Not started | Depends on #36; scheduled after #38 for sequential delivery |
 | #40 | Not started | Depends on #38/#39 |
 | #41 | Not started | Depends on runtime slices for production behaviour |
@@ -42,3 +42,5 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - Independent schema/service review identified and resolved generation corroboration, property-change deduplication and anonymous-backlog transaction sizing before PR creation.
 
 - CI exposed an existing polling race in the social runtime stress test: all destinations could be successful before the aggregate post status committed. The test now waits for both completion conditions; the actual seven-destination worker/parallel-OAuth test passed after the correction.
+
+- A later CI run exposed transient read failures during the real social worker concurrency test. A deterministic exclusive-lock reproduction confirmed that a synchronous native read exhausted its 100 ms wait before the blocking process could release. The three deterministic regressions passed after bounded retries were restricted to SQLite-authorizer-confirmed autocommit SELECTs. All 11 storage tests, including the seven-destination concurrency test, passed. The original CI did not enable SQLite diagnostics, so this is a reproduced contention defect rather than proof of the exact original exception. Transaction callbacks and provider operations remain non-replayable.

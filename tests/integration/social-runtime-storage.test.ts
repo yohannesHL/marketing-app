@@ -14,6 +14,46 @@ const providers=["youtube","meta-publishing","tiktok","linkedin","x"] as const;
 function safeCode(value:unknown){const code=(value as {code?:unknown}|null)?.code;return typeof code==="string"&&/^[A-Z][A-Z_0-9]{0,63}$/.test(code)?code:"UNCLASSIFIED";}
 async function temporaryDatabase(){const directory=await mkdtemp(join(tmpdir(),"runtime-sqlite-"));return {directory,url:"file:"+join(directory,"test.db")};}
 
+test("an autocommit Prisma read yields through transient exclusive contention without replaying a mutation", { timeout: 15000 }, async () => {
+ const q=await temporaryDatabase(),adapter=new LocalSqliteAdapter({url:q.url}),writer=adapter.createClient({url:q.url}),db=new PrismaClient({adapter});
+ let timer:ReturnType<typeof setTimeout>|undefined,release:Promise<unknown>|undefined,locked=false;
+ try{
+  await writer.execute('CREATE TABLE "User" ("id" TEXT PRIMARY KEY)');await writer.execute("INSERT INTO \"User\" VALUES ('only-once')");
+  assert.deepEqual(await db.user.findFirst({select:{id:true}}),{id:"only-once"});
+  await writer.execute("BEGIN EXCLUSIVE");locked=true;
+  timer=setTimeout(()=>{release=writer.execute("ROLLBACK").then(()=>{locked=false;});},25);
+  assert.deepEqual(await db.user.findFirst({select:{id:true}}),{id:"only-once"});
+  await release;assert.equal(locked,false,"The read retry must yield so the blocking writer can release");
+  assert.equal(await db.user.count(),1);
+ }finally{if(timer)clearTimeout(timer);await release;if(locked)await writer.execute("ROLLBACK");writer.close();await db.$disconnect();await rm(q.directory,{recursive:true,force:true});}
+});
+
+test("autocommit read contention stays bounded when the exclusive holder does not release", { timeout: 15000 }, async () => {
+ const q=await temporaryDatabase(),adapter=new LocalSqliteAdapter({url:q.url}),writer=adapter.createClient({url:q.url}),reader=adapter.createClient({url:q.url});let locked=false,timer:ReturnType<typeof setTimeout>|undefined;
+ try{
+  await writer.execute('CREATE TABLE "BoundedRead" ("value" INTEGER)');await writer.execute('INSERT INTO "BoundedRead" VALUES (1)');await reader.execute('SELECT * FROM "BoundedRead"');
+  await writer.execute("BEGIN EXCLUSIVE");locked=true;let yielded=false;timer=setTimeout(()=>{yielded=true;},25);const started=performance.now();
+  await assert.rejects(reader.execute('SELECT * FROM "BoundedRead"'),(error:unknown)=>safeCode(error)==="SQLITE_BUSY"&&(error as {rawCode?:unknown}).rawCode===5);
+  assert.equal(yielded,true,"Bounded read retries must give the holder an opportunity to finish");
+  assert.ok(performance.now()-started<3000,"Read retries cannot wait indefinitely");
+  await writer.execute("ROLLBACK");locked=false;assert.equal((await reader.execute('SELECT * FROM "BoundedRead"')).rows[0].value,1);
+ }finally{if(timer)clearTimeout(timer);if(locked)await writer.execute("ROLLBACK");reader.close();writer.close();await rm(q.directory,{recursive:true,force:true});}
+});
+
+test("contention never retries RETURNING writes, CTE writes, PRAGMAs or transaction reads", { timeout: 15000 }, async () => {
+ const q=await temporaryDatabase(),adapter=new LocalSqliteAdapter({url:q.url}),writer=adapter.createClient({url:q.url}),client=adapter.createClient({url:q.url});let locked=false,tx:Transaction|undefined;
+ try{
+  await writer.execute('CREATE TABLE "NoReadReplay" ("value" INTEGER)');await client.execute('SELECT * FROM "NoReadReplay"');
+  for(const sql of ['INSERT INTO "NoReadReplay" VALUES (1) RETURNING "value"','WITH input AS (SELECT 2 AS n) INSERT INTO "NoReadReplay" SELECT n FROM input RETURNING "value"','PRAGMA user_version=7']){
+   await writer.execute("BEGIN EXCLUSIVE");locked=true;let yielded=false;const timer=setTimeout(()=>{yielded=true;},0);
+   try{await assert.rejects(client.execute(sql),(error:unknown)=>safeCode(error)==="SQLITE_BUSY");assert.equal(yielded,false,"A failed write must reject without a retry yield");}finally{clearTimeout(timer);await writer.execute("ROLLBACK");locked=false;}
+  }
+  tx=await client.transaction("read");await writer.execute("BEGIN EXCLUSIVE");locked=true;let yielded=false;const timer=setTimeout(()=>{yielded=true;},0);
+  try{await assert.rejects(tx.execute('SELECT * FROM "NoReadReplay"'),(error:unknown)=>safeCode(error)==="SQLITE_BUSY");assert.equal(yielded,false,"A transaction statement must not replay");}finally{clearTimeout(timer);await writer.execute("ROLLBACK");locked=false;tx.close();tx=undefined;}
+  assert.equal((await writer.execute('SELECT COUNT(*) AS n FROM "NoReadReplay"')).rows[0].n,0);assert.equal((await writer.execute("PRAGMA user_version")).rows[0].user_version,0);
+ }finally{tx?.close();if(locked)await writer.execute("ROLLBACK");client.close();writer.close();await rm(q.directory,{recursive:true,force:true});}
+});
+
 test("the actual adapter preserves journal policy and configures finite busy timeout across native connection turnover",async()=>{
  const q=await temporaryDatabase(),db=new PrismaClient({adapter:new LocalSqliteAdapter({url:q.url})});
  try{
