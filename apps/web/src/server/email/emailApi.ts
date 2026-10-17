@@ -80,19 +80,21 @@ export function createEmailApi(auth: CustomerAuth, connections: EmailConnectionS
         if (request.method === "GET") return privateJson(await campaigns.get(principal, campaign[1]));
         if (request.method === "PATCH") return privateJson(await campaigns.updateDraft(principal, campaign[1], await body(request)));
       }
-      const campaignAction = path.match(new RegExp(`^/api/marketing-campaigns/${ID}/(publish|controls|memberships)$`));
+      const campaignAction = path.match(new RegExp(`^/api/marketing-campaigns/${ID}/(publish|controls|memberships|simulate)$`));
       if (campaignAction) {
         const [, id, operation] = campaignAction;
         if (operation === "publish" && request.method === "POST") return privateJson(await campaigns.publish(principal, id, await body(request)));
+        if (operation === "simulate" && request.method === "POST") return privateJson(await campaigns.simulate(principal, id, await body(request)));
         if (operation === "controls" && request.method === "PATCH") return privateJson(await campaigns.controls(principal, id, await body(request)));
         if (operation === "memberships" && request.method === "GET") return privateJson(await campaigns.memberships(principal, id, url.searchParams.get("cursor") ?? undefined));
         if (operation === "memberships" && request.method === "POST") return privateJson(await campaigns.enrol(principal, id, await body(request)), 201);
       }
-      const membership = path.match(new RegExp(`^/api/email/memberships/${ID}(?:/(stop|dispatch))?$`));
+      const membership = path.match(new RegExp(`^/api/email/memberships/${ID}(?:/(stop|dispatch|start))?$`));
       if (membership) {
         const [, id, operation] = membership;
         if (!operation && request.method === "GET") return privateJson(await campaigns.membership(principal, id));
         if (operation === "stop" && request.method === "POST") return privateJson(await campaigns.stop(principal, id, await body(request)));
+        if (operation === "start" && request.method === "POST") return privateJson(await campaigns.start(principal, id, await body(request)));
         if (operation === "dispatch" && request.method === "POST") {
           const input = await body(request); fields(input, []);
           const intent = await delivery.createIntent(principal, { membershipId: id });

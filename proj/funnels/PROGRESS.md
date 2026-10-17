@@ -1,14 +1,14 @@
 # Funnel implementation progress
 
-Status: #36–#38 implementation merged; #39 owned email campaigns in progress. User authorized sequential PR creation and merges for #36–#42.
+Status: #36–#39 implementation merged; #40 durable automation in progress. User authorized sequential PR creation and merges for #36–#42.
 
 | Issue | State | Evidence |
 | --- | --- | --- |
 | #36 | Merged | [PR #43](https://github.com/yohannesHL/marketing-app/pull/43), commit `cfabf9d`; all required CI passed |
 | #37 | Implementation merged; live evidence pending | [PR #44](https://github.com/yohannesHL/marketing-app/pull/44), commit `c9b1649`; all required CI passed; actual provider/pilot evidence remains open |
 | #38 | Merged | [PR #45](https://github.com/yohannesHL/marketing-app/pull/45), commit `293c91c`; all 14 CI jobs passed; 490 security tests pass |
-| #39 | Implementation ready for PR validation | Resend adapter, owned campaign revisions/membership, recipient policy and durable explicit send path; live pilot pending |
-| #40 | Not started | Depends on #38/#39 |
+| #39 | Implementation merged; live evidence pending | [PR #46](https://github.com/yohannesHL/marketing-app/pull/46), commit `e0b6d7d`; all 14 CI jobs and 550 local tests passed |
+| [#40](https://github.com/yohannesHL/marketing-app/issues/40) | Implementation and validation in progress; PR pending | Durable stage actions, authorized cadence, waits, leases and cancellation; [operations guide](../../docs/funnels/automation-setup.md) |
 | #41 | Not started | Depends on runtime slices for production behaviour |
 | #42 | Not started | Reporting and integrated validation |
 
@@ -56,3 +56,18 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - Independent reviews found and fixed deletion while submitting, callback privacy restoration, receipt redaction constraints, declared-versus-emitted tracking properties, contradictory provider mappings, and retention of queued negative-policy evidence. Fixture API/provider/campaign/delivery/schema/timing checks cover 60 passing cases; the final full regression run passed all 550 tests. App TypeScript and fresh/legacy migration checks also pass.
 - [Email setup guide](../../docs/funnels/email-setup.md) documents setup order, routes, gates, workers, recovery, timing and privacy. The receipt worker performs no automatic sends in this slice; #40 owns automation through the same send identity.
 - Actual live account/domain/webhook configuration, an authorized pilot recipient and real callback proof remain pending. Implementation checks do not satisfy that acceptance item.
+
+
+## Issue #40 implementation evidence
+
+- Published explicit `EMAIL_ENROLL`/`EMAIL_STOP` stage actions capture immutable transition plans. Separate funnel enrolment/dispatch controls default to false; historical tracking-only outboxes and old manual memberships retain no new automatic authority.
+- The consumer replaces immediate adjacent-stage reasons before settling shared memberships, including accumulated outboxes. Stable campaign/scope identity and the first pinned campaign revision survive association changes. Delayed replacement cannot restart a closed cycle; independent manual and other-journey reasons survive a local stop.
+- Explicit owner/session/Origin-protected membership start records one immutable command authorization. A new stage-created membership can seed its first step, but attaching a stage reason to an existing manual membership reports that explicit start is required. Workers derive authority from persisted executions and leases, never a fabricated browser principal.
+- IMMEDIATE/DURATION/DATE/EVENT waits preserve logical anchors, original LIVE match availability, fixed expiry and explicit timeout outcomes. CONTACT campaigns cannot publish EVENT waits; a same-address enquiry cannot satisfy another subject's wait. Atomic continuation and the existing send ledger prevent duplicate intent creation after restart.
+- Send/refresh leases are durable and bounded. An interrupted submission becomes UNKNOWN, never a fresh send; known retryable rejection retains its body/key and retry limits. Positive readback preserves actual acceptance without reviving stopped work, and readiness rotation invalidates stale worker authority.
+- Independent review reproduced a dispatch gap after a stop condition evaluated UNKNOWN and its receipt was consumed. The fix retains an immutable owned event/stage/journey-revision/occurrence snapshot on each new evaluation effect and fences applicable reasons with `STOP_CONDITION_UNKNOWN`. The original reproducer now remains blocked with zero pending receipts. Older or unrelated evidence cannot clear that hold; same-millisecond clearance remains deliberately conservative.
+- All nine direct automation schema checks passed, including populated legacy migration, preservation of previous triggers/indexes, owned bindings, immutable terminal/redaction paths, original LIVE event evidence, fixed clocks, explicit command authority and account-deletion cascades. Prisma validation/client generation and a fresh actual deployment of all 14 migrations passed with no foreign-key violations.
+- Focused service tests cover concurrent consumers, stage/goal cancellation, CONTACT backlog fences, shared reasons, explicit start, waits, lease recovery, readiness, deletion and retention. Full regression passed 616/616 tests. A final historical-goal simulation correction passed all 26 affected API/rules tests; app and strict worker/test TypeScript checks and whitespace validation pass. Required CI remains pending.
+- A real Node 24 worker subprocess test refreshes stale sender readiness and sends once after session deletion, then performs no HTTP on two subsequent process restarts. Legacy unstarted pending sends remain untouched and worker output contains no credentials, message content or recipient data.
+- [Automation setup](../../docs/funnels/automation-setup.md) and the updated [email setup](../../docs/funnels/email-setup.md) document diagrams, controls, timing, workers, APIs, simulations, current recovery limits and rollout. PR is pending; no merge or actual LIVE delivery validation is claimed here.
+- Live provider/domain/webhook configuration, an authorized integrated recipient pilot and real callback correlation remain pending. The visual builder and reporting work remain separate in #41/#42.

@@ -1,4 +1,5 @@
-import type { Prisma } from "../../generated/prisma/client";
+import type { Prisma, CampaignMembershipReason } from "../../generated/prisma/client";
+import type { FunnelDefinition } from "../funnels/funnelDefinition";
 import { fail } from "../security/errors";
 import { emailKey, sha256 } from "../funnels/trackingValidation";
 
@@ -10,17 +11,93 @@ export const emailCredentialContext = (connection: Owned) => JSON.stringify(["em
 export const emailPayloadContext = (send: Owned) => JSON.stringify(["email-request-v1", send.ownerId, send.environment, send.id]);
 export const emailJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 
+/** A paused reason is retained. Only a factual stop ends its ownership of a shared cadence. */
+export async function stageReasonState(tx: Tx, reason: CampaignMembershipReason) {
+  if (reason.endedAt) return { state: "ENDED" as const, code: reason.endReason ?? "REASON_ENDED" };
+  if (reason.kind === "MANUAL") return { state: "ACTIVE" as const, code: "MANUAL" };
+  if (!reason.actionExecutionId || !reason.journeyId) return { state: "ENDED" as const, code: "HISTORICAL_REASON_NO_AUTHORITY" };
+  const journey = await tx.funnelJourney.findUnique({ where: { id: reason.journeyId }, include: { funnel: true, version: true } });
+  if (!journey || journey.status === "CANCELLED") return { state: "ENDED" as const, code: "JOURNEY_CANCELLED" };
+  if (reason.stopOnStageExit && journey.currentStageKey !== reason.stageKey) return { state: "ENDED" as const, code: "STAGE_EXITED" };
+  if (reason.stopOnGoal && await tx.funnelStageTransition.findFirst({ where: { journeyId: journey.id, toStage: { goal: true } } }))
+    return { state: "ENDED" as const, code: "GOAL_REACHED" };
+  if (!journey.funnel.automationDispatchEnabled) return { state: "PAUSED" as const, code: "FUNNEL_DISPATCH_PAUSED" };
+  const definition = journey.version.definition as unknown as FunnelDefinition;
+  const stopRoutes = definition.routes.filter(route => {
+    if (route.from !== journey.currentStageKey) return false;
+    const targets = [...route.branches.map(branch => branch.to), ...(route.fallback.kind === "MOVE" ? [route.fallback.to] : [])];
+    return targets.some(target => reason.stopOnStageExit && target !== reason.stageKey || reason.stopOnGoal && definition.stages.some(stage => stage.id === target && stage.goal));
+  });
+  for (const route of stopRoutes) {
+    // A queued event has not acquired a trustworthy business-subject binding yet.
+    // Briefly defer this configured stop route until the matcher classifies it.
+    if (await tx.trackingEvent.findFirst({ where: { ownerId: reason.ownerId, environment: reason.environment,
+      sourceId: route.trigger.sourceId, type: route.trigger.type, status: "QUEUED" } }))
+      return { state: "PAUSED" as const, code: "TRACKING_MATCH_PENDING" };
+    const unknown = await tx.funnelEvidenceEffect.findFirst({ where: { journeyId: journey.id, versionId: journey.versionId, ruleId: route.id,
+      evaluatedStageKey: journey.currentStageKey, evaluationJourneyRevision: journey.revision, outcome: "UNKNOWN_CONDITION" },
+      orderBy: [{ evaluationOccurredAt: "desc" }, { createdAt: "desc" }] });
+    if (unknown && !await tx.funnelEvidenceEffect.findFirst({ where: { journeyId: journey.id, versionId: journey.versionId, ruleId: route.id,
+      evaluatedStageKey: journey.currentStageKey, evaluationJourneyRevision: journey.revision, outcome: "FALLBACK_WAIT",
+      evaluationOccurredAt: { gte: unknown.evaluationOccurredAt! }, createdAt: { gt: unknown.createdAt } } }))
+      return { state: "PAUSED" as const, code: "STOP_CONDITION_UNKNOWN" };
+  }
+  const sourceIds = new Set(stopRoutes.map(route => route.trigger.sourceId));
+  const visit = (condition: unknown) => {
+    const c = condition as { all?: unknown[]; any?: unknown[]; field?: { scope: string; sourceId?: string } } | undefined;
+    if (!c) return;
+    for (const child of c.all ?? c.any ?? []) visit(child);
+    if (c.field?.scope === "PROPERTY" && c.field.sourceId) sourceIds.add(c.field.sourceId);
+  };
+  for (const route of stopRoutes) for (const branch of route.branches) visit(branch.when);
+  if (await tx.trackingSource.count({ where: { id: { in: [...sourceIds] }, status: "ACTIVE", ownerId: reason.ownerId, environment: reason.environment } }) !== sourceIds.size)
+    return { state: "PAUSED" as const, code: "STOP_EVIDENCE_SOURCE_UNAVAILABLE" };
+  return { state: "ACTIVE" as const, code: "STAGE_ELIGIBLE" };
+}
+
+/** Apply negative policy without ending unrelated manual or other-journey associations. */
+export async function endObsoleteStageReasons(tx: Tx, journeyId: string, now: Date) {
+  await cancelObsoleteStageActions(tx, journeyId, now);
+  const reasons = await tx.campaignMembershipReason.findMany({ where: { journeyId, kind: "STAGE", endedAt: null } });
+  const touched = new Set<string>();
+  for (const reason of reasons) {
+    const state = await stageReasonState(tx, reason);
+    if (state.state !== "ENDED") continue;
+    await tx.campaignMembershipReason.update({ where: { id: reason.id }, data: { endedAt: now, endReason: state.code } });
+    touched.add(reason.membershipId);
+  }
+  return touched;
+}
+
+export async function cancelObsoleteStageActions(tx: Tx, journeyId: string, now: Date) {
+  const journey = await tx.funnelJourney.findUniqueOrThrow({ where: { id: journeyId } });
+  const goal = !!await tx.funnelStageTransition.findFirst({ where: { journeyId, toStage: { goal: true } } });
+  const pending = await tx.funnelActionExecution.findMany({ where: { journeyId, status: "PENDING", kind: "EMAIL_ENROLL" } });
+  for (const action of pending) {
+    const plan = action.plan as { stopOnStageExit?: boolean; stopOnGoal?: boolean };
+    const reason = journey.status === "CANCELLED" ? "JOURNEY_CANCELLED" : plan.stopOnStageExit && journey.currentStageKey !== action.stageKey ? "STAGE_EXITED" : plan.stopOnGoal && goal ? "GOAL_REACHED" : null;
+    if (reason) await tx.funnelActionExecution.update({ where: { id: action.id }, data: { status: "CANCELLED", reason,
+      evaluationTrace: { decision: reason }, completedAt: now, nextWakeAt: null, revision: { increment: 1 } } });
+  }
+}
+
+export async function settleReasonlessMemberships(tx: Tx, membershipIds: Iterable<string>, now: Date) {
+  for (const id of membershipIds) if (!await tx.campaignMembershipReason.count({ where: { membershipId: id, endedAt: null } }))
+    await stopEmailMembership(tx, id, "NO_ELIGIBLE_REASON", now);
+}
+
 /** No provider calls: every caller uses this inside its current-state transaction. */
 export async function checkEmailEligibility(tx: Tx, input: {
-  membershipId: string; now: Date; liveEnabled: boolean; purpose: "ENROL" | "DISPATCH"; sendId?: string;
+  membershipId: string; now: Date; liveEnabled: boolean; purpose: "ENROL" | "ENROL_SCHEDULED" | "START" | "DISPATCH" | "REFRESH"; sendId?: string;
 }) {
   const blocked = (code: string) => ({ eligible: false as const, code });
   const membership = await tx.campaignMembership.findUnique({ where: { id: input.membershipId } });
   if (!membership || membership.endedAt || membership.status !== "ACTIVE") return blocked("MEMBERSHIP_INACTIVE");
   const campaign = await tx.marketingCampaign.findUniqueOrThrow({ where: { id: membership.campaignId } });
   if (campaign.status !== "ACTIVE" || campaign.category !== "EMAIL") return blocked("CAMPAIGN_INACTIVE");
-  if (!(input.purpose === "ENROL" ? campaign.enrolmentEnabled : campaign.dispatchEnabled))
-    return blocked(input.purpose === "ENROL" ? "ENROLMENT_PAUSED" : "DISPATCH_PAUSED");
+  const enrolling = input.purpose === "ENROL" || input.purpose === "ENROL_SCHEDULED";
+  if (input.purpose !== "START" && !(enrolling ? campaign.enrolmentEnabled : campaign.dispatchEnabled))
+    return blocked(enrolling ? "ENROLMENT_PAUSED" : "DISPATCH_PAUSED");
   const revision = await tx.campaignRevision.findUniqueOrThrow({ where: { id: membership.revisionId } });
   const contact = await tx.funnelContact.findUniqueOrThrow({ where: { id: membership.contactId } });
   if (contact.deletedAt || !contact.email) return blocked("RECIPIENT_UNAVAILABLE");
@@ -30,9 +107,28 @@ export async function checkEmailEligibility(tx: Tx, input: {
     const subject = await tx.funnelSubject.findUnique({ where: { id: membership.subjectId } });
     if (!subject || subject.contactId !== contact.id) return blocked("SUBJECT_RECIPIENT_CHANGED");
   }
-  const reasons = await tx.campaignMembershipReason.findMany({ where: { membershipId: membership.id, endedAt: null, kind: "MANUAL" } });
-  if (!reasons.length) return blocked("NO_ELIGIBLE_REASON");
+  const candidates = await tx.campaignMembershipReason.findMany({ where: { membershipId: membership.id, endedAt: null } });
+  const reasons: CampaignMembershipReason[] = [];
+  let pauseCode: string | undefined;
+  for (const reason of candidates) {
+    const state = await stageReasonState(tx, reason);
+    if (state.state === "ACTIVE" || state.state === "PAUSED" && (enrolling || input.purpose === "START")) reasons.push(reason);
+    else if (state.state === "PAUSED") pauseCode = state.code;
+  }
+  if (!reasons.length) return blocked(pauseCode ?? "NO_ELIGIBLE_REASON");
+  if ((input.purpose === "DISPATCH" || input.purpose === "REFRESH") &&
+    await tx.campaignStepExecution.findFirst({ where: { membershipId: membership.id } })) {
+    const journeys = await tx.funnelJourney.findMany({ where: { id: { in: candidates.filter(reason => reason.kind === "STAGE" && reason.journeyId).map(reason => reason.journeyId!) } }, select: { subjectId: true } });
+    const subjectIds = [...new Set([...journeys.map(journey => journey.subjectId), ...(membership.subjectId ? [membership.subjectId] : [])])];
+    if (await tx.funnelEvaluationReceipt.findFirst({ where: { subjectId: { in: subjectIds }, status: { in: ["PENDING", "FAILED"] } } }))
+      return blocked("TRACKING_EVALUATION_PENDING");
+    if (await tx.funnelActionOutbox.findFirst({ where: { journey: { subjectId: { in: subjectIds } }, status: "RECORDED", effectEligibility: { in: ["AUTOMATION", "CANCELLATION_ONLY"] } } }))
+      return blocked("STAGE_ACTIONS_PENDING");
+  }
   const policy = { ownerId: membership.ownerId, environment: membership.environment, addressDigest: recipientDigest };
+  if ((input.purpose === "DISPATCH" || input.purpose === "REFRESH") && await tx.emailDeliveryReceipt.findFirst({ where: { ...policy,
+    status: "QUEUED", type: { in: ["suppression.added", "email.complained", "email.suppressed", "email.bounced"] } } }))
+    return blocked("EMAIL_POLICY_EVIDENCE_PENDING");
   if (await tx.emailSuppression.findFirst({ where: { ...policy, active: true, category: { in: ["*", revision.subscriptionCategory] } } }))
     return blocked("RECIPIENT_SUPPRESSED");
   const subscription = await tx.emailSubscription.findFirst({ where: { ...policy, category: revision.subscriptionCategory } });
@@ -44,8 +140,8 @@ export async function checkEmailEligibility(tx: Tx, input: {
   if (source.environment === "LIVE" && !input.liveEnabled) return blocked("EMAIL_LIVE_DISABLED");
   const readiness = sender.readiness as { ready?: boolean; generation?: number; credentialVersion?: number; checkedAt?: string };
   const age = input.now.getTime() - Date.parse(readiness.checkedAt ?? "");
-  if (sender.status !== "VERIFIED" || !readiness.ready || readiness.generation !== source.generation ||
-    readiness.credentialVersion !== connection.credentialVersion || !Number.isFinite(age) || age < 0 || age > 900_000)
+  if ((input.purpose === "ENROL" || input.purpose === "DISPATCH") && (sender.status !== "VERIFIED" || !readiness.ready || readiness.generation !== source.generation ||
+    readiness.credentialVersion !== connection.credentialVersion || !Number.isFinite(age) || age < 0 || age > 900_000))
     return blocked("EMAIL_READINESS_REQUIRED");
   if (input.sendId) {
     const send = await tx.messageSend.findUnique({ where: { id: input.sendId } });
@@ -77,6 +173,10 @@ export async function stopEmailMembership(tx: Tx, membershipId: string, reason: 
     data: { status: "CANCELLED", cancelRequestedAt: now, revision: { increment: 1 } } });
   await tx.messageSend.updateMany({ where: { membershipId, status: { in: ["SUBMITTING", "UNKNOWN", "ACCEPTED"] }, cancelRequestedAt: null },
     data: { cancelRequestedAt: now, revision: { increment: 1 } } });
+  await tx.campaignStepExecution.updateMany({ where: { membershipId, status: { in: ["WAITING", "READY"] } },
+    data: { status: "CANCELLED", reason, completedAt: now, nextWakeAt: null, revision: { increment: 1 } } });
+  await tx.campaignStepExecution.updateMany({ where: { membershipId, status: "SEND_PENDING", send: { status: "CANCELLED" } },
+    data: { status: "CANCELLED", reason, completedAt: now, nextWakeAt: null, revision: { increment: 1 } } });
   await settleEmailMembership(tx, membershipId, now);
 }
 
@@ -146,6 +246,8 @@ export async function eraseEmailContact(tx: Tx, contactId: string, now: Date) {
   }
   await tx.campaignMembershipReason.updateMany({ where: { membershipId: { in: memberships.map(m => m.id) }, redactedAt: null },
     data: { note: null, redactedAt: now } });
+  await tx.campaignStepExecution.updateMany({ where: { membershipId: { in: memberships.map(m => m.id) }, redactedAt: null },
+    data: { authorizationReason: null, evaluationTrace: {}, redactedAt: now } });
   await tx.emailDeliveryReceipt.updateMany({ where: { ownerId: contact.ownerId, environment: contact.environment,
     addressDigest: { in: [...digests] }, status: { not: "REDACTED" } },
     data: { envelope: {}, providerMessageId: null, addressDigest: null, opaqueSendRef: null, status: "REDACTED" } });

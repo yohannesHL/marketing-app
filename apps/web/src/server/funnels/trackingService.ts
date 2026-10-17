@@ -452,7 +452,8 @@ export class TrackingService {
       // Keep event/digest tombstones. A queued evaluator or active journey still pins its evidence.
       const eligible = await tx.trackingEvent.findMany({ where: { expiresAt: { lt: this.now() }, status: "MATCHED",
         evaluationReceipts: { none: { status: { in: ["PENDING", "FAILED"] } } },
-        OR: [{ subjectId: null }, { subject: { journeys: { none: { status: "ACTIVE" } } } }] }, select: { id: true }, take: 250 });
+        OR: [{ subjectId: null }, { subject: { journeys: { none: { status: "ACTIVE" } },
+          campaignMemberships: { none: { endedAt: null, stepExecutions: { some: {} } } } } }] }, select: { id: true }, take: 250 });
       let matchedRedacted = 0;
       for (const event of eligible) {
         await tx.trackingEvent.update({ where: { id: event.id }, data: { envelope: {}, status: "REDACTED", reason: "RETENTION_EXPIRED" } });

@@ -4,6 +4,8 @@ import { fail } from "../security/errors";
 import { fields, object, properties as scalarProperties, sha256, text, timestamp } from "./trackingValidation";
 import { evaluateFunnel, fieldKey, validateDefinition, type FunnelDefinition, type PropertyValues, type Scalar } from "./funnelDefinition";
 import type { NormalizedTrackingEvent } from "./trackingTypes";
+import { captureStageActions, stageActionTiming } from "./stageActionPlan";
+import { endObsoleteStageReasons, settleReasonlessMemberships } from "../email/emailPolicy";
 
 type Tx = Prisma.TransactionClient;
 const jsonValue = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -47,7 +49,7 @@ export class FunnelService {
   async get(principal: CustomerPrincipal, id: string) {
     await this.auth.assertSession(principal); const funnel = await this.owned(this.db, principal, id);
     const versions = await this.db.funnelVersion.findMany({ where: { funnelId: id }, orderBy: { number: "desc" }, take: 30 });
-    return { ...funnel, versions, publicationPolicy: "FUTURE_EVENTS_ONLY", existingRuns: "PINNED_VERSION", externalActions: false };
+    return { ...funnel, versions, publicationPolicy: "FUTURE_EVENTS_ONLY", existingRuns: "PINNED_VERSION", externalActions: "EXPLICIT_EMAIL_ACTIONS" };
   }
   async updateDraft(principal: CustomerPrincipal, id: string, value: unknown) {
     await this.auth.assertSession(principal); const input = object(value); fields(input, ["draftRevision", "name", "definition"]);
@@ -99,6 +101,12 @@ export class FunnelService {
           environment: funnel.environment, status: { not: "ARCHIVED" } } }))
           fail("FUNNEL_CAMPAIGN_UNAVAILABLE", 409, "Link an owned marketing campaign in the same environment.");
       }
+      for (const action of definition.stageActions ?? []) {
+        const campaign = await tx.marketingCampaign.findFirst({ where: { id: action.campaignId, ownerId: funnel.ownerId, environment: funnel.environment, category: "EMAIL", status: "ACTIVE" } });
+        if (!campaign || !campaign.publishedRevisionId) fail("FUNNEL_CAMPAIGN_UNAVAILABLE", 409, "Actions require a published owned email campaign in the same environment.");
+        if (action.kind === "EMAIL_ENROLL" && !await tx.campaignRevision.findFirst({ where: { id: action.revisionId, campaignId: campaign.id } }))
+          fail("FUNNEL_CAMPAIGN_REVISION_UNAVAILABLE", 409, "Pin an existing revision of this email campaign.");
+      }
       const prior = await tx.funnelVersion.findFirst({ where: { funnelId: id }, orderBy: { number: "desc" } });
       const digest = sha256(JSON.stringify(definition));
       if (prior?.digest === digest) return { version: prior, existing: true, publicationPolicy: "FUTURE_EVENTS_ONLY" };
@@ -110,7 +118,7 @@ export class FunnelService {
         environment: funnel.environment, versionId: version.id, stageKey: link.stageId, key: link.id, campaignId: link.campaignId,
         purpose: "ATTRIBUTION", createdAt: this.now() } });
       await tx.funnel.update({ where: { id }, data: { publishedVersionId: version.id } });
-      return { version, existing: false, publicationPolicy: "FUTURE_EVENTS_ONLY", existingRuns: "PINNED_VERSION", externalActions: false };
+      return { version, existing: false, publicationPolicy: "FUTURE_EVENTS_ONLY", existingRuns: "PINNED_VERSION", externalActions: "EXPLICIT_EMAIL_ACTIONS" };
     });
   }
   async setStatus(principal: CustomerPrincipal, id: string, value: unknown) {
@@ -124,13 +132,47 @@ export class FunnelService {
     const journeys = await this.db.funnelJourney.findMany({ where: { funnelId: id, ownerId: principal.userId, ...(cursor ? { id: { gt: text(cursor) } } : {}) }, orderBy: { id: "asc" }, take: 50 });
     return { journeys, nextCursor: journeys.length === 50 ? journeys.at(-1)!.id : null };
   }
+  async controls(principal: CustomerPrincipal, id: string, value: unknown) {
+    await this.auth.assertSession(principal); const input = object(value);
+    fields(input, ["automationEnrolmentEnabled", "automationDispatchEnabled"]);
+    for (const key of Object.keys(input)) if (typeof input[key] !== "boolean") fail("INVALID_FUNNEL_INPUT", 400, "Use explicit automation control booleans.");
+    return this.db.$transaction(async tx => {
+      await this.session(tx, principal); const funnel = await this.owned(tx, principal, id);
+      if ((input.automationEnrolmentEnabled || input.automationDispatchEnabled) && !funnel.publishedVersionId)
+        fail("FUNNEL_UNPUBLISHED", 409, "Publish a funnel before enabling its automation.");
+      return tx.funnel.update({ where: { id }, data: { automationEnrolmentEnabled: input.automationEnrolmentEnabled as boolean | undefined,
+        automationDispatchEnabled: input.automationDispatchEnabled as boolean | undefined } });
+    });
+  }
+  async cancelJourney(principal: CustomerPrincipal, id: string, journeyId: string, value: unknown) {
+    await this.auth.assertSession(principal); const input = object(value); fields(input, ["reason"]); const reason = text(input.reason, 500);
+    await this.db.$transaction(async tx => {
+      await this.session(tx, principal); await this.owned(tx, principal, id);
+      const journey = await tx.funnelJourney.findFirst({ where: { id: journeyId, funnelId: id, ownerId: principal.userId } });
+      if (!journey) fail("NOT_FOUND", 404, "Journey not found.");
+      if (journey.status !== "CANCELLED") {
+        const cancelled = await tx.funnelJourney.update({ where: { id: journeyId }, data: { status: "CANCELLED", endedAt: journey.endedAt ?? this.now(), revision: { increment: 1 } } });
+        await tx.funnelStageTransition.create({ data: { ownerId: journey.ownerId, environment: journey.environment, journeyId,
+          versionId: journey.versionId, sequence: cancelled.revision, fromStageKey: journey.currentStageKey, toStageKey: journey.currentStageKey,
+          actorId: principal.userId, triggerKind: "MANUAL", mode: "REPLAY", reasonCode: "JOURNEY_CANCELLED", note: reason,
+          evaluationTrace: { cancellation: true, externalRecall: false }, occurredAt: this.now(), recordedAt: this.now() } });
+      }
+      const touched = await endObsoleteStageReasons(tx, journeyId, this.now());
+      await settleReasonlessMemberships(tx, touched, this.now());
+      await tx.funnelActionExecution.updateMany({ where: { journeyId, status: "PENDING" }, data: { status: "CANCELLED", reason: "JOURNEY_CANCELLED", evaluationTrace: { actorId: principal.userId, reason }, completedAt: this.now(), nextWakeAt: null, revision: { increment: 1 } } });
+      await tx.funnelActionOutbox.updateMany({ where: { journeyId, status: "RECORDED", completedAt: null }, data: { status: "CANCELLED", completedAt: this.now() } });
+    });
+    return this.history(principal, id, journeyId);
+  }
   async history(principal: CustomerPrincipal, id: string, journeyId: string) {
     await this.auth.assertSession(principal); await this.owned(this.db, principal, id);
     const journey = await this.db.funnelJourney.findFirst({ where: { id: journeyId, funnelId: id, ownerId: principal.userId } });
     if (!journey) fail("NOT_FOUND", 404, "Journey not found.");
     const transitions = await this.db.funnelStageTransition.findMany({ where: { journeyId }, orderBy: { sequence: "asc" }, take: 1000 });
     const effects = await this.db.funnelEvidenceEffect.findMany({ where: { funnelId: id, subjectId: journey.subjectId, cycle: journey.cycle }, orderBy: { createdAt: "desc" }, take: 100 });
-    return { journey, transitions, effects, externalActions: false };
+    const actions = await this.db.funnelActionExecution.findMany({ where: { journeyId }, orderBy: { createdAt: "asc" }, take: 500 });
+    const associations = await this.db.campaignMembershipReason.findMany({ where: { journeyId }, orderBy: { createdAt: "asc" }, take: 200 });
+    return { journey, transitions, effects, actions, associations, externalActions: "EXPLICIT_EMAIL_ACTIONS" };
   }
 
   private async transition(tx: Tx, funnel: Funnel, version: FunnelVersion, subjectId: string, existing: FunnelJourney | null, input: {
@@ -149,10 +191,11 @@ export class FunnelService {
       ruleId: input.ruleId, eventId: input.eventId, receiptId: input.receiptId, actorId: input.actorId, triggerKind: input.triggerKind,
       mode: input.mode, reasonCode: input.reasonCode, note: input.note, evaluationTrace: jsonValue(input.trace), occurredAt: input.occurredAt, recordedAt,
       commandKey: input.commandKey, commandDigest: input.commandDigest } });
-    // Captured empty plan is intentional: installing email execution later cannot activate historical entries.
+    const plan = captureStageActions(definitionOf(version), stage.id, input.mode, funnel.automationEnrolmentEnabled, input.triggerKind === "MANUAL");
     await tx.funnelActionOutbox.create({ data: { ownerId: funnel.ownerId, environment: funnel.environment, journeyId: journey.id,
-      transitionId: transition.id, kind: "STAGE_ENTERED", actionKey: "stage-entry", payload: jsonValue({ schemaVersion: 1, stageId: stage.id, versionId: version.id, actions: [] }),
-      mode: input.mode, effectEligibility: "TRACKING_ONLY", status: "RECORDED", createdAt: recordedAt, completedAt: recordedAt } });
+      transitionId: transition.id, kind: "STAGE_ENTERED", actionKey: "stage-entry", payload: jsonValue({ schemaVersion: 1, stageId: stage.id, versionId: version.id, actions: plan.actions }),
+      mode: input.mode, effectEligibility: plan.effectEligibility, status: "RECORDED", createdAt: recordedAt, completedAt: plan.effectEligibility === "TRACKING_ONLY" ? recordedAt : null } });
+    if (input.triggerKind === "MANUAL") await settleReasonlessMemberships(tx, await endObsoleteStageReasons(tx, journey.id, recordedAt), recordedAt);
     return { journey, transition };
   }
   async move(principal: CustomerPrincipal, id: string, value: unknown) {
@@ -268,24 +311,33 @@ export class FunnelService {
           }
         }
         await tx.funnelEvidenceEffect.create({ data: { ownerId: receipt.ownerId, environment: receipt.environment, funnelId: funnel.id,
-          versionId: version.id, subjectId: subject.id, cycle, journeyId, evidenceKey, outcome, ruleId, createdAt: this.now() } });
+          versionId: version.id, subjectId: subject.id, cycle, journeyId, evidenceKey, outcome, ruleId, createdAt: this.now(),
+          evaluationEventId: event.id, evaluatedStageKey: active?.currentStageKey ?? null, evaluationJourneyRevision: active?.revision ?? null,
+          evaluationOccurredAt: event.occurredAt } });
       }
       return tx.funnelEvaluationReceipt.update({ where: { id: receipt.id }, data: { status: "CONSUMED", completedAt: this.now() } });
     });
   }
   async simulate(principal: CustomerPrincipal, id: string, value: unknown) {
     await this.auth.assertSession(principal); const funnel = await this.owned(this.db, principal, id);
-    const input = object(value); fields(input, ["definition", "currentStage", "events"]);
+    const input = object(value); fields(input, ["definition", "currentStage", "events", "automationEnrolmentEnabled"]);
+    if (input.automationEnrolmentEnabled !== undefined && typeof input.automationEnrolmentEnabled !== "boolean") fail("INVALID_SIMULATION", 400, "Use an explicit sample enrollment control.");
+    const enrolmentEnabled = input.automationEnrolmentEnabled as boolean | undefined ?? funnel.automationEnrolmentEnabled;
     const definition = validateDefinition(input.definition ?? funnel.draft);
     let currentStage = input.currentStage === undefined || input.currentStage === null ? null : text(input.currentStage);
     if (currentStage && !definition.stages.some(s => s.id === currentStage)) fail("INVALID_STAGE", 400, "Choose a stage in this simulation definition.");
+    let goalReached = definition.stages.some(stage => stage.id === currentStage && stage.goal);
     if (!Array.isArray(input.events) || input.events.length > 100) fail("INVALID_SIMULATION", 400, "Supply at most 100 sample events.");
     const snapshots = new Map<string, Record<string, Observation>>(), properties: PropertyValues = {}, history: unknown[] = [];
     let watermark: string | undefined;
+    const plannedReasons = new Map<string, NonNullable<FunnelDefinition["stageActions"]>[number]>();
     const consumedEvidence = new Set<string>();
     for (let index = 0; index < input.events.length; index++) {
-      const event = object(input.events[index]); fields(event, ["sourceId", "type", "properties", "occurredAt", "resourceUpdatedAt", "evidenceKey"]);
+      const event = object(input.events[index]); fields(event, ["sourceId", "type", "properties", "occurredAt", "resourceUpdatedAt", "evidenceKey", "mode", "recordedAt"]);
       const sourceId = text(event.sourceId), type = text(event.type), occurredAt = timestamp(event.occurredAt);
+      const mode = event.mode ?? "LIVE";
+      if (!["LIVE", "BACKFILL", "REPLAY"].includes(String(mode))) fail("INVALID_SIMULATION", 400, "Choose a supported sample evidence mode.");
+      const recordedAt = event.recordedAt === undefined ? occurredAt : timestamp(event.recordedAt);
       const values = scalarProperties(event.properties, Object.keys(object(event.properties)));
       const resourceUpdatedAt = event.resourceUpdatedAt === undefined ? undefined : timestamp(event.resourceUpdatedAt);
       const evidenceKey = event.evidenceKey === undefined ? `sample:${index}` : `canonical:${text(event.evidenceKey, 512)}`;
@@ -294,11 +346,28 @@ export class FunnelService {
       const changedFields = this.project(observations, { id: `sample-${index}`, sourceId, type, occurredAt: new Date(occurredAt), envelope: { properties: values, resourceUpdatedAt } as unknown as NormalizedTrackingEvent });
       snapshots.set(snapshotKey, observations);
       for (const [key, observation] of Object.entries(observations)) properties[fieldKey({ sourceId, type, key })] = observation.state === "UNKNOWN" ? { state: "UNKNOWN", reason: "CONFLICT" } : { state: "VALUE", value: observation.value! };
-      const decision = eventConsumed && !changedFields.length ? { outcome: "WAIT", reason: "DUPLICATE_EVIDENCE", trace: { reason: "DUPLICATE_EVIDENCE" }, to: undefined } :
+      const decision = !currentStage && mode !== "LIVE" ? { outcome: "WAIT", reason: "HISTORY_ONLY_NO_ENTRY", trace: { reason: "HISTORY_ONLY_NO_ENTRY" }, to: undefined } :
+        eventConsumed && !changedFields.length ? { outcome: "WAIT", reason: "DUPLICATE_EVIDENCE", trace: { reason: "DUPLICATE_EVIDENCE" }, to: undefined } :
         watermark && new Date(occurredAt) < new Date(watermark) ? { outcome: "WAIT", reason: "LATE", trace: { reason: "LATE" }, to: undefined } :
         evaluateFunnel(definition, { currentStage, eventEligible: !eventConsumed, event: { sourceId, type, properties: values as Record<string, Scalar>, occurredAt }, properties, changedFields });
       consumedEvidence.add(evidenceKey);
-      history.push({ sample: index + 1, from: currentStage, ...decision, actions: [], externalEffects: false });
+      const actions: unknown[] = [], stops: { actionId: string; reason: string }[] = [];
+      if (decision.outcome === "MOVE") {
+        goalReached ||= definition.stages.some(stage => stage.id === decision.to && stage.goal);
+        for (const [id, plan] of plannedReasons) if (plan.kind === "EMAIL_ENROLL" && (plan.stopOnStageExit && plan.stageId !== decision.to || plan.stopOnGoal && goalReached)) {
+          stops.push({ actionId: id, reason: plan.stopOnGoal && goalReached ? "GOAL_REACHED" : "STAGE_EXITED" }); plannedReasons.delete(id);
+        }
+        for (const action of captureStageActions(definition, decision.to!, String(mode), enrolmentEnabled).actions) {
+          const timing = stageActionTiming(action, new Date(recordedAt));
+          const cancelled = action.kind === "EMAIL_ENROLL" && action.stopOnGoal && goalReached;
+          actions.push({ ...action, ...timing, status: cancelled ? "CANCELLED" : "PLANNED", reason: cancelled ? "GOAL_REACHED" : "SAMPLE_PLAN_ONLY" });
+          if (action.kind === "EMAIL_ENROLL" && !cancelled) plannedReasons.set(action.id, action);
+          if (action.kind === "EMAIL_STOP") for (const [id, previous] of plannedReasons) if (previous.campaignId === action.campaignId) {
+            stops.push({ actionId: id, reason: "STAGE_STOP_ACTION" }); plannedReasons.delete(id);
+          }
+        }
+      }
+      history.push({ sample: index + 1, from: currentStage, ...decision, actions, stops, externalEffects: false });
       if (decision.outcome === "MOVE") { currentStage = decision.to!; watermark = occurredAt; }
     }
     return { simulated: true, externalEffects: false, currentStage, history, note: "Sample values only. Reuse evidenceKey for copies of one canonical occurrence; without it every sample is a distinct event. resourceUpdatedAt defaults to occurredAt. Source, publication, identity and consent readiness require separate checks." };
