@@ -361,7 +361,7 @@ test("real global CLI and owned polling survive five concurrent OAuth selections
    if(workerExit)break;ownedPostPolls++;
    const response=await owner.api(`/api/social/posts/${post.id}`,{},"GET");
    if(!response.ok){const body=await response.json().catch(()=>({}));failures.push({operation:"owned-post-GET",status:response.status,code:safeCode(body)});}
-   else{done=await response.json();if(done.deliveries.length===7&&done.deliveries.every((delivery:any)=>delivery.status==="SUCCEEDED"))break;}
+   else{done=await response.json();if(done.status==="COMPLETED"&&done.deliveries.length===7&&done.deliveries.every((delivery:any)=>delivery.status==="SUCCEEDED"))break;}
    await pause(25);
   }
   await activeWork;assert.deepEqual(failures,[],JSON.stringify({failures,reports,workerExit}));assert.equal(workerExit,undefined);assert.equal(activeOAuthSelections,5);assert.ok(ownedPostPolls>1);

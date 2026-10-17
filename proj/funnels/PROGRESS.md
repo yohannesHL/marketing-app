@@ -40,3 +40,5 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - All action plans captured in this slice are empty and tracking-only. Installing later automation cannot activate old stage entries. Real email delivery belongs to #39/#40.
 - Blank, sales, ecommerce, event and subscription examples are editable configurations using the same evaluator. The API simulator never calls providers.
 - Independent schema/service review identified and resolved generation corroboration, property-change deduplication and anonymous-backlog transaction sizing before PR creation.
+
+- CI exposed an existing polling race in the social runtime stress test: all destinations could be successful before the aggregate post status committed. The test now waits for both completion conditions; the actual seven-destination worker/parallel-OAuth test passed after the correction.
