@@ -23,7 +23,8 @@
     "test:e2e:delivery": "playwright test --config=playwright.social-delivery.config.ts",
     "test:e2e:delivery-app": "tsx tests/support/start-social-delivery-app.ts",
     "tracking:worker": "tsx apps/web/scripts/tracking-worker.ts",
-    "funnels:worker": "tsx apps/web/scripts/funnel-worker.ts"
+    "funnels:worker": "tsx apps/web/scripts/funnel-worker.ts",
+    "email:worker": "tsx apps/web/scripts/email-worker.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",

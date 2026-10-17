@@ -178,7 +178,7 @@ The adapter verifies `X-Shopify-Hmac-SHA256` against exact raw bytes, checks the
 
 Reconcile an explicit order or refund using `kind: "ORDER"`/`"REFUND"` and a numeric ID string or corresponding Shopify GraphQL GID. Reads target the configured shop's versioned Admin GraphQL endpoint; redirects are forbidden. Refund pagination is bounded, incomplete or changing responses fail closed, and provider permission/rate-limit failures do not imply a missing purchase or refund. Historical access depends on the granted scopes: [Shopify access scopes](https://shopify.dev/docs/api/usage/access-scopes).
 
-Resend belongs to campaign delivery in issue #39. This receipt slice does not register Resend webhook callbacks or imply that delivery tracking is already available.
+Resend delivery uses a managed tracking source and the dedicated [email connection, sender and webhook setup](email-setup.md). Its credentials and callback matching must use the email API; generic source creation/edit/reconciliation/replay does not manage Resend messages.
 
 ## Diagnostics, recovery and release evidence
 

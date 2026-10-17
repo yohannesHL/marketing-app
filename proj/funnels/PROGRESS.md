@@ -1,13 +1,13 @@
 # Funnel implementation progress
 
-Status: #36 and #37 implementation merged; #38 rules and journey history under review. User authorized sequential PR creation and merges for #36–#42.
+Status: #36–#38 implementation merged; #39 owned email campaigns in progress. User authorized sequential PR creation and merges for #36–#42.
 
 | Issue | State | Evidence |
 | --- | --- | --- |
 | #36 | Merged | [PR #43](https://github.com/yohannesHL/marketing-app/pull/43), commit `cfabf9d`; all required CI passed |
 | #37 | Implementation merged; live evidence pending | [PR #44](https://github.com/yohannesHL/marketing-app/pull/44), commit `c9b1649`; all required CI passed; actual provider/pilot evidence remains open |
-| #38 | Implementation review | Immutable custom definitions, durable evaluator receipts, property rules, history, internal outbox, templates and no-send simulator; 487 security tests passed locally; CI exposed an existing SQLite read-contention gap under the social stress test |
-| #39 | Not started | Depends on #36; scheduled after #38 for sequential delivery |
+| #38 | Merged | [PR #45](https://github.com/yohannesHL/marketing-app/pull/45), commit `293c91c`; all 14 CI jobs passed; 490 security tests pass |
+| #39 | Implementation ready for PR validation | Resend adapter, owned campaign revisions/membership, recipient policy and durable explicit send path; live pilot pending |
 | #40 | Not started | Depends on #38/#39 |
 | #41 | Not started | Depends on runtime slices for production behaviour |
 | #42 | Not started | Reporting and integrated validation |
@@ -44,3 +44,15 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - CI exposed an existing polling race in the social runtime stress test: all destinations could be successful before the aggregate post status committed. The test now waits for both completion conditions; the actual seven-destination worker/parallel-OAuth test passed after the correction.
 
 - A later CI run exposed transient read failures during the real social worker concurrency test. A deterministic exclusive-lock reproduction confirmed that a synchronous native read exhausted its 100 ms wait before the blocking process could release. The three deterministic regressions passed after bounded retries were restricted to SQLite-authorizer-confirmed autocommit SELECTs. All 11 storage tests, including the seven-destination concurrency test, passed. The original CI did not enable SQLite diagnostics, so this is a reproduced contention defect rather than proof of the exact original exception. Transaction callbacks and provider operations remain non-replayable.
+
+## Issue #39 implementation evidence
+
+- Sixteen scoped email/campaign tables preserve the legacy paid campaign model. Fresh migration, populated legacy upgrades, immutable definitions and direct ownership/uniqueness checks pass.
+- Resend supports explicit single-message delivery, sender/webhook readiness, signed callbacks and positive known-ID reconciliation. Its declared capabilities exclude remote sequence enrollment, reply detection and provider scheduling.
+- Campaign membership has a stable subject/contact scope and independent reasons. Draft CAS, pinned revisions, separate enrollment/dispatch controls and report-only stage links are covered by real SQLite integration tests.
+- One encrypted frozen request, idempotency key and persisted attempt precede every send. Unknown acceptance holds its scope and cannot be resent or moved to another provider. Callback-before-response recovery and late acceptance after cancellation/deletion retain honest outcomes.
+- Explicit category consent, global/category suppression, one-click unsubscribe and deletion apply across duplicate addresses and connections without merging business identities. Read-only unsubscribe GET and session/Origin management boundaries pass HTTP tests.
+- Bounded retention keeps fingerprints/policy tombstones and unresolved-effect evidence. Temporal send windows cover repeated/skipped times, weekday rollover, exact endpoints and expiry.
+- Independent reviews found and fixed deletion while submitting, callback privacy restoration, receipt redaction constraints, declared-versus-emitted tracking properties, contradictory provider mappings, and retention of queued negative-policy evidence. Fixture API/provider/campaign/delivery/schema/timing checks cover 60 passing cases; the final full regression run passed all 550 tests. App TypeScript and fresh/legacy migration checks also pass.
+- [Email setup guide](../../docs/funnels/email-setup.md) documents setup order, routes, gates, workers, recovery, timing and privacy. The receipt worker performs no automatic sends in this slice; #40 owns automation through the same send identity.
+- Actual live account/domain/webhook configuration, an authorized pilot recipient and real callback proof remain pending. Implementation checks do not satisfy that acceptance item.
