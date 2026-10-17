@@ -31,7 +31,7 @@ Expired access is renewed with the encrypted offline credential and a verified s
 
 `npm run test:security` runs the connection, provider and durable-worker suites. The browser runner creates an isolated database and real local Mockoon servers, exercises consent/discovery/selection/deselection/disconnection, and leaves publishing disabled for that UI journey. The upload adapter tests exercise actual HTTP requests against Mockoon, including encrypted durable progress and restart reconciliation. Media-store tests separately inspect actual decoded files. The scheduled-renewal test isolates the queue contract using a synthetic adapter and actual OAuth renewal HTTP; it does not claim that its eight-byte database fixture is a decoded video.
 
-No real Google credentials, project quota check, customer consent, platform approval or live publication has been performed by these checks. Those owner gates remain open in issue #12 and the readiness checklist.
+No real Google credentials, project quota check, customer consent, platform approval or live publication has been performed by these checks. Those owner gates remain in the readiness checklist and do not block engineering closure of issue #12 under the owner’s 17 October acceptance boundary.
 
 ## API and source references
 

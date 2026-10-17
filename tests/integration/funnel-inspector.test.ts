@@ -59,8 +59,9 @@ test("journey inspector uses its exact pinned version beyond the latest version 
 test("funnel workspace sign-in destinations allow local routes without opening redirects", () => {
   for (const path of ["/funnels", "/funnels/create", "/funnels/owned-1", "/funnels/owned-1/journeys/journey_2", "/tracking/source-1", "/email", "/email/connections", "/email/campaigns/c-1", "/email/memberships/m-1"])
     assert.equal(safeReturnTo(path), path);
-  for (const path of ["//evil.test", "https://evil.test", "/funnels/../evil", "/funnels/a?redirect=https://evil.test", "/email/connections/../../evil", "/tracking/%2F%2Fevil.test"])
-    assert.equal(safeReturnTo(path), "/connections");
+  for (const path of ["//evil.test", "https://evil.test", "/funnels/../evil", "/email/connections/../../evil", "/tracking/%2F%2Fevil.test"])
+    assert.equal(safeReturnTo(path), "/dashboard");
+  assert.equal(safeReturnTo("/funnels/a?redirect=https://evil.test"), "/funnels/a");
 });
 
 test("manual inspector corrections fence the displayed cycle and revision without losing command idempotency", async () => {

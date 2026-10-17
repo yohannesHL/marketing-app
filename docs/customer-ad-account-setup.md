@@ -2,7 +2,7 @@
 
 This guide covers the business setup Yohannes needs to complete and the engineering work required before customers can connect Google Ads and Meta ad accounts to LaunchPad. Customers keep ownership and billing of their ad accounts. Connecting an account must not start advertising or spend money.
 
-Status: the shared security foundation is implemented, and Google connection endpoints are implemented with Mockoon validation. Meta endpoints are implemented with Mockoon validation; the connection UI and live campaign execution are tracked separately. The current campaign launch flow uses simulated accounts. Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
+Status: customer security, Google/Meta connection endpoints, connection settings, selected-account reads and Mockoon verification are implemented. Live advertising writes are outside this connection release. The 17 October 2026 issue audit accepts implementation and fixture evidence without requiring API keys or live verification; see [completion audit](implementation-completion-audit.md). Platform guidance checked on 13 October 2026; verify the current developer console requirements when submitting applications.
 
 ## What you can set up now
 
@@ -11,7 +11,7 @@ Status: the shared security foundation is implemented, and Google connection end
 - [ ] Choose the production app domain and a separate staging domain, both with HTTPS.
 - [ ] Provide the business name, website, support email, and privacy contact.
 - [ ] Prepare business verification documents for submission directly to the platform if requested.
-- [ ] Approve the privacy policy, terms, data deletion process, and retention policy. Engineering must publish the pages and implement the stated deletion behavior before review.
+- [ ] Approve the privacy policy, terms, data deletion process, and retention policy. Review the implemented `/privacy`, `/terms` and `/data-deletion` pages. They remain explicitly marked as policy previews until operator review; they describe connection-scoped removal separately from full account requests and provider-side post cleanup.
 - [ ] Choose one Google Ads account and one Meta ad account for the pilot. Use an account you are authorized to manage; keep billing on the advertiser's account.
 - [ ] Ensure the business retains administrative ownership of its developer projects and applications.
 
@@ -75,7 +75,7 @@ Google and Meta names and callbacks below are implemented. Keep this table synch
 | `CONNECTION_ACTIVE_KEY_ID` | Implemented foundation: ID of the key used for new credential encryption |
 | `CONNECTION_MODE` | `mock` or `live` for provider OAuth/discovery; no fallback |
 | `GOOGLE_ADS_MOCKOON_URL` | Loopback Mockoon origin, used only in explicit mock mode |
-| `ADS_MODE` | Existing campaign execution: mock; live execution remains gated for #6/#7 |
+| `ADS_MODE` | Existing campaign execution: mock; live campaign/asset writes are outside this connection release |
 
 Register `APP_ORIGIN/api/connections/meta/data-deletion` and `APP_ORIGIN/api/connections/meta/deauthorize` as Meta callbacks. Separate test and production credentials wherever supported. No secret setting may use a browser-exposed `NEXT_PUBLIC_` variable.
 
@@ -113,3 +113,7 @@ The first items needed are the production/staging domains, business/support deta
 - [Meta account connections](https://github.com/yohannesHL/marketing-app/issues/5)
 - [Connection settings and account routing](https://github.com/yohannesHL/marketing-app/issues/6)
 - [Pilot verification and rollout](https://github.com/yohannesHL/marketing-app/issues/7)
+
+## Public policy pages
+
+The public routes `/privacy`, `/terms` and `/data-deletion` require no sign-in and are linked from the landing page. Configure `SERVICE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL` and `SERVICE_RETENTION_NOTICE` with reviewed, non-secret operator information. Missing values are visibly identified, not replaced by invented company details or retention promises. The pages remain labelled policy previews; business/legal approval is an owner rollout task. Meta’s signed callbacks remain the API URLs above, not the human-readable deletion page.

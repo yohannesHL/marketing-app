@@ -112,6 +112,7 @@ test("email campaign forms preserve no-send simulation, audited consent and expl
     page.getByText("Sender check completed.", { exact: true }),
   ).toBeVisible();
   await page
+    .getByRole("navigation", { name: "Email workspace", exact: true })
     .getByRole("link", { name: "Email campaigns", exact: true })
     .click();
   const category = `ui-${randomUUID().slice(0, 8)}`,
@@ -349,12 +350,9 @@ test("typed waits retain invalid input and a stale draft remains editable after 
       () => document.documentElement.scrollWidth <= window.innerWidth + 1,
     ),
   ).toBe(true);
-  await page
-    .getByRole("combobox", { name: "Appearance", exact: true })
-    .selectOption("dark");
   await page.screenshot({
     animations: "disabled",
-    path: info.outputPath("email-editor-dark.png"),
+    path: info.outputPath("email-editor-workspace.png"),
     fullPage: true,
   });
 });

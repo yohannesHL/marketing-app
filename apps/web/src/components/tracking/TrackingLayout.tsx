@@ -2,19 +2,19 @@
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Alert, Badge, Container, Stack, Typography } from "@launchpad/ui";
-import { AccountNavigation } from "../connections/AccountNavigation";
 import type { TrackingEnvironment } from "./trackingUi";
-import { WorkspaceTheme } from "../funnels/WorkspaceTheme";
+import { useAppNavigationEnvironment, useAppNavigationGuard } from "../workspace/AppShell";
 export function TrackingLayout({ title, description, environment, loading, signedIn, busy, error, notice, children }: {
   title: string; description: string; environment: TrackingEnvironment; loading?: boolean; signedIn?: boolean; busy?: boolean;
   error?: string | null; notice?: string | null; children: ReactNode;
 }) {
   const errorRef = useRef<HTMLDivElement>(null);
+  useAppNavigationEnvironment(environment);
+  useAppNavigationGuard(() => busy ? "Complete the current source setup and save any one-time credentials before leaving." : true);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
-  return <WorkspaceTheme><main className="py-8 sm:py-12" data-testid="tracking-page"><Container><Stack gap={6}>
-    <AccountNavigation signedIn={signedIn ?? !loading} busy={busy} />
+  return <section className="workspace-page" data-testid="tracking-page"><Container><Stack gap={6}>
     <nav aria-label="Tracking navigation" className="flex flex-wrap gap-2">
-      <Link className="btn btn-ghost min-h-11 normal-case" href="/funnels">Funnels</Link>
+      <Link className="btn btn-ghost min-h-11 normal-case" href={`/funnels?environment=${environment}`}>Funnels</Link>
       <Link className="btn btn-secondary min-h-11 normal-case" href={`/tracking?environment=${environment}`}>Tracking sources</Link>
     </nav>
     <header className="min-w-0"><Badge tone={environment === "LIVE" ? "warning" : "info"}>{environment}</Badge>
@@ -27,5 +27,5 @@ export function TrackingLayout({ title, description, environment, loading, signe
     {notice && <Alert title="Tracking update" tone="success" role="status">{notice}</Alert>}
     {loading ? <p role="status">Loading tracking sources…</p> : children}
     {busy && <p role="status" aria-live="polite">Source setup is in progress. Complete the current step before leaving.</p>}
-  </Stack></Container></main></WorkspaceTheme>;
+  </Stack></Container></section>;
 }

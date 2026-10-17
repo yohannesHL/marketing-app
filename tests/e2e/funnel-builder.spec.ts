@@ -39,18 +39,20 @@ async function noHorizontalOverflow(page: Page) {
   expect(width.document, JSON.stringify(width)).toBeLessThanOrEqual(width.viewport);
 }
 async function addStage(page: Page, name: string) {
-  await page.getByRole("button", { name: "Add next stage", exact: true }).click();
+  await page.getByRole("button", { name: "Add stage", exact: true }).click();
   const form = page.getByRole("group", { name: "New custom stage", exact: true });
   await form.getByLabel("Stage name", { exact: true }).fill(name);
   await form.getByRole("button", { name: "Add stage", exact: true }).click();
   await expect(page.getByRole("heading", { name: `${name} settings`, exact: true })).toBeFocused();
 }
 async function selectStage(page: Page, name: string) {
-  const target = page.getByRole("navigation", { name: "Stage list", exact: true }).getByRole("button", { name: new RegExp(`^\\d+\\. ${name}`) });
+  await page.getByRole("group", { name: "Display mode", exact: true }).getByRole("button", { name: "List", exact: true }).click();
+  const target = page.getByRole("region", { name: "Stage list", exact: true }).getByRole("button", { name: `Edit ${name}`, exact: true });
   await target.focus(); await page.keyboard.press("Space");
   await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue(name);
 }
 async function addRule(page: Page, sourceId: string, to: string, entry = false) {
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Tracking", exact: true }).click();
   await page.getByRole("button", { name: "Add event rule", exact: true }).click();
   const form = page.getByRole("group", { name: "New event rule", exact: true });
   await form.getByRole("combobox", { name: "Rule starts", exact: true }).selectOption(entry ? "ENTRY" : "STAGE");
@@ -150,6 +152,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await page.getByRole("button", { name: "Create draft", exact: true }).click();
   await expect(page).toHaveURL(/\/funnels\/[^/?]+$/);
   const funnelId = new URL(page.url()).pathname.split("/").at(-1)!;
+  await page.getByTestId("funnel-canvas").getByRole("button", { name: /^Edit / }).first().click();
   await page.getByLabel("Stage name", { exact: true }).fill("Inquiry received");
   await addStage(page, "Discovery call");
   await addStage(page, "Proposal approved");
@@ -159,6 +162,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await expect(keyboardNode).toBeVisible();
   await keyboardNode.focus(); await expect(keyboardNode).toBeFocused();
   await page.keyboard.press("Enter");
+  await keyboardNode.getByRole("button", { name: "Edit Discovery call", exact: true }).click();
   await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue("Discovery call");
   await selectStage(page, "Inquiry received");
   await addRule(page, customer.sourceId, "Inquiry received", true);
@@ -174,8 +178,11 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await firstBranch.getByRole("combobox", { name: "Comparison", exact: true }).selectOption("gte");
   await firstBranch.getByLabel("Compare with", { exact: true }).fill("unfinished");
   await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
-  await page.getByRole("navigation", { name: "Stage list", exact: true }).getByRole("button", { name: /^2\. Discovery call/ }).click();
+  await page.getByRole("region", { name: "Stage list", exact: true }).getByRole("button", { name: "Edit Discovery call", exact: true }).click();
   await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue("Inquiry received");
+  await expect(firstBranch.getByLabel("Compare with", { exact: true })).toHaveValue("unfinished");
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Campaigns", exact: true }).click();
+  await expect(page.getByText("Complete or remove the invalid field before changing sections. Your unfinished value is preserved.", { exact: true })).toBeVisible();
   await expect(firstBranch.getByLabel("Compare with", { exact: true })).toHaveValue("unfinished");
   await firstBranch.getByLabel("Compare with", { exact: true }).fill("70");
   await firstBranch.getByRole("button", { name: "Group with more conditions", exact: true }).click();
@@ -189,6 +196,7 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   await route.getByRole("group", { name: "Branch 2", exact: true }).getByRole("combobox", { name: "Go to stage", exact: true }).selectOption({ label: "Discovery call" });
   await route.getByRole("button", { name: "Move branch 2 of rule 2 earlier", exact: true }).click();
   await route.getByRole("button", { name: "Move branch 1 of rule 2 later", exact: true }).click();
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Campaigns", exact: true }).click();
   await page.getByRole("combobox", { name: "Connect another campaign", exact: true }).selectOption(customer.campaignId);
   await page.getByRole("button", { name: "Connect for attribution", exact: true }).click();
   await expect(page.getByText("Tracking only. No entry actions are configured.", { exact: true })).toBeVisible();
@@ -201,11 +209,14 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
     { field: { scope: "EVENT", key: "interest" }, type: "string", op: "eq", value: "consulting" },
   ] });
   expect(saved.draft.campaignLinks).toHaveLength(1); expect(saved.draft.stageActions ?? []).toHaveLength(0);
-  await page.reload(); await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue("Inquiry received");
+  await page.reload();
+  await page.getByTestId("funnel-canvas").getByRole("button", { name: "Edit Inquiry received", exact: true }).click();
+  await expect(page.getByLabel("Stage name", { exact: true })).toHaveValue("Inquiry received");
 
   // Both tabs write through the production HTTP endpoint with real optimistic revision checks.
   const secondTab = await context.newPage();
   await secondTab.goto(`/funnels/${funnelId}`);
+  await secondTab.getByText("Funnel details", { exact: true }).click();
   await secondTab.getByLabel("Funnel name", { exact: true }).fill("Server-reviewed consultation funnel");
   await secondTab.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(secondTab.getByText(/Draft revision 3 saved\. Published journeys are unchanged\./)).toBeVisible();
@@ -261,19 +272,37 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
   expect(await readFunnel(page, funnelId)).toEqual(published);
 
   await page.getByRole("navigation", { name: "Funnel views", exact: true }).getByRole("button", { name: "Build", exact: true }).click();
+  await page.getByRole("group", { name: "Display mode", exact: true }).getByRole("button", { name: "Canvas", exact: true }).click();
   await expect(page.getByTestId("funnel-canvas")).toBeVisible();
   await page.screenshot({ path: info.outputPath("funnel-desktop.png"), fullPage: true, animations: "disabled" });
-  await page.getByRole("button", { name: "Hide canvas", exact: true }).click();
   await selectStage(page, "Proposal approved");
+  await page.getByRole("group", { name: "Display mode", exact: true }).getByRole("button", { name: "Canvas", exact: true }).click();
   await page.setViewportSize({ width: 320, height: 740 });
-  for (const theme of ["light", "dark"]) {
-    await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption(theme);
+  await expect.poll(() => page.getByTestId("funnel-canvas").evaluate(canvas => {
+    const viewport = canvas.getBoundingClientRect();
+    return [...canvas.querySelectorAll(".react-flow__node")].every(node => {
+      const bounds = node.getBoundingClientRect();
+      return bounds.width > 0 && bounds.left >= viewport.left && bounds.right <= viewport.right && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom;
+    });
+  }), { message: "Resize should fit every stage inside the mobile canvas" }).toBe(true);
+  for (const theme of ["workspace"]) {
     await noHorizontalOverflow(page);
-    const control = page.getByRole("button", { name: "Add next stage", exact: true });
+    const control = page.getByRole("button", { name: "Add stage", exact: true });
     await control.focus(); await expect(control).toBeFocused();
     expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: info.outputPath(`funnel-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
+  for (const summary of ["More", "Funnel details"]) {
+    await page.getByText(summary, { exact: true }).click();
+    await noHorizontalOverflow(page);
+    await page.getByText(summary, { exact: true }).click();
+  }
+  await page.getByRole("group", { name: "Display mode", exact: true }).getByRole("button", { name: "List", exact: true }).click();
+  await expect(page.getByTestId("funnel-canvas")).toHaveCount(0);
+  await selectStage(page, "Inquiry received");
+  await page.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Tracking", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Routing rules", exact: true })).toBeVisible();
+  await noHorizontalOverflow(page);
 });
 
 test("two enquiries retain separate pinned histories and manual correction affects only the selected journey", async ({ page }, info) => {
@@ -287,8 +316,8 @@ test("two enquiries retain separate pinned histories and manual correction affec
   const customer = await signIn(page, info), before = await providerStats(page);
   const savedFunnel = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Consultation journey", exact: true }) });
   await expect(savedFunnel).toBeVisible();
-  for (const name of ["Funnels", "Tracking sources", "Email campaigns"]) {
-    await page.getByRole("navigation", { name: "Journey workspace", exact: true }).getByRole("link", { name, exact: true }).hover();
+  for (const name of ["All funnels", "Tracking sources", "Email campaigns"]) {
+    await page.getByRole("navigation", { name: "Funnel navigation", exact: true }).getByRole("link", { name, exact: true }).hover();
   }
   await page.getByRole("link", { name: "Create funnel", exact: true }).hover();
   await savedFunnel.getByRole("link", { name: "Consultation journey", exact: true }).hover();
@@ -296,7 +325,7 @@ test("two enquiries retain separate pinned histories and manual correction affec
   // Observe the complete list-to-editor lifecycle, including hover, without intercepting requests.
   await savedFunnel.getByRole("link", { name: "Open funnel", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
-  await expect(page.getByRole("navigation", { name: "Stage list", exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Display mode", exact: true })).toBeVisible();
   expect(speculativeWorkspaceRequests, "Workspace links should load on navigation, without speculative RSC requests").toEqual([]);
   await page.goto(`/funnels/${customer.funnelId}?view=journeys`);
   await expect(page.getByRole("heading", { name: "People and business journeys", exact: true })).toBeVisible();
@@ -344,5 +373,301 @@ test("two enquiries retain separate pinned histories and manual correction affec
   await expect(page.getByRole("alert").filter({ hasText: /journey|cycle|changed/i })).toBeVisible();
   const after = (await (await page.request.get(`/api/funnels/${customer.funnelId}/journeys`)).json()).journeys;
   expect(after.find((journey: { id: string }) => journey.id === secondCycle.id)).toEqual(secondCycle);
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("main app navigation opens funnels and protects unfinished edits on desktop and mobile", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  await page.goto("/dashboard");
+  const navigation = page.getByRole("navigation", { name: "Global navigation", exact: true });
+  await expect(page.getByRole("heading", { name: "A clear view of what’s next.", exact: true })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
+  await navigation.getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/funnels\?environment=TEST$/);
+  await expect(navigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "Consultation journey", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
+  await expect(navigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByTestId("funnel-canvas").getByRole("button", { name: /^Edit / }).first().click();
+  const stageName = page.getByLabel("Stage name", { exact: true });
+  await stageName.fill("Unfinished navigation review");
+  page.once("dialog", dialog => dialog.dismiss());
+  await navigation.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
+  await expect(stageName).toHaveValue("Unfinished navigation review");
+  await page.screenshot({ path: info.outputPath("integrated-funnel-desktop.png"), fullPage: true, animations: "disabled" });
+  await page.setViewportSize({ width: 320, height: 740 });
+  const menu = page.getByRole("button", { name: "More", exact: true });
+  await menu.focus(); await page.keyboard.press("Enter");
+  const mobileNavigation = page.getByRole("navigation", { name: "More workspace navigation", exact: true });
+  await expect(mobileNavigation).toBeVisible();
+  await expect(mobileNavigation.getByRole("link", { name: "Funnels", exact: true })).toHaveAttribute("aria-current", "page");
+  await noHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath("integrated-funnel-menu-320.png"), animations: "disabled" });
+  page.once("dialog", dialog => dialog.dismiss());
+  await mobileNavigation.getByRole("link", { name: "Campaigns", exact: true }).click();
+  await expect(stageName).toHaveValue("Unfinished navigation review");
+  page.once("dialog", dialog => dialog.accept());
+  await mobileNavigation.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "A clear view of what’s next.", exact: true })).toBeVisible();
+  expect((await readFunnel(page, customer.funnelId)).draft.stages[0].name).not.toBe("Unfinished navigation review");
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("main navigation keeps the selected environment across funnels, tracking and email", async ({ page }, info) => {
+  await signIn(page, info);
+  const before = await providerStats(page);
+  await page.getByRole("combobox", { name: "Environment", exact: true }).selectOption("LIVE");
+  await page.getByRole("navigation", { name: "Funnel navigation", exact: true }).getByRole("link", { name: "Tracking sources", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracking\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await page.getByRole("textbox", { name: "Search quick actions", exact: true }).fill("Email campaigns");
+  await page.getByRole("link", { name: /Email campaigns Manage sequences/ }).click();
+  await expect(page).toHaveURL(/\/email\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await page.getByRole("navigation", { name: "Global navigation", exact: true }).getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/funnels\?environment=LIVE$/);
+  await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toHaveValue("LIVE");
+  await page.getByRole("combobox", { name: "Environment", exact: true }).selectOption("TEST");
+  await expect(page.getByRole("link", { name: "Consultation journey", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Funnel navigation", exact: true }).getByRole("link", { name: "Tracking sources", exact: true })).toHaveAttribute("href", "/tracking?environment=TEST");
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("canvas connections require evidence and layout controls leave the saved rules unchanged", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  const definition: FunnelDefinition = { schemaVersion: 1, stages: [
+    { id: "inquiry", name: "New inquiry", goal: false, terminal: "NONE" },
+    { id: "booked", name: "Call booked", goal: true, terminal: "NONE" },
+  ], entryStages: ["inquiry"], routes: [] };
+  const response = await page.request.post("/api/funnels", { headers: { Origin: new URL(page.url()).origin }, data: { name: "Canvas connection review", environment: "TEST", subjectKind: "SALES", definition } });
+  expect(response.status()).toBe(201);
+  const created = await response.json();
+  await page.goto(`/funnels/${created.id}`);
+  const canvas = page.getByTestId("funnel-canvas");
+  await expect(canvas.locator('.react-flow__node[data-id="inquiry"]')).toBeVisible();
+  const connect = async () => {
+    await canvas.locator('.react-flow__node[data-id="inquiry"] .react-flow__handle.source').click();
+    await canvas.locator('.react-flow__node[data-id="booked"] .react-flow__handle.target').click();
+  };
+  await connect();
+  const connection = page.getByRole("dialog", { name: "Connect stages", exact: true });
+  await expect(connection).toBeVisible();
+  await expect(connection.getByRole("button", { name: "Add connection rule", exact: true })).toBeDisabled();
+  expect((await readFunnel(page, created.id)).draft.routes).toEqual([]);
+  await connection.getByRole("button", { name: "Cancel connection", exact: true }).click();
+  await expect(connection).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  await connect();
+  await connection.getByRole("combobox", { name: "Connection source", exact: true }).selectOption(customer.sourceId);
+  await connection.getByRole("combobox", { name: "Connection event", exact: true }).selectOption("enquiry.accepted");
+  await connection.getByRole("button", { name: "Add connection rule", exact: true }).click();
+  const saveResponse = page.waitForResponse(response => response.request().method() === "PATCH" && new URL(response.url()).pathname === `/api/funnels/${created.id}`);
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  expect((await saveResponse).status()).toBe(200);
+  await expect(page.getByRole("status").filter({ hasText: "Draft revision 2 saved" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  const saved = await readFunnel(page, created.id);
+  expect(saved.draft.routes).toHaveLength(1);
+  expect(saved.draft.routes[0]).toMatchObject({ from: "inquiry", trigger: { kind: "EVENT", sourceId: customer.sourceId, type: "enquiry.accepted" }, fallback: { kind: "MOVE", to: "booked" } });
+  await page.getByRole("button", { name: "Arrange stages", exact: true }).click();
+  await page.getByRole("button", { name: "Zoom in on funnel", exact: true }).click();
+  await page.getByRole("button", { name: "Fit all funnel stages", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  expect(await readFunnel(page, created.id)).toEqual(saved);
+  expect(saved.draft.stageActions ?? []).toEqual([]);
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("canvas plus controls add conditional stages and insert real saved paths with keyboard and mobile access", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  const definition: FunnelDefinition = { schemaVersion: 1, stages: [
+    { id: "lead", name: "New contact", goal: false, terminal: "NONE" },
+    { id: "won", name: "Customer", goal: true, terminal: "SUCCESS" },
+  ], entryStages: ["lead"], routes: [] };
+  const response = await page.request.post("/api/funnels", { headers: { Origin: new URL(page.url()).origin }, data: { name: "Visual path editing", environment: "TEST", subjectKind: "SALES", definition } });
+  expect(response.status()).toBe(201); const created = await response.json();
+  await page.goto(`/funnels/${created.id}`);
+  await expect(page.getByRole("region", { name: "Stage editor", exact: true })).toBeHidden();
+  await expect(page.getByRole("link", { name: "React Flow attribution" })).toHaveCount(0);
+  const plus = page.getByRole("button", { name: "Add after New contact", exact: true });
+  await plus.focus(); await page.keyboard.press("Enter");
+  let dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: /^Conditional stage/ })).toBeDisabled();
+  await dialog.getByRole("button", { name: /^Add stage/ }).click();
+  await dialog.getByLabel("New stage name", { exact: true }).fill("In nurturing");
+  await expect(dialog.getByRole("button", { name: "Add connected stage", exact: true })).toBeDisabled();
+  await dialog.getByRole("combobox", { name: "Connection source", exact: true }).selectOption(customer.sourceId);
+  await dialog.getByRole("combobox", { name: "Connection event", exact: true }).selectOption("enquiry.accepted");
+  await dialog.getByRole("button", { name: "Add connected stage", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const path = page.getByRole("button", { name: /^Add on New contact to In nurturing/ });
+  await expect(path).toBeVisible();
+  await path.click();
+  await dialog.getByRole("button", { name: /^Conditional stage/ }).click();
+  await dialog.getByLabel("New stage name", { exact: true }).fill("Qualified lead");
+  await expect(dialog.getByRole("button", { name: "Add conditional stage", exact: true })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Add condition", exact: true }).click();
+  await dialog.getByRole("combobox", { name: "Field", exact: true }).selectOption("score");
+  await dialog.getByRole("combobox", { name: "Value type", exact: true }).selectOption("number");
+  await dialog.getByRole("combobox", { name: "Comparison", exact: true }).selectOption("gte");
+  await dialog.getByLabel("Compare with", { exact: true }).fill("invalid");
+  await expect(dialog.getByRole("button", { name: "Add conditional stage", exact: true })).toBeDisabled();
+  await dialog.getByLabel("Compare with", { exact: true }).fill("75");
+  await dialog.getByRole("button", { name: "Add conditional stage", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Add on New contact to Qualified lead/ })).toBeVisible();
+  await expect(page.getByText("Otherwise", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Add on New contact to In nurturing/ }).click();
+  await dialog.getByRole("button", { name: /^Insert a stage/ }).click();
+  await dialog.getByLabel("New stage name", { exact: true }).fill("Check interest");
+  await dialog.getByRole("combobox", { name: "Connection source", exact: true }).selectOption(customer.sourceId);
+  await dialog.getByRole("combobox", { name: "Connection event", exact: true }).selectOption("enquiry.accepted");
+  await dialog.getByRole("button", { name: "Insert stage", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Add on Check interest to In nurturing/ })).toBeVisible();
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  const saved = await readFunnel(page, created.id), stages = saved.draft.stages;
+  const stageId = (name: string) => stages.find(stage => stage.name === name)!.id;
+  expect(saved.draft.routes[0]).toMatchObject({ from: "lead", branches: [{ to: stageId("Qualified lead"), when: { field: { scope: "EVENT", key: "score" }, type: "number", op: "gte", value: 75 } }], fallback: { kind: "MOVE", to: stageId("Check interest") } });
+  expect(saved.draft.routes[1]).toMatchObject({ from: stageId("Check interest"), fallback: { kind: "MOVE", to: stageId("In nurturing") } });
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Add on New contact to Qualified lead/ })).toBeVisible();
+  await page.getByRole("button", { name: "Add after Qualified lead", exact: true }).click();
+  await dialog.getByRole("button", { name: /^Connect to an existing stage/ }).click();
+  await dialog.getByRole("combobox", { name: "Destination stage", exact: true }).selectOption("won");
+  await dialog.getByRole("combobox", { name: "Connection source", exact: true }).selectOption(customer.sourceId);
+  await dialog.getByRole("combobox", { name: "Connection event", exact: true }).selectOption("enquiry.accepted");
+  await dialog.getByRole("button", { name: "Add connection rule", exact: true }).click();
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await noHorizontalOverflow(page);
+  await page.getByRole("button", { name: "Add from new journey", exact: true }).click();
+  await dialog.getByRole("button", { name: /^Connect to an existing stage/ }).click();
+  await expect(dialog.getByRole("combobox", { name: "Destination stage", exact: true }).locator("option")).toHaveCount(2);
+  await page.screenshot({ path: info.outputPath("canvas-plus-mobile.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save draft", exact: true })).toBeDisabled();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "Fit all funnel stages", exact: true }).click();
+  await page.screenshot({ path: info.outputPath("canvas-plus-branches.png"), fullPage: true });
+  expect((await readFunnel(page, created.id)).draft.routes).toHaveLength(3);
+  expect(saved.draft.stageActions ?? []).toEqual([]); expect(saved.publishedVersionId).toBeNull();
+  expect(await providerStats(page)).toEqual(before);
+});
+
+test("canvas and list share visible stage settings, single path controls and distinct exits", async ({ page }, info) => {
+  const customer = await signIn(page, info), before = await providerStats(page);
+  const definition: FunnelDefinition = { schemaVersion: 1, stages: [
+    { id: "lead", name: "New contact", goal: false, terminal: "NONE" },
+    { id: "nurture", name: "In nurturing", goal: false, terminal: "NONE" },
+    { id: "won", name: "Qualified", goal: true, terminal: "SUCCESS" },
+    { id: "lost", name: "Unqualified", goal: false, terminal: "FAILURE" },
+  ], entryStages: ["lead"], routes: [
+    { id: "entry", from: null, trigger: { kind: "EVENT", sourceId: customer.sourceId, type: "enquiry.accepted" }, branches: [], fallback: { kind: "MOVE", to: "lead" } },
+    { id: "qualify", from: "lead", trigger: { kind: "EVENT", sourceId: customer.sourceId, type: "enquiry.accepted" }, branches: [
+      { id: "high", to: "won", when: { field: { scope: "EVENT", key: "score" }, type: "number", op: "gte", value: 75 } },
+      { id: "low", to: "lost", when: { field: { scope: "EVENT", key: "score" }, type: "number", op: "lt", value: 20 } },
+    ], fallback: { kind: "MOVE", to: "nurture" } },
+  ] };
+  const response = await page.request.post("/api/funnels", { headers: { Origin: new URL(page.url()).origin }, data: { name: "Canvas and list usability", environment: "TEST", subjectKind: "SALES", definition } });
+  expect(response.status()).toBe(201); const created = await response.json();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`/funnels/${created.id}`);
+  const canvas = page.getByTestId("funnel-canvas"), mode = page.getByRole("group", { name: "Display mode", exact: true });
+  const panel = page.getByRole("complementary", { name: "Stage settings", exact: true });
+  await expect(canvas.locator(".funnel-add-button")).toHaveCount(5);
+  await expect(canvas.getByRole("button", { name: /^Add on / })).toHaveCount(4);
+  await expect(canvas.getByRole("button", { name: "Add after New contact", exact: true })).toHaveCount(0);
+  await expect(canvas.getByRole("button", { name: "Add from new journey", exact: true })).toHaveCount(0);
+  const tail = canvas.locator('.react-flow__node[data-id="nurture"] .funnel-add-tail');
+  await expect(tail.getByRole("button", { name: "Add after In nurturing", exact: true })).toBeVisible();
+  expect(await tail.locator("span").evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThan(0);
+  for (const [id, kind, label] of [["won", "SUCCESS", "Goal exit"], ["lost", "FAILURE", "Exit"]]) {
+    const node = canvas.locator(`.react-flow__node[data-id="${id}"]`);
+    await expect(node.locator(`[data-exit-stage="${kind}"]`)).toBeVisible();
+    await expect(node.getByText(label, { exact: true })).toBeVisible();
+    await expect(node.locator(".funnel-add-button, .react-flow__handle.source")).toHaveCount(0);
+  }
+  await expect(canvas.getByText("score ≥ 75", { exact: true })).toBeVisible();
+  await expect.poll(() => canvas.evaluate(element => Math.max(...[...element.querySelectorAll<HTMLElement>(".funnel-path-control")].map(control => {
+    const path = element.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${CSS.escape(control.dataset.edgeId!)}"] .react-flow__edge-path`);
+    if (!path) return Infinity;
+    // Map graph coordinates through the actual viewport's CSS transform.
+    const viewport = path.closest<HTMLElement>(".react-flow__viewport")!;
+    const painted = viewport.getBoundingClientRect(), matrix = new DOMMatrix(getComputedStyle(viewport).transform);
+    const box = control.getBoundingClientRect(), center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    let distance = Infinity;
+    for (let length = 0; length <= path.getTotalLength(); length += 1) {
+      const point = path.getPointAtLength(length);
+      distance = Math.min(distance, Math.hypot(painted.x + point.x * matrix.a - center.x, painted.y + point.y * matrix.d - center.y));
+    }
+    return distance;
+  }))), { message: "Every path plus must be centered on its own drawn connector" }).toBeLessThan(2);
+  await expect(page.getByRole("navigation", { name: "Stage list", exact: true })).toHaveCount(0);
+  await expect(panel).toBeHidden();
+  const edit = canvas.getByRole("button", { name: "Edit New contact", exact: true });
+  await edit.click();
+  await expect(panel.getByRole("heading", { name: "New contact settings", exact: true })).toBeFocused();
+  const canvasBox = (await canvas.boundingBox())!, panelBox = (await panel.boundingBox())!;
+  expect(panelBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width);
+  await expect(page.getByRole("button", { name: "Stage settings", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.setViewportSize({ width: 949, height: 916 });
+  const narrowCanvasBox = (await canvas.boundingBox())!, narrowPanelBox = (await panel.boundingBox())!;
+  expect(narrowPanelBox.x).toBeGreaterThan(narrowCanvasBox.x + narrowCanvasBox.width);
+  await expect(panel).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await panel.getByRole("button", { name: "Close stage settings", exact: true }).click();
+  await expect(panel).toBeHidden();
+  await edit.click();
+  await expect(panel.getByRole("heading", { name: "New contact settings", exact: true })).toBeFocused();
+  await canvas.getByRole("button", { name: "Edit In nurturing", exact: true }).click();
+  await mode.getByRole("button", { name: "List", exact: true }).click();
+  const list = page.getByRole("region", { name: "Stage list", exact: true });
+  await expect(list.getByRole("listitem")).toHaveCount(4);
+  await expect(canvas).toHaveCount(0);
+  await expect(panel.getByLabel("Stage name", { exact: true })).toHaveValue("In nurturing");
+  await list.getByRole("button", { name: "Edit In nurturing", exact: true }).click();
+  await panel.getByLabel("Stage name", { exact: true }).fill("Nurturing edited here");
+  await mode.getByRole("button", { name: "Canvas", exact: true }).click();
+  await expect(canvas.getByText("Nurturing edited here", { exact: true })).toBeVisible();
+  await panel.getByLabel("Stage name", { exact: true }).fill("In nurturing");
+  await edit.click();
+  await panel.getByRole("navigation", { name: "Stage settings sections", exact: true }).getByRole("button", { name: "Tracking", exact: true }).click();
+  const compare = panel.getByLabel("Compare with", { exact: true }).first();
+  await compare.fill("unfinished");
+  await panel.getByRole("button", { name: "Close stage settings", exact: true }).click();
+  await expect(panel.getByRole("alert").filter({ hasText: "before closing settings" })).toBeVisible();
+  await mode.getByRole("button", { name: "List", exact: true }).click();
+  await expect(mode.getByRole("button", { name: "Canvas", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(compare).toHaveValue("unfinished");
+  await compare.fill("75");
+  await mode.getByRole("button", { name: "List", exact: true }).click();
+  await panel.getByRole("button", { name: "Close stage settings", exact: true }).click();
+  await page.setViewportSize({ width: 375, height: 812 });
+  const mobileEdit = list.getByRole("button", { name: "Edit Qualified", exact: true });
+  await mobileEdit.click();
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Qualified settings", exact: true })).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Stage settings", exact: true })).toHaveCount(0);
+  const mobilePanel = (await panel.boundingBox())!;
+  expect(mobilePanel.x).toBeGreaterThanOrEqual(0); expect(mobilePanel.x + mobilePanel.width).toBeLessThanOrEqual(375);
+  const headingBox = (await panel.getByRole("heading", { name: "Qualified settings", exact: true }).boundingBox())!;
+  expect(headingBox.y).toBeGreaterThanOrEqual(0); expect(headingBox.y + headingBox.height).toBeLessThanOrEqual(812);
+  await page.screenshot({ path: info.outputPath("stage-settings-mobile.png"), animations: "disabled" });
+  await panel.getByRole("button", { name: "Close stage settings", exact: true }).click();
+  await expect(panel).toBeHidden();
+  await expect(mobileEdit).toBeFocused();
+  await noHorizontalOverflow(page);
+  await list.getByRole("button", { name: "Add next step after New contact", exact: true }).click();
+  const nextStep = page.getByRole("dialog", { name: "Choose the next step", exact: true });
+  await expect(nextStep.getByRole("button", { name: /^Add stage/ })).toBeVisible();
+  await expect(nextStep.getByRole("button", { name: /^Conditional stage/ })).toBeEnabled();
+  await nextStep.getByRole("button", { name: "Close connection editor", exact: true }).click();
+  expect((await readFunnel(page, created.id)).draft).toEqual(definition);
   expect(await providerStats(page)).toEqual(before);
 });

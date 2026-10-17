@@ -60,11 +60,10 @@ test("source forms create and edit native tracking, show actual accepted receipt
   await expect(page.getByText("Events received; identity matching is not yet established.", { exact: true })).toBeVisible();
   await noHorizontalOverflow(page);
   await page.screenshot({ path: info.outputPath("tracking-source-desktop.png"), fullPage: true, animations: "disabled" });
-  await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption("dark");
   await page.setViewportSize({ width: 390, height: 844 });
   await noHorizontalOverflow(page);
   await receipt.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: info.outputPath("tracking-source-mobile-dark.png"), fullPage: true, animations: "disabled" });
+  await page.screenshot({ path: info.outputPath("tracking-source-mobile.png"), fullPage: true, animations: "disabled" });
   await page.setViewportSize({ width: 320, height: 740 });
   await noHorizontalOverflow(page);
   await page.getByText("Source availability", { exact: true }).scrollIntoViewIfNeeded();
@@ -91,6 +90,10 @@ test("API signing setup is shown once and environment switching cannot lose an u
   const secret = await secretField.inputValue(); expect(secret.length).toBeGreaterThanOrEqual(16);
   await expect(page.getByRole("combobox", { name: "Environment", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Close source setup", exact: true })).toBeDisabled();
+  await page.getByRole("navigation", { name: "Global navigation", exact: true }).getByRole("link", { name: "Funnels", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracking(?:\?|$)/);
+  await expect(page.getByRole("status").filter({ hasText: "Complete the current source setup and save any one-time credentials before leaving." })).toBeVisible();
+  await expect(secretField).toHaveValue(secret);
   await page.getByRole("button", { name: "I have saved it", exact: true }).click();
   await expect(secretField).toHaveCount(0);
   await page.getByRole("link", { name: "Open source diagnostics", exact: true }).click();

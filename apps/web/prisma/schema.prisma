@@ -49,6 +49,7 @@ model PlatformUserAccount {
 }
 
 model User {
+  aiRequestWindows AiRequestWindow[]
   id           String   @id @default(cuid())
   email        String?
   name         String
@@ -62,6 +63,8 @@ model User {
   oauthAttempts     OAuthAttempt[]
   socialPosts       SocialPost[]
   socialMediaAssets SocialMediaAsset[]
+  workspaceCampaigns WorkspaceCampaign[]
+  brandKit BrandKit?
   socialEnqueues    SocialEnqueue[]
   metaPageCredentials MetaPageCredential[]
   trackingSources     TrackingSource[]
@@ -780,6 +783,52 @@ model SocialCredentialRenewalLease {
   authorization           ProviderAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Cascade)
 
   @@index([leaseUntil])
+}
+
+// Customer-owned planning records. Execution remains in the existing provider services.
+model WorkspaceCampaign {
+  id String @id @default(cuid())
+  ownerId String
+  type String
+  name String
+  websiteUrl String @default("")
+  brief String @default("")
+  goal String @default("")
+  audience String @default("")
+  platforms Json @default("[]")
+  plan Json @default("{}")
+  creatives Json @default("[]")
+  socialPostIds Json @default("[]")
+  status String @default("DRAFT")
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, updatedAt])
+}
+
+model BrandKit {
+  ownerId String @id
+  name String @default("")
+  websiteUrl String @default("")
+  voice String @default("")
+  audience String @default("")
+  colors Json @default("[]")
+  rules String @default("")
+  logoUrl String @default("")
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model AiRequestWindow {
+  key String @id
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  windowStart DateTime
+  count Int @default(0)
+  @@index([ownerId, windowStart])
 }
 
 // Tracking identities are separate from customer logins and advertising accounts.

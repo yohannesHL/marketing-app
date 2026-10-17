@@ -1,7 +1,8 @@
-import { CampaignCreationWizard } from "../../../components/campaign-wizard/CampaignCreationWizard";
+import { Suspense } from "react";
+import { CampaignBuilder } from "../../../components/workspace/CampaignBuilder";
+import { assistantSettings } from "../../../server/workspace/assistant";
 export const dynamic = "force-dynamic";
 
 export default function CampaignCreationPage() {
-  const demoEnabled = process.env.ADS_MODE === "mock" && process.env.CONNECTION_MODE !== "live";
-  return <CampaignCreationWizard demoEnabled={demoEnabled} />;
+  return <Suspense fallback={<p role="status">Loading campaign builder…</p>}><CampaignBuilder assistantMode={assistantSettings().mode} aiAvailable={assistantSettings().available} /></Suspense>;
 }

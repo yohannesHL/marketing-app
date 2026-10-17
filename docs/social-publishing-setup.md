@@ -14,7 +14,7 @@ Engineering has implemented the customer UI, encrypted credentials, provider-spe
 
 ## Application contract
 
-The following callback names and environment keys match the implemented provider contracts. Availability depends on the deployed release, explicit provider mode and configuration; the readiness tracker records the remaining merges and release QA. Replace `{APP_ORIGIN}` with the exact staging/production origin; register each environment separately. Do not use wildcards.
+The following callback names and environment keys match the implemented provider contracts. Availability depends on the deployed release, explicit provider mode and configuration; the readiness tracker records the merged implementation and fixture evidence. Replace `{APP_ORIGIN}` with the exact staging/production origin; register each environment separately. Do not use wildcards.
 
 | Destination | OAuth callback | Server configuration/secret references |
 | --- | --- | --- |
@@ -108,3 +108,5 @@ Engineering reviewer checklist for each destination:
 7. Attach sanitized recording/results and owner review-console status; do not include secrets, signed URLs or other customer's content.
 
 Documentation researched against primary provider sources on 13 October 2026. Recheck scopes, approval requirements, limits, prices and API sunsets when preparing a live review submission.
+
+Public policy previews are available at `/privacy`, `/terms` and `/data-deletion`, linked from the landing page. Configure `SERVICE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL` and `SERVICE_RETENTION_NOTICE`; do not treat these draft pages as owner-approved legal policies. API keys and live verification are excluded from engineering issue completion by the owner’s 17 October instruction; they remain separate live rollout tasks.

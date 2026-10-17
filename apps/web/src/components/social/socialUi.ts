@@ -69,6 +69,24 @@ export interface SocialDraft {
   mediaIds: string[];
   variants: SocialVariantInput[];
 }
+export function socialFormats(kind: string): SocialFormat[] {
+  if (["YOUTUBE_CHANNEL", "TIKTOK_PROFILE"].includes(kind)) return ["SHORT_VIDEO"];
+  if (kind === "INSTAGRAM_PROFILE") return ["IMAGE", "SHORT_VIDEO"];
+  return ["TEXT", "IMAGE", "SHORT_VIDEO"];
+}
+export function initialSocialVariant(destinationId: string, kind: string, creative?: Record<string, unknown>): SocialVariantInput {
+  const formats = socialFormats(kind);
+  const requested = creative?.format as SocialFormat;
+  return {
+    destinationId,
+    format: formats.includes(requested) ? requested : kind === "INSTAGRAM_PROFILE" ? "SHORT_VIDEO" : formats[0],
+    ...(typeof creative?.title === "string" ? { title: creative.title } : {}),
+    ...(typeof creative?.body === "string" ? { body: creative.body } : {}),
+    // Media and publishing consent must still be chosen for this destination.
+    mediaIds: [],
+    providerOptions: {},
+  };
+}
 export interface SocialList {
   mode: string;
   publishingEnabled: boolean;

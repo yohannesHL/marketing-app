@@ -126,10 +126,12 @@ test("results preserve version and UTC cohort while separating enquiry cycles, g
   await expect(board.getByText(`Subject ${customer.salesSubjectIds[0]} · Cycle 2`, { exact: true })).toBeVisible();
   await expect(board.getByText(`Subject ${customer.salesSubjectIds[1]} · Cycle 1`, { exact: true })).toBeVisible();
   await expect(board.getByRole("region", { name: "Board stage: Lead", exact: true })).toContainText("1 current in report");
-  for (const theme of ["light", "dark"]) {
-    await page.setViewportSize({ width: 320, height: 740 }); await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption(theme);
+  for (const theme of ["workspace"]) {
+    await page.setViewportSize({ width: 320, height: 740 });
     await noOverflow(page); const refresh = board.getByRole("button", { name: "Refresh board", exact: true });
-    await refresh.focus(); await expect(refresh).toBeFocused(); expect((await refresh.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await refresh.focus(); await expect(refresh).toBeFocused();
+    // Wait for the button's press transition to settle before measuring its target.
+    await expect.poll(async () => (await refresh.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: info.outputPath(`results-board-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
   const historyLink = board.getByRole("link", { name: "Inspect journey 2", exact: true });
@@ -158,8 +160,8 @@ test("purchase results display exact independent currencies and refund evidence 
   await expect(metric(usd, "Observed net cash")).toHaveText("1.234567");
   await expect(metric(usd, "Successful refunds")).toContainText("Not valued");
   await expect(metric(gbp, "Recorded won-deal value")).toContainText("Not valued");
-  for (const theme of ["light", "dark"]) {
-    await page.setViewportSize({ width: 320, height: 740 }); await page.getByRole("combobox", { name: "Appearance", exact: true }).selectOption(theme);
+  for (const theme of ["workspace"]) {
+    await page.setViewportSize({ width: 320, height: 740 });
     await noOverflow(page); await page.screenshot({ path: info.outputPath(`results-money-320-${theme}.png`), fullPage: true, animations: "disabled" });
   }
   await apply(page, customer.purchaseVersionId, customer.fromInclusive, customer.toExclusive);

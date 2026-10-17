@@ -1,0 +1,36 @@
+{
+  "testedAt": "2026-10-17T02:34:00Z",
+  "environment": "Local demo with real llm-gw codex/fast AI and Mockoon social providers",
+  "appUrl": "http://127.0.0.1:3157",
+  "campaignId": "cmvbrwc5b000515sbgqizjy7v",
+  "postId": "cmvbs05pz000815sbsh4va0il",
+  "title": "UI verification · Clayroom launch",
+  "actionsThroughUi": [
+    "Created social campaign with brief, website, audience and goal",
+    "Generated and applied platform-specific Facebook and Instagram copy using real AI",
+    "Prepared social post and uploaded fixture image and short video",
+    "Selected Customer Page and Customer Instagram destinations",
+    "Assigned image to Facebook and video to Instagram; explicitly chose not to share Reel to feed",
+    "Saved and approved revision 1",
+    "Scheduled both destinations for 17 October 2026 at 03:34 Europe/London",
+    "Observed Scheduled with zero attempts before due time",
+    "Refreshed delivery status after due time and observed Published for both destinations"
+  ],
+  "scheduledAt": "2026-10-17T02:34:00Z",
+  "workerManuallyTriggered": false,
+  "deliveries": [
+    { "destination": "Customer Page", "platform": "Facebook", "format": "IMAGE", "status": "Published", "stage": "Complete", "attempts": 1, "providerReference": "111_401" },
+    { "destination": "Customer Instagram", "platform": "Instagram", "format": "SHORT_VIDEO", "status": "Published", "stage": "Complete", "attempts": 1, "providerReference": "701" }
+  ],
+  "mockoonCountersBeforeDueTime": { "photos": 0, "feeds": 0, "containers": 0, "igPublishes": 0 },
+  "mockoonCountersAfterPublication": { "photos": 1, "feeds": 1, "containers": 1, "igPublishes": 1 },
+  "workerLog": ["SUCCEEDED", "SUCCEEDED"],
+  "screenshots": ["ui-scheduled.png", "ui-published.png"],
+  "observations": [
+    "Facebook destination initially defaulted to Text despite AI campaign creative specifying IMAGE; Image was selected manually before saving.",
+    "The native datetime-local automation fill changed the DOM value without updating the displayed schedule. A native minute increment committed the input and the UTC confirmation was verified before scheduling.",
+    "An initial default schedule beyond mock grant expiry was rejected with RECONNECT_REQUIRED; no deliveries were created by that rejected request.",
+    "After publication, review controls still display Publishing is blocked and a past-date validation warning, although delivery results correctly show Published."
+  ],
+  "scope": "Facebook image and Instagram Reel end-to-end UI test. Media were uploaded test fixtures; AI generated copy and creative directions. No real social networks received posts."
+}

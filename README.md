@@ -48,3 +48,5 @@ LinkedIn member/organization setup and approval gates: [integration guide](docs/
 X customer publishing, explicit API allocations and owner pilot gates: [X integration guide](docs/x-publishing-integration.md).
 
 Integrated engineering evidence, deployment and remaining owner/live gates: [social release packet](docs/social-release-packet.md).
+
+Implementation status and issue closure evidence: [17 October audit](docs/implementation-completion-audit.md). Public policy previews: `/privacy`, `/terms`, `/data-deletion`; configure owner details as described in the setup guide.

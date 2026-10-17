@@ -54,7 +54,7 @@ export function TrackingSourceDetail({ sourceId, expectedEnvironment, requestedE
     finally { setPaging(false); }
   }
   const environment: TrackingEnvironment = source?.environment ?? (expectedEnvironment === "LIVE" ? "LIVE" : "TEST");
-  return <TrackingLayout title={source?.name ?? "Source diagnostics"} description="Inspect received evidence, matching and source setup before using it in a funnel." environment={environment} loading={loading} busy={busy || formPending} error={error} notice={notice}>
+  return <TrackingLayout title={source?.name ?? "Source diagnostics"} description="Inspect received evidence, matching and source setup before using it in a funnel." environment={environment} loading={loading} busy={busy || formPending || !!ingress} error={error} notice={notice}>
     {source ? <>
       <div className="flex flex-wrap gap-2"><a className="btn btn-ghost min-h-11 normal-case" href="#event-inbox">Event inbox</a><a className="btn btn-ghost min-h-11 normal-case" href="#source-settings">Source settings</a><a className="btn btn-ghost min-h-11 normal-case" href="#source-audit">Audit history</a><Button variant="secondary" className="min-h-11" disabled={busy || formPending || paging} onClick={() => void load(false)}>Refresh diagnostics</Button></div>
       <Card><h2 className="text-xl font-semibold">Source evidence</h2><SourceEvidence source={source} /><p className="text-sm break-all">Source ID: {source.id} · Generation {source.generation}</p></Card>

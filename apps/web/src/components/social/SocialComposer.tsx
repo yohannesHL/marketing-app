@@ -22,6 +22,8 @@ import { SocialReview } from "./SocialReview";
 import { SocialDeliveries } from "./SocialDeliveries";
 import {
   SOCIAL_PLATFORMS,
+  initialSocialVariant,
+  socialFormats,
   postPath,
   socialDestinations,
   socialLabel,
@@ -32,6 +34,11 @@ import {
   type SocialPost,
   type SocialVariantInput,
 } from "./socialUi";
+import type { CampaignDTO } from "../../server/workspace/types";
+import { workspaceRequest } from "../workspace/workspaceClient";
+function campaignPlatform(kind: string) {
+  return kind.startsWith("LINKEDIN") ? "LINKEDIN" : ({ YOUTUBE_CHANNEL: "YOUTUBE", FACEBOOK_PAGE: "FACEBOOK", INSTAGRAM_PROFILE: "INSTAGRAM", TIKTOK_PROFILE: "TIKTOK", X_PROFILE: "X" } as Record<string,string>)[kind];
+}
 function tikTokCheckKey(connection: Connection, destinationId: string) {
   const destination = connection.destinations.find((item) => item.id === destinationId);
   return JSON.stringify([connection.id, connection.providerUserId, connection.connectionMode,
@@ -39,6 +46,9 @@ function tikTokCheckKey(connection: Connection, destinationId: string) {
 }
 const empty: SocialDraft = { title: "", body: "", mediaIds: [], variants: [] };
 export function SocialComposer({ postId }: { postId?: string }) {
+  const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const [campaign, setCampaign] = useState<CampaignDTO | null>(null);
+  const [pendingCampaignLink, setPendingCampaignLink] = useState<string | null>(null);
   const [draft, setDraft] = useState<SocialDraft>(empty),
     [post, setPost] = useState<SocialPost | null>(null),
     [media, setMedia] = useState<SocialMedia[]>([]);
@@ -53,6 +63,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
     [review, setReview] = useState(false);
   const [tikTokChecks, setTikTokChecks] = useState<Record<string, { key: string; status: "checking" | "fresh" | "failed" }>>({});
   const tikTokAttempts = useRef(new Set<string>());
+  const discardNavigation = useRef(false);
   const pending = useRef(false),
     mounted = useRef(true),
     uploadInput = useRef<HTMLInputElement>(null);
@@ -76,6 +87,9 @@ export function SocialComposer({ postId }: { postId?: string }) {
   }, []);
   useEffect(() => {
     mounted.current = true;
+    const query = new URLSearchParams(window.location.search);
+    const campaignId = query.get("campaignId");
+    const assetId = query.get("assetId");
     Promise.all([
       socialRequest<Connection[]>("/api/connections"),
       socialRequest<ProviderSettings>("/api/connections/providers"),
@@ -84,13 +98,25 @@ export function SocialComposer({ postId }: { postId?: string }) {
             `/api/social/posts/${encodeURIComponent(postId)}`,
           )
         : Promise.resolve(null),
+      campaignId ? workspaceRequest<{campaign:CampaignDTO}>(`/api/workspace/campaigns/${encodeURIComponent(campaignId)}`) : Promise.resolve(null),
+      assetId && !postId ? socialRequest<SocialMedia>(`/api/social/media/${encodeURIComponent(assetId)}`) : Promise.resolve(null),
     ])
-      .then(([rows, settings, value]) => {
+      .then(([rows, settings, value, linked, asset]) => {
         if (!mounted.current) return;
         setConnections(rows);
         setMode(settings.mode);
         setTikTokAudited((settings.social.find((row) => row.provider === "TIKTOK") as { audited?: boolean } | undefined)?.audited === true);
-        if (value) acceptPost(value);
+        if (linked && linked.campaign.type !== "SOCIAL") throw new Error("Choose a social campaign before preparing a post.");
+        if (linked) setCampaign(linked.campaign);
+        if (value) {
+          acceptPost(value);
+          setPendingCampaignLink(linked && !linked.campaign.socialPostIds.includes(value.id) ? value.id : null);
+        } else {
+          const creative = linked?.campaign.creatives[0];
+          setDraft({ ...empty, title: linked?.campaign.name ?? "", body: typeof creative?.body === "string" ? creative.body : "", mediaIds: asset ? [asset.id] : [] });
+          if (asset) setMedia([asset]);
+          if (linked || asset) setDirty(true);
+        }
       })
       .catch((failure) => {
         if (failure instanceof SocialUiError && failure.status === 401)
@@ -113,7 +139,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
   }, [postId, acceptPost]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (dirty) {
+      if (dirty && !discardNavigation.current) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -151,7 +177,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
         );
       else
         setError(
-          failure instanceof SocialUiError
+          failure instanceof Error
             ? failure.message
             : "The request could not be completed. Try again.",
         );
@@ -159,6 +185,27 @@ export function SocialComposer({ postId }: { postId?: string }) {
       pending.current = false;
       setBusy(false);
     }
+  }
+  async function linkSavedPost(savedId: string) {
+    if (!campaign) return;
+    const latest = await workspaceRequest<{campaign:CampaignDTO}>(`/api/workspace/campaigns/${campaign.id}`);
+    if (latest.campaign.socialPostIds.includes(savedId)) {
+      setCampaign(latest.campaign);
+      return;
+    }
+    const linked = await workspaceRequest<{campaign:CampaignDTO}>(`/api/workspace/campaigns/${campaign.id}`, "PATCH", {
+      version: latest.campaign.version, socialPostIds: [...latest.campaign.socialPostIds, savedId],
+    });
+    setCampaign(linked.campaign);
+  }
+  async function retryCampaignLink() {
+    if (!pendingCampaignLink) return;
+    await action(async () => {
+      // Retry only the association. The saved post and its revision are unchanged.
+      await linkSavedPost(pendingCampaignLink);
+      setPendingCampaignLink(null);
+      setNotice("Your saved post is now linked to the campaign.");
+    });
   }
   async function save(showReview = false, navigate?: string) {
     await action(async () => {
@@ -170,13 +217,25 @@ export function SocialComposer({ postId }: { postId?: string }) {
         { ...draft, ...(post ? { revisionId: post.revision.id } : {}) },
       );
       acceptPost(saved);
+      // Establish a durable editor URL before the independent campaign update.
+      // A link conflict or network error must never strand a saved post at /create.
+      if (!postId)
+        window.history.replaceState(null, "", postPath(saved.id) + (campaign ? `?campaignId=${campaign.id}` : ""));
       setNotice(
         `Revision ${saved.revision.number} saved. ${saved.publishingEnabled ? "Review before publishing." : "Publishing is currently blocked."}`,
       );
       setReview(showReview);
+      if (campaign && !campaign.socialPostIds.includes(saved.id)) {
+        setPendingCampaignLink(saved.id);
+        try {
+          await linkSavedPost(saved.id);
+          setPendingCampaignLink(null);
+        } catch (failure) {
+          setError(`Your post was saved, but it could not be linked to the campaign. ${failure instanceof Error ? failure.message : "Check your connection and retry the campaign link."}`);
+          return;
+        }
+      }
       if (navigate) window.location.assign(navigate);
-      else if (!postId)
-        window.history.replaceState(null, "", postPath(saved.id));
     });
   }
   function variant(destinationId: string, patch: Partial<SocialVariantInput>) {
@@ -258,13 +317,16 @@ export function SocialComposer({ postId }: { postId?: string }) {
         dirty || (post !== null && !postId)
           ? (href) => {
               if (!busy) {
-                if (dirty) void save(false, href);
+                if (dirty) { setLeaveTarget(href); void save(false, href); }
                 else window.location.assign(href);
               }
             }
           : undefined
       }
     >
+      {leaveTarget && error && !busy && dirty && <div className="workspace-error"><p>Your draft has not been saved. Fix the problem above, or leave this editor and discard the unsaved changes.</p><Button variant="secondary" onClick={() => { discardNavigation.current = true; setDirty(false); window.location.assign(leaveTarget); }}>Discard unsaved changes and leave</Button></div>}
+      {pendingCampaignLink && <Alert title="Post saved; campaign link needs attention" tone="warning"><p>Your content is safely saved. Retry the link to add this post to the campaign without creating another post or revision.</p><Button variant="secondary" disabled={busy} onClick={() => void retryCampaignLink()}>Retry campaign link</Button><Link className="text-action" href={postPath(pendingCampaignLink)}>Open saved post →</Link></Alert>}
+      {campaign && <div className="workspace-notice"><strong>{campaign.name}</strong><p>Preparing content for {campaign.platforms.map(p => p === "YOUTUBE" ? "YouTube Shorts" : p.charAt(0) + p.slice(1).toLowerCase()).join(", ")}. Your saved post will be linked to this campaign.</p><Link className="text-action" href={`/campaigns/${campaign.id}`}>Return to campaign →</Link></div>}
       {post?.deliveries.some((delivery) =>
         ["QUEUED", "LEASED", "RETRY_WAIT", "BLOCKED", "UNCERTAIN"].includes(
           delivery.status,
@@ -367,7 +429,7 @@ export function SocialComposer({ postId }: { postId?: string }) {
                 access can be added. Connect and select them in Connections.
               </Typography>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {SOCIAL_PLATFORMS.map((platform) => {
+                {SOCIAL_PLATFORMS.filter(platform => !campaign || campaign.platforms.includes(campaignPlatform(platform.kind) ?? "")).map((platform) => {
                   const rows = destinations.filter(({ destination }) =>
                     platform.kind === "LINKEDIN"
                       ? destination.kind.startsWith("LINKEDIN")
@@ -399,30 +461,20 @@ export function SocialComposer({ postId }: { postId?: string }) {
                             (v) => v.destinationId === destination.id,
                           )}
                           disabled={busy || !ready}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const creative = campaign?.creatives.find(c => c.platform === campaignPlatform(destination.kind));
                             change({
                               ...draft,
                               variants: e.target.checked
                                 ? [
                                     ...draft.variants,
-                                    {
-                                      destinationId: destination.id,
-                                      format: [
-                                        "YOUTUBE_CHANNEL",
-                                        "TIKTOK_PROFILE",
-                                        "INSTAGRAM_PROFILE",
-                                      ].includes(destination.kind)
-                                        ? "SHORT_VIDEO"
-                                        : "TEXT",
-                                      mediaIds: [],
-                                      providerOptions: {},
-                                    },
+                                    initialSocialVariant(destination.id, destination.kind, creative),
                                   ]
                                 : draft.variants.filter(
                                     (v) => v.destinationId !== destination.id,
                                   ),
-                            })
-                          }
+                            });
+                          }}
                         />
                       ))}
                     </div>
@@ -477,19 +529,9 @@ export function SocialComposer({ postId }: { postId?: string }) {
                     label={`Format for ${name}`}
                     value={v.format}
                     disabled={busy}
-                    options={[
-                      ...(![
-                        "YOUTUBE_CHANNEL",
-                        "INSTAGRAM_PROFILE",
-                        "TIKTOK_PROFILE",
-                      ].includes(kind)
-                        ? [{ label: "Text", value: "TEXT" }]
-                        : []),
-                      ...(!["YOUTUBE_CHANNEL", "TIKTOK_PROFILE"].includes(kind)
-                        ? [{ label: "Image", value: "IMAGE" }]
-                        : []),
-                      { label: "Short video", value: "SHORT_VIDEO" },
-                    ]}
+                    options={socialFormats(kind).map(value => ({ value,
+                      label: value === "TEXT" ? "Text" : value === "IMAGE" ? "Image" : "Short video",
+                    }))}
                     onChange={(e) =>
                       variant(v.destinationId, {
                         format: e.target.value as SocialVariantInput["format"],

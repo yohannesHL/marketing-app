@@ -20,7 +20,7 @@ export function SignInPage() {
     return () => { active = false; };
   }, []);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
-  const returnTo = () => safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"));
+  const returnTo = () => safeReturnTo(new URLSearchParams(window.location.search).get("returnTo") ?? "/dashboard");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!ready || busy) return;
@@ -33,7 +33,7 @@ export function SignInPage() {
       setBusy(false);
     }
   }
-  return <main className="py-8 sm:py-12" data-testid="sign-in-page"><Container><Stack gap={8}>
+  return <main className="sign-in-page" data-testid="sign-in-page"><Container><Stack gap={8}>
     <AccountNavigation signedIn={signedIn} busy={busy} onError={(failure) => setError(failure instanceof Error ? failure.message : "Sign-out failed. Try again.")} />
     <div className="mx-auto w-full max-w-lg"><Stack gap={6}>
       <div><Typography as="span" variant="overline">Your Launchpad workspace</Typography>

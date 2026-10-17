@@ -137,94 +137,28 @@ test.describe("ads proxy", () => {
     }
   });
 
-  test("launching from the wizard triggers the unified ads proxy and shows the execution result", async ({
-    page,
-  }) => {
-    await page.goto("/campaigns/create");
-
-    await page.getByLabel("Campaign Name").fill("Spring Growth Push");
-
-    await page.getByRole("button", { name: /Traffic/i }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
-
-    await page.getByLabel("Location").fill("US, UK, Canada");
-    await page.getByLabel("Min Age").fill("18");
-    await page.getByLabel("Max Age").fill("65");
-    await page.getByRole("button", { name: "Technology" }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
-
-    await page.getByLabel("Daily Budget").fill("100");
-    await page.getByLabel("Duration (days)").fill("14");
-    await page.getByLabel("Total Budget").fill("1400");
-    await page.getByRole("button", { name: "Continue" }).click();
-
-    await page
-      .getByPlaceholder("Enter headline")
-      .first()
-      .fill("Scale demand faster");
-    await page
-      .getByPlaceholder("Enter description")
-      .first()
-      .fill("Reach high-intent buyers across channels.");
-    await page
-      .getByPlaceholder("Enter body text")
-      .first()
-      .fill("Launch one campaign and syndicate the same message everywhere.");
-    await page
-      .getByPlaceholder("Enter CTA (e.g., Try It Free!)")
-      .first()
-      .fill("Get started");
-    await page.getByRole("button", { name: "Continue" }).click();
-
-    await page.getByRole("button", { name: /Meta Ads/i }).click();
-    await page.getByRole("button", { name: /Google Ads/i }).click();
-    await page.getByRole("button", { name: /TikTok Ads/i }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
-
-    const launchRequestPromise = page.waitForRequest(
-      (request) =>
-        request.url().includes("/api/ads/createCampaign") &&
-        request.method() === "POST",
-    );
-
-    await page.getByRole("button", { name: "Launch Campaign" }).click();
-
-    const launchRequest = await launchRequestPromise;
-    expect(launchRequest.postDataJSON()).toEqual({
-      payload: {
-        name: "Spring Growth Push",
-        campaignName: "Spring Growth Push",
-        goal: "Traffic",
-        objective: "CLICKS",
-        budget: {
-          dailyBudget: 100,
-          currency: "USD",
-          durationInDays: 14,
-          totalBudget: 1400,
-        },
-        targeting: {
-          locations: ["US", "UK", "Canada"],
-          ageRange: [18, 65],
-          interests: ["Technology"],
-        },
-        creatives: [
-          {
-            headline: "Scale demand faster",
-            description: "Reach high-intent buyers across channels.",
-            body: "Launch one campaign and syndicate the same message everywhere.",
-            cta: "Get started",
-          },
-        ],
-        status: "PAUSED",
-      },
-      platforms: ["META", "GOOGLE", "TIKTOK"],
-      source: "wizard-launch",
+  test("opening a saved advertising plan never launches a provider campaign", async ({ page, request }) => {
+    const created = await request.post("/api/workspace/campaigns", {
+      headers: { Origin: resolveBaseUrl() },
+      data: { type: "ADS", name: "Spring Growth Push", brief: "Introduce the spring collection to returning customers.",
+        goal: "traffic", audience: "Returning customers", platforms: ["META", "GOOGLE"],
+        plan: { currency: "GBP", totalBudget: "1400" }, creatives: [], status: "DRAFT" },
     });
-
-    const launchResult = page.getByTestId("launch-result");
-    await expect(launchResult).toContainText("Uniform payload: confirmed");
-    await expect(launchResult).toContainText("GOOGLE");
-    await expect(launchResult).toContainText("META");
-    await expect(launchResult).toContainText("TIKTOK");
+    expect(created.status()).toBe(201);
+    const { campaign } = await created.json();
+    const writes: string[] = [];
+    page.on("request", request => {
+      if (request.method() === "POST" && /\/api\/ads\/(create|update|delete|launch)/.test(new URL(request.url()).pathname)) writes.push(request.url());
+    });
+    await page.goto(`/campaigns/${campaign.id}`);
+    await expect(page.getByRole("heading", { name: "Spring Growth Push", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Advertising account readiness", exact: true })).toBeVisible();
+    await expect(page.getByText(/Campaign creation and ad spending are currently disabled/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Launch Campaign", exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Spring Growth Push", exact: true })).toBeVisible();
+    const saved = await request.get(`/api/workspace/campaigns/${campaign.id}`);
+    expect((await saved.json()).campaign).toMatchObject({ id: campaign.id, type: "ADS", status: "DRAFT", plan: { currency: "GBP", totalBudget: "1400" } });
+    expect(writes).toEqual([]);
   });
 });

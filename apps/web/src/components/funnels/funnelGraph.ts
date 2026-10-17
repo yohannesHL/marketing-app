@@ -40,6 +40,38 @@ export function addStage(definition: FunnelDefinition, stage: { id: string; name
   stages.splice(after >= 0 ? after + 1 : stages.length, 0, { ...stage, goal: false, terminal: "NONE" });
   return validateDefinition({ ...definition, stages, entryStages: definition.stages.length ? definition.entryStages : [stage.id] });
 }
+
+/** Insert on one path only. The onward transition requires its own later event. */
+export function insertStageOnEdge(definition: FunnelDefinition, input: {
+  edgeId: string; stage: { id: string; name: string }; routeId: string; sourceId: string; type: string;
+}): FunnelDefinition {
+  const edge = funnelEdges(definition).find(item => item.id === input.edgeId);
+  if (!edge) throw new Error("This connection no longer exists. Select it again.");
+  let next = addStage(definition, input.stage, edge.from ?? undefined);
+  if (edge.from === null) next = { ...next, entryStages: [...next.entryStages, input.stage.id] };
+  next = { ...next, routes: next.routes.map(route => route.id !== edge.routeId ? route : {
+    ...route,
+    branches: route.branches.map(branch => branch.id === edge.branchId ? { ...branch, to: input.stage.id } : branch),
+    fallback: edge.kind === "FALLBACK" ? { kind: "MOVE", to: input.stage.id } : route.fallback,
+  }) };
+  return connectStages(next, { id: input.routeId, from: input.stage.id, to: edge.to, sourceId: input.sourceId, type: input.type });
+}
+
+/** A fork joins the existing ordered rule, preserving its otherwise path. */
+export function forkRoute(definition: FunnelDefinition, input: {
+  routeId: string; branchId: string; to: string; when: Condition; beforeBranchId?: string;
+}): FunnelDefinition {
+  const route = definition.routes.find(item => item.id === input.routeId);
+  if (!route) throw new Error("Choose an existing event rule for the conditional stage.");
+  const issue = connectionIssue(definition, route.from, input.to);
+  if (issue) throw new Error(issue);
+  const when = validateCondition(input.when);
+  const branches = [...route.branches];
+  const at = input.beforeBranchId ? branches.findIndex(branch => branch.id === input.beforeBranchId) : branches.findIndex(branch => !branch.when);
+  if (input.beforeBranchId && at < 0) throw new Error("This branch no longer exists. Select it again.");
+  branches.splice(at < 0 ? branches.length : at, 0, { id: input.branchId, to: input.to, when });
+  return validateDefinition({ ...definition, routes: definition.routes.map(item => item.id === route.id ? { ...route, branches } : item) });
+}
 export function removeStage(definition: FunnelDefinition, stageId: string): FunnelDefinition {
   return { ...definition, stages: definition.stages.filter(stage => stage.id !== stageId), entryStages: definition.entryStages.filter(id => id !== stageId),
     routes: definition.routes.filter(route => route.from !== stageId).map(route => ({ ...route,

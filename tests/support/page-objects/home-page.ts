@@ -6,20 +6,14 @@ export class HomePage {
   readonly ctaGroup: Locator;
   readonly highlights: Locator;
   readonly heading: Locator;
-  readonly wizardCta: Locator;
-
+  readonly workspaceCta: Locator;
   constructor(private readonly page: Page) {
     this.root = page.getByTestId("marketing-home");
     this.hero = page.getByTestId("marketing-hero");
     this.ctaGroup = page.getByTestId("marketing-cta");
     this.highlights = page.getByTestId("homepage-highlights");
-    this.heading = page.getByRole("heading", {
-      name: /launch campaigns with confidence/i,
-    });
-    this.wizardCta = page.getByRole("link", { name: "Open campaign wizard" });
+    this.heading = this.hero.getByRole("heading", { level: 1 });
+    this.workspaceCta = this.ctaGroup.getByRole("link", { name: "Enter your workspace" });
   }
-
-  async visit(): Promise<void> {
-    await this.page.goto("/");
-  }
+  async visit() { await this.page.goto("/"); }
 }

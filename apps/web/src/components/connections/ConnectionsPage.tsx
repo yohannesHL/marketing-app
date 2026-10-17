@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Card, Container, Input, Stack, Typography } from "@launchpad/ui";
-import { AccountNavigation } from "./AccountNavigation";
 import { ConnectionCard, type OnConnectionAction } from "./ConnectionCard";
 import { usdToMicros, microsToUsd, authorizationTarget, connectionEndpoint, connectionRequest, ConnectionUiError, errorHelp, providerLabel, socialPlatform,
   type Connection, type Provider, type SocialProvider, type ProviderSettings, type SelectedAccountReadiness } from "./connectionUi";
@@ -123,10 +122,9 @@ export function ConnectionsPage() {
     });
   }
 
-  return <main className="py-8 sm:py-12" data-testid="connections-page"><Container><Stack gap={8}>
-    <AccountNavigation signedIn={signedIn} busy={Boolean(busy)} onError={(failure) => setError(failure instanceof ConnectionUiError ? failure.message : errorHelp())} />
-    <div><Typography as="span" variant="overline">Workspace access</Typography>
-      <Typography as="h1" variant="heading-1">Connections</Typography>
+  return <section className="workspace-page connections-workspace" data-testid="connections-page"><Container><Stack gap={8}>
+    <div><Typography as="span" variant="overline">Settings</Typography>
+      <Typography as="h1" variant="heading-1">Integrations / channels</Typography>
       <Typography tone="muted" className="max-w-3xl">Connect provider identities, review permissions, and choose accounts for your campaigns. Advertising and social publishing each need their own authorization.</Typography></div>
     {error ? <div ref={errorRef} tabIndex={-1} className="rounded-box focus:outline focus:outline-2 focus:outline-primary"><Alert title="Connection needs attention" tone="danger">{error}</Alert></div> : null}
     {busy ? <div role="status" aria-live="polite" className="font-medium">Updating connection… Please wait.</div> : null}
@@ -197,5 +195,5 @@ export function ConnectionsPage() {
         </Stack></section>
       </>}
     <Typography tone="muted" variant="caption">Credentials stay on the server. Disconnect a provider to remove this app’s access and stop queued work.</Typography>
-  </Stack></Container></main>;
+  </Stack></Container></section>;
 }

@@ -62,11 +62,12 @@ export function SocialReview({
         Date.parse(scheduled) > Date.now() &&
         Date.parse(scheduled) <= Date.now() + 366 * 86400000,
     );
+  const submitted = post.deliveries.some((delivery) => delivery.revisionId === post.revision.id);
   const ready =
     post.publishingEnabled &&
     post.revision.variants.length > 0 &&
     post.revision.variants.every((v) => v.publishingEnabled) &&
-    !post.deliveries.length;
+    !submitted;
   async function approve() {
     await onAction(async () => {
       onUpdate(
@@ -181,7 +182,7 @@ export function SocialReview({
           <>
             <Checkbox
               label={`I reviewed revision ${post.revision.number} and every destination variant`}
-              checked={reviewed}
+              checked={approved || reviewed}
               disabled={busy || approved}
               onChange={(e) => setReviewed(e.target.checked)}
             />
@@ -194,6 +195,14 @@ export function SocialReview({
             </Button>
           </>
         )}
+        {submitted ? (
+          <Alert title="Delivery request submitted" role="note">
+            Follow each destination in Delivery details below. Use its controls to
+            reschedule, cancel, or recover a delivery. To publish changed content,
+            save and review a new revision.
+          </Alert>
+        ) : (
+          <>
         <Select
           label="Delivery timing"
           value={timing}
@@ -232,9 +241,9 @@ export function SocialReview({
         )}
         {!ready ? (
           <Alert title="Publishing is blocked" tone="warning" role="note">
-            {post.deliveries.length
-              ? "This revision already has deliveries. Use their status and reschedule controls."
-              : "The publishing provider must be explicitly enabled and validated for every destination. You can save and review this draft now; no delivery will be created."}
+            The publishing provider must be explicitly enabled and validated for
+            every destination. You can save and review this draft now; no delivery
+            will be created.
           </Alert>
         ) : null}
         <Button
@@ -250,6 +259,8 @@ export function SocialReview({
             ? "Confirm and publish now"
             : "Confirm and schedule"}
         </Button>
+          </>
+        )}
       </Stack>
     </Card>
   );

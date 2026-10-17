@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { validateDefinition, type FunnelDefinition } from "../../server/funnels/funnelDefinition";
 import { SourceInspector } from "../tracking/SourceInspector";
 import { FunnelLayout } from "./FunnelLayout";
@@ -9,8 +9,10 @@ import { FunnelJourneys } from "./FunnelJourneys";
 import { FunnelResults } from "./FunnelResults";
 import { FunnelSimulator } from "./FunnelSimulator";
 import { StageEditor } from "./StageEditor";
-import { connectStages, connectionIssue } from "./funnelGraph";
-import { buttonClass, dateLabel, funnelRequest, FunnelUiError, inputClass, key, message, panelClass, type UiFunnel, type UiSource, type UiCampaign } from "./funnelUi";
+import { StageSettingsPanel } from "./StageSettingsPanel";
+import { FunnelStageList } from "./FunnelStageList";
+import { CanvasConnectionDialog, type CanvasConnectionRequest } from "./CanvasConnectionDialog";
+import { buttonClass, dateLabel, funnelRequest, FunnelUiError, inputClass, message, panelClass, type UiFunnel, type UiSource, type UiCampaign } from "./funnelUi";
 const FunnelCanvas = dynamic(() => import("./FunnelCanvas"), { ssr: false, loading: () => <p role="status">Loading canvas…</p> });
 type Readiness = { scope: string; versionId: string | null; draftRevision: number; checkedAt: string; tracking: { configured: boolean; message: string };
   actions: { actionId: string; stageId: string; campaignId: string; kind: string; configured: boolean; blockers: string[]; observedAt: string | null }[]; note: string };
@@ -21,7 +23,8 @@ export function FunnelBuilder({ id, initialView = "build", initialJourneyId, ini
   const [error, setError] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null), [busy, setBusy] = useState(false), [loading, setLoading] = useState(true);
   const [view, setView] = useState(initialView), [canvas, setCanvas] = useState(true), [validInputs, setValidInputs] = useState(true), [reload, setReload] = useState(0);
   const [review, setReview] = useState<Readiness | null>(null), [activation, setActivation] = useState<Readiness | null>(null), [serverConflict, setServerConflict] = useState<UiFunnel | null>(null);
-  const [connection, setConnection] = useState<{ from: string | null; to: string; sourceId: string; type: string } | null>(null);
+  const [connection, setConnection] = useState<CanvasConnectionRequest | null>(null), [settingsOpen, setSettingsOpen] = useState(false), [settingsFocus, setSettingsFocus] = useState(0);
+  const settingsTrigger = useRef<HTMLElement | null>(null);
   const dirty = !validInputs || Boolean(funnel && definition && (name !== funnel.name || JSON.stringify(definition) !== JSON.stringify(funnel.draft)));
   useEffect(() => { let active = true; setLoading(true); setError(null);
     (async () => { const value = await funnelRequest<UiFunnel>(`/api/funnels/${id}`);
@@ -64,12 +67,35 @@ export function FunnelBuilder({ id, initialView = "build", initialJourneyId, ini
     const updated = await funnelRequest<UiFunnel>(`/api/funnels/${id}/controls`, "PATCH", { [field]: enabled, ...(expectedPublishedVersionId ? { expectedPublishedVersionId } : {}) }); setFunnel({ ...funnel, automationEnrolmentEnabled: updated.automationEnrolmentEnabled, automationDispatchEnabled: updated.automationDispatchEnabled }); setNotice(`${field === "automationEnrolmentEnabled" ? "New automation enrollment" : "Pending dispatch"} ${enabled ? "enabled" : "paused"}. Tracking continues; clocks do not reset.`);
   } catch (e) { setError(message(e)); } finally { setBusy(false); } }
   async function status(value: string) { if (!funnel) return; setBusy(true); setError(null); try { const updated = await funnelRequest<UiFunnel>(`/api/funnels/${id}/status`, "PATCH", { status: value }); setFunnel({ ...funnel, status: updated.status }); setNotice(`Funnel is ${value.toLowerCase()}.`); } catch (e) { setError(message(e)); } finally { setBusy(false); } }
-  function connect() { if (!connection || !definition) return; try { change(connectStages(definition, { ...connection, id: key("route") })); setConnection(null); setNotice("Connection added to the draft. Review its source, event and routing order below."); } catch (e) { setError(message(e)); } }
-  function selectStage(next: string | null) { if (!validInputs && next !== selected) { setError("Complete or remove the invalid field before changing stages. Its unfinished value has not been saved."); return; } setSelected(next); }
+  function openConnection(request: CanvasConnectionRequest) {
+    if (!validInputs) { setError("Complete or remove the invalid field before adding a connection."); return; }
+    setConnection(request); setError(null);
+  }
+  function selectStage(next: string | null) {
+    if (!validInputs && next !== selected) { setError("Complete or remove the invalid field before changing stages. Its unfinished value has not been saved."); return false; }
+    setSelected(next); return true;
+  }
+  function editStage(next: string | null) {
+    if (!selectStage(next)) return;
+    if (!document.activeElement?.closest(".funnel-settings-panel")) settingsTrigger.current = document.activeElement as HTMLElement | null;
+    setSettingsOpen(true); setSettingsFocus(value => value + 1);
+  }
+  function closeSettings() {
+    setSettingsOpen(false);
+    requestAnimationFrame(() => {
+      const target = settingsTrigger.current?.isConnected ? settingsTrigger.current : document.querySelector<HTMLElement>('.funnel-display-switch button[aria-pressed="true"]');
+      target?.focus({ preventScroll: true });
+    });
+  }
+  function switchDisplay(next: boolean) {
+    if (!validInputs) { setError("Complete or remove the invalid field before changing display mode."); return; }
+    setCanvas(next);
+  }
   function switchView(next: string) { if (!validInputs) { setError("Complete or remove the invalid field before leaving Build."); return; } setView(next); const url = new URL(window.location.href); url.searchParams.set("view", next); window.history.replaceState(null, "", url); }
-  return <FunnelLayout title={funnel?.name ?? "Funnel workspace"} environment={funnel?.environment} description="Build your stages and rules, verify the evidence, and enable only the automation you need." loading={loading} busy={busy} error={error} notice={notice} onError={e => setError(message(e))} dirty={dirty}>
-    {funnel && definition && <div className="space-y-6"><div className="flex flex-wrap gap-3 items-center justify-between"><p className="text-sm">{funnel.subjectKind} · {funnel.status} · {dirty ? "Unsaved draft" : `Draft revision ${funnel.draftRevision} saved`} · {funnel.publishedVersionId ? `Published version ${funnel.versions?.find(v => v.id === funnel.publishedVersionId)?.number ?? "available"}` : "Not published"}</p>
-      <div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={busy || !dirty || !validInputs || !!definitionError || !name.trim()} onClick={save}>Save draft</button><button className="btn btn-primary min-h-11 normal-case" disabled={busy || dirty || !validInputs || !!definitionError} onClick={() => prepareReview("draft")}>Review &amp; publish</button></div></div>
+  return <FunnelLayout title={funnel?.name ?? "Funnel workspace"} environment={funnel?.environment} loading={loading} busy={busy} error={error} notice={notice} onError={e => setError(message(e))} dirty={dirty}
+    headerActions={funnel && <><button className={buttonClass} disabled={loading || busy || !dirty || !validInputs || !!definitionError || !name.trim()} onClick={save}>Save draft</button><button className="btn btn-primary min-h-11 normal-case" disabled={loading || busy || dirty || !validInputs || !!definitionError} onClick={() => prepareReview("draft")}>Review &amp; publish</button></>}
+    headerMeta={funnel && <><span className="badge badge-outline">{({ SALES: "Sales enquiries", PURCHASE: "Purchase journeys", SUBSCRIPTION: "Subscriptions", CONTACT: "People" } as Record<string, string>)[funnel.subjectKind] ?? funnel.subjectKind}</span><span className="badge badge-outline capitalize">{funnel.status.toLowerCase()}</span><span className={`funnel-save-state ${dirty ? "is-dirty" : ""}`}>{dirty ? "Unsaved draft" : `Draft revision ${funnel.draftRevision} saved`}</span><span>{funnel.publishedVersionId ? `Published version ${funnel.versions?.find(v => v.id === funnel.publishedVersionId)?.number ?? "available"}` : "Not published"}</span></>}>
+    {funnel && definition && <div className="space-y-4">
       {dirty && <p className="text-sm">Save the draft before publication review. You can simulate unsaved valid rules.</p>}
       {serverConflict && <section className={`${panelClass} border-warning`}><h2 className="font-semibold">A newer draft is saved</h2><p>Your edits remain in this tab. Server revision {serverConflict.draftRevision} has {serverConflict.draft.stages.length} stages; your draft has {definition.stages.length}.</p>
         <details><summary className="min-h-11 cursor-pointer">Compare the server draft</summary><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(serverConflict.draft, null, 2)}</pre></details>
@@ -81,23 +107,27 @@ export function FunnelBuilder({ id, initialView = "build", initialJourneyId, ini
         <p>New enrollment: {funnel.automationEnrolmentEnabled ? "enabled" : "off"}. Pending dispatch: {funnel.automationDispatchEnabled ? "enabled" : "off"}. {review.note}</p>
         {review.actions.some(a => !a.configured) && <p className="text-sm">You can save this plan while automation is off. Resolve its blockers in <Link href="/email" className="underline">Email campaigns</Link> before activating.</p>}
         <div className="flex flex-wrap gap-3"><button className="btn btn-primary min-h-11 normal-case" disabled={busy || !review.tracking.configured || ((funnel.automationEnrolmentEnabled || funnel.automationDispatchEnabled) && review.actions.some(a => !a.configured))} onClick={publish}>Publish reviewed revision</button><button className={buttonClass} disabled={busy} onClick={() => setReview(null)}>Close review</button></div></section>}
-      <nav aria-label="Funnel views" className="flex flex-wrap gap-2">{["build", "results", "journeys", "activity", "simulate"].map(item => <button key={item} type="button" className={`btn min-h-11 normal-case ${view === item ? "btn-primary" : "btn-ghost"}`} aria-pressed={view === item} onClick={() => switchView(item)}>{({ build: "Build", results: "Results", journeys: "People / journeys", activity: "Activity", simulate: "Test journey" } as Record<string, string>)[item]}</button>)}</nav>
-      {view === "build" && <><div className="grid md:grid-cols-[1fr_auto] gap-4 items-end"><label className="block">Funnel name<input className={inputClass} maxLength={120} value={name} disabled={busy} onChange={e => { setName(e.target.value); setReview(null); }} /></label><button className={buttonClass} disabled={busy} onClick={refreshCatalog}>Refresh source &amp; campaign choices</button></div>
-        <div className="flex flex-wrap gap-3 items-center"><button className={buttonClass} onClick={() => setCanvas(value => !value)} aria-expanded={canvas}>{canvas ? "Hide canvas" : "Show canvas"}</button><p className="text-sm">All stages, rules and branches can be edited with forms below. Automatic routes cannot loop; create explicit new cycles for repeat journeys.</p></div>
-        <nav aria-label="Stage list" className="rounded-box border border-base-300 p-3"><ol className="flex flex-wrap gap-2">{definition.stages.map((stage, index) => <li key={stage.id} className="min-w-0 max-w-full"><button className={`btn min-h-11 h-auto py-2 whitespace-normal break-words normal-case max-w-full ${stage.id === selected ? "btn-primary" : "btn-ghost"}`} disabled={busy} aria-pressed={stage.id === selected} onClick={() => selectStage(stage.id)}>{index + 1}. {stage.name || "Unnamed stage"}{stage.goal ? " · Goal" : ""}</button></li>)}</ol></nav>
-        {canvas && <FunnelCanvas definition={definition} selectedStageId={selected} onSelectStage={selectStage} disabled={busy} onConnect={(from, to) => { setConnection({ from, to, sourceId: "", type: "" }); setError(null); }} />}
-        {connection && <section className={`${panelClass} space-y-3`} aria-label="Connect stages"><h2 className="font-semibold">Connect {definition.stages.find(s => s.id === connection.from)?.name ?? "new journey"} → {definition.stages.find(s => s.id === connection.to)?.name}</h2><p>Choose the evidence that allows this transition. The new route is added after existing rules.</p>
-          <label className="block">Connection source<select className={inputClass} value={connection.sourceId} onChange={e => setConnection({ ...connection, sourceId: e.target.value, type: "" })}><option value="">Choose source</option>{sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label className="block">Connection event<select className={inputClass} value={connection.type} onChange={e => setConnection({ ...connection, type: e.target.value })}><option value="">Choose event</option>{sources.find(s => s.id === connection.sourceId)?.config.allowedEvents.map(type => <option key={type}>{type}</option>)}</select></label>
-          <div className="flex gap-3 flex-wrap"><button className={buttonClass} disabled={!connection.sourceId || !connection.type || !!connectionIssue(definition, connection.from, connection.to)} onClick={connect}>Add connection rule</button><button className={buttonClass} onClick={() => setConnection(null)}>Cancel connection</button></div></section>}
+      <nav aria-label="Funnel views" className="funnel-view-nav">{["build", "results", "journeys", "activity", "simulate"].map(item => <button key={item} type="button" className={`btn min-h-11 normal-case ${view === item ? "btn-primary" : "btn-ghost"}`} aria-pressed={view === item} onClick={() => switchView(item)}>{({ build: "Build", results: "Results", journeys: "People / journeys", activity: "Activity", simulate: "Test journey" } as Record<string, string>)[item]}</button>)}</nav>
+      {view === "build" && <><div className="funnel-editor-top">
+        <div className="funnel-display-switch" role="group" aria-label="Display mode"><button type="button" aria-pressed={canvas} onClick={() => switchDisplay(true)}>Canvas</button><button type="button" aria-pressed={!canvas} onClick={() => switchDisplay(false)}>List</button></div>
+        <div className="flex flex-wrap gap-2"><details className="funnel-details"><summary className="btn btn-ghost min-h-11 normal-case">Funnel details</summary><div className="space-y-3"><label className="block">Funnel name<input className={inputClass} maxLength={120} value={name} disabled={busy} onChange={e => { setName(e.target.value); setReview(null); }} /></label><button className="btn btn-ghost min-h-11 h-auto whitespace-normal normal-case" disabled={busy} onClick={refreshCatalog}>Refresh source &amp; campaign choices</button></div></details>
+        </div></div>
+        <div className={`funnel-editor-grid ${canvas ? "has-canvas" : "has-list"} ${settingsOpen ? "has-settings" : ""}`}>
+        <div className="funnel-visual-column min-w-0">{canvas ? <FunnelCanvas definition={definition} sources={sources} selectedStageId={selected} onSelectStage={selectStage} onEditStage={editStage} disabled={busy} onAdd={openConnection} settingsOpen={settingsOpen} onConnect={(from, to) => openConnection({ from, to })} /> :
+          <FunnelStageList definition={definition} selectedStageId={selected} disabled={busy} onEdit={editStage} onAdd={openConnection} />}</div>
+        <StageSettingsPanel open={settingsOpen} focusRequest={settingsFocus} canClose={validInputs && !busy} onClose={closeSettings}>
         {definitionError && <p role="alert" className="border border-error rounded-box p-3">{definitionError}</p>}
-        <StageEditor definition={definition} onChange={change} selectedStageId={selected} onSelectStage={selectStage} sources={sources} campaigns={campaigns} disabled={busy} onValidityChange={setValidInputs} />
-        <section className="space-y-3"><h2 className="text-xl font-semibold">Selected stage · source evidence</h2>{requiredSources.length ? requiredSources.map(sourceId => <SourceInspector key={sourceId} sourceId={sourceId} environment={funnel.environment} />) : <p className={panelClass}>This stage has no configured evidence source yet. Add an entry or outgoing rule to inspect its mapping and observations.</p>}</section>
-        <section className={`${panelClass} space-y-4`}><h2 className="text-xl font-semibold">Published automation controls</h2><p className="text-sm">These controls apply to published actions. Pausing new enrollment affects future stage entries. Pausing dispatch keeps existing clocks; expired reminders are skipped on resume. Tracking continues. Cancel a specific run in its journey history.</p>
+        <StageEditor definition={definition} onChange={change} selectedStageId={selected} onSelectStage={editStage} sources={sources} campaigns={campaigns} disabled={busy} onValidityChange={setValidInputs}
+          sourceEvidence={<section className="space-y-3 border-t border-base-300 pt-5"><h3 className="font-semibold">Selected stage · source evidence</h3>{requiredSources.length ? requiredSources.map(sourceId => <SourceInspector key={sourceId} sourceId={sourceId} environment={funnel.environment} />) : <p className="text-sm text-base-content/70">This stage has no configured evidence source yet. Add an entry or outgoing rule to inspect its mapping and observations.</p>}</section>} />
+        </StageSettingsPanel></div>
+        {connection && <CanvasConnectionDialog request={connection} definition={definition} sources={sources} onClose={() => setConnection(null)} onApply={(next, stageId) => {
+          change(next); setSelected(stageId); setConnection(null); setNotice("Connection added to the draft. Save when you are ready.");
+        }} />}
+        <details className="funnel-secondary-section"><summary>Published automation controls <span className="ml-2 text-sm font-normal text-base-content/70">{funnel.automationEnrolmentEnabled || funnel.automationDispatchEnabled ? "Automation enabled" : "Automation off"}</span></summary><div className="space-y-4"><p className="text-sm">These controls apply to published actions. Pausing new enrollment affects future stage entries. Pausing dispatch keeps existing clocks; expired reminders are skipped on resume. Tracking continues. Cancel a specific run in its journey history.</p>
           <div className="flex flex-wrap gap-3"><button className={buttonClass} disabled={busy || dirty || !funnel.publishedVersionId} onClick={() => control("automationEnrolmentEnabled", !funnel.automationEnrolmentEnabled)}>{funnel.automationEnrolmentEnabled ? "Pause new automation" : "Enable new automation"}</button><button className={buttonClass} disabled={busy || dirty || !funnel.publishedVersionId} onClick={() => control("automationDispatchEnabled", !funnel.automationDispatchEnabled)}>{funnel.automationDispatchEnabled ? "Pause pending dispatch" : "Enable pending dispatch"}</button><button className={buttonClass} disabled={busy || !funnel.publishedVersionId} onClick={() => prepareReview("published")}>Check published prerequisites</button></div>
           {activation && <div role="status"><p>{activation.tracking.message}</p><ul>{activation.actions.map(action => <li key={action.actionId} className="break-words">{action.actionId}: {action.configured ? "Configured" : action.blockers.join(", ")} · Sender observation {dateLabel(action.observedAt)}</li>)}</ul><p className="text-sm">{activation.note}</p></div>}
           <details><summary className="min-h-11 cursor-pointer">Tracking lifecycle</summary><p className="text-sm mb-3">Pausing tracking prevents new automatic entries. Existing journeys can still process relevant evidence. Archive only when you want this funnel retired.</p><div className="flex flex-wrap gap-3"><button className={buttonClass} disabled={busy} onClick={() => status(funnel.status === "ACTIVE" ? "PAUSED" : "ACTIVE")}>{funnel.status === "ACTIVE" ? "Pause new tracking entries" : "Resume tracking"}</button><button className={buttonClass} disabled={busy || funnel.status === "ARCHIVED"} onClick={() => { if (window.confirm("Archive this funnel? Review and stop any independent campaign memberships separately.")) status("ARCHIVED"); }}>Archive funnel</button></div></details>
-        </section></>}
+        </div></details></>}
       {view === "results" && <FunnelResults funnel={funnel} initialVersionId={initialReportVersionId} />}
       {(view === "journeys" || view === "activity") && <FunnelJourneys key={view} funnel={funnel} initialJourneyId={initialJourneyId} activity={view === "activity"} />}
       {view === "simulate" && (definitionError || !validInputs ? <p role="alert">Resolve the draft validation errors in Build before simulating.</p> : <FunnelSimulator id={id} definition={definition} sources={sources} environment={funnel.environment} enrolmentEnabled={funnel.automationEnrolmentEnabled} />)}
