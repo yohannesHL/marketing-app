@@ -4,7 +4,7 @@ import { CustomerAuth, type CustomerPrincipal } from "../auth/customerAuth";
 import { CredentialVault } from "../security/credentialVault";
 import { fail } from "../security/errors";
 import { verifyProviderReceipt, reconcileProviderResource } from "./providerTracking";
-import type { AdapterSource, NormalizedTrackingEvent, ReconcileResource, SourceCredentials, TrackingMode, TrackingSourceConfig } from "./trackingTypes";
+import type { AdapterSource, BusinessReference, NormalizedTrackingEvent, ReconcileResource, SourceCredentials, TrackingMode, TrackingSourceConfig } from "./trackingTypes";
 import { enqueueFunnelEvaluation, eraseFunnelSubjects } from "./funnelLifecycle";
 import { eraseEmailContact } from "../email/emailPolicy";
 import { email, emailKey, equalSecret, fields, json, object, properties, sha256, strings, text, timestamp } from "./trackingValidation";
@@ -16,6 +16,8 @@ const browserTypes = ["page.viewed", "product.viewed", "checkout.observed"];
 const sourceTypes = ["enquiry.accepted", "deal.won", "deal.lost", "order.paid", ...browserTypes];
 const subjectReferences: Record<string, string[]> = { CONTACT: ["CONTACT"], SALES: ["ENQUIRY", "DEAL", "BOOKING"], PURCHASE: ["ORDER", "CHECKOUT", "REFUND", "REFUND_TRANSACTION"] };
 const matchingKinds = Object.values(subjectReferences).flat();
+const handoffKinds: Record<string, string[]> = { NATIVE: ["ENQUIRY"], API: matchingKinds,
+  CALENDLY: ["BOOKING"], SHOPIFY: ["ORDER", "CHECKOUT", "REFUND", "REFUND_TRANSACTION"] };
 const providerTypes: Record<string, string[]> = {
   NATIVE: ["enquiry.accepted", ...browserTypes], API: sourceTypes,
   CALENDLY: ["booking.confirmed", "booking.cancelled"], SHOPIFY: ["order.paid", "refund.created", "refund.succeeded"],
@@ -249,14 +251,15 @@ export class TrackingService {
     const input = json(raw); fields(input, ["schemaVersion", "type", "occurredAt", "resource", "references", "subjectKind", "contactIdentity", "contact", "properties"]);
     const type = text(input.type), config = source.config as unknown as TrackingSourceConfig;
     if (input.schemaVersion !== 1 || !config.allowedEvents.includes(type)) fail("UNSUPPORTED_EVENT", 400, "Use the configured event schema and types.");
-    const ref = (value: unknown) => { const r = object(value); fields(r, ["kind", "id"]); const kind = text(r.kind, 30);
+    const ref = (value: unknown, qualified = false): BusinessReference => { const r = object(value); fields(r, qualified ? ["kind", "id", "sourceId"] : ["kind", "id"]); const kind = text(r.kind, 30);
       if (!matchingKinds.includes(kind)) fail("INVALID_TRACKING_INPUT", 400, "Use a supported business reference kind.");
-      return { kind, id: text(r.id, 500) }; };
+      return { kind, id: text(r.id, 500), ...(r.sourceId === undefined ? {} : { sourceId: text(r.sourceId, 200) }) }; };
     const resource = ref(input.resource), references = input.references === undefined ? [] : input.references;
     if (!Array.isArray(references) || references.length > 10) fail("INVALID_TRACKING_INPUT", 400, "Supply at most ten references.");
     const subjectKind = text(input.subjectKind);
     if (!["CONTACT", "SALES", "PURCHASE"].includes(subjectKind)) fail("INVALID_TRACKING_INPUT", 400, "Choose the subject kind.");
-    if (![resource, ...references.map(ref)].every(r => subjectReferences[subjectKind].includes(r.kind)))
+    const parsedReferences = references.map(value => ref(value, true));
+    if (![resource, ...parsedReferences].every(r => subjectReferences[subjectKind].includes(r.kind)))
       fail("INVALID_TRACKING_INPUT", 400, "Keep contact identity separate from enquiry/order business references.");
     let contactIdentity: { kind: string; id: string } | undefined, contact: { name?: string; email?: string } | undefined;
     if (input.contactIdentity !== undefined) { const c = object(input.contactIdentity); fields(c, ["kind", "id"]); contactIdentity = { kind: text(c.kind, 50), id: text(c.id, 500) }; }
@@ -269,7 +272,7 @@ export class TrackingService {
     if (type === "order.paid" && subjectKind !== "PURCHASE" || type.startsWith("deal.") && subjectKind !== "SALES")
       fail("INVALID_TRACKING_INPUT", 400, "The event does not match the business subject kind.");
     return this.accept(source, [{ type, dedupeKey: requestId, providerTopic: type, occurredAt: timestamp(input.occurredAt),
-      authority: "SERVER_ASSERTED", verification: "HMAC_SHA256_TIMESTAMP_REQUEST_BODY", resource, references: references.map(ref),
+      authority: "SERVER_ASSERTED", verification: "HMAC_SHA256_TIMESTAMP_REQUEST_BODY", resource, references: parsedReferences,
       subjectKind: subjectKind as "CONTACT" | "SALES" | "PURCHASE", createsSubject: true, contactIdentity, contact, properties: attrs,
       ...(["order.paid", "deal.won"].includes(type) ? { factKey: type } : {}) }], sha256(raw), "LIVE");
   }
@@ -298,12 +301,29 @@ export class TrackingService {
             eventId: existing.id, action: "DELIVERY_CONFLICT", reason: "Delivery key was reused with a different payload digest." } });
           receipts.push({ id: existing.id, duplicate: !conflict, conflict }); continue;
         }
+        // Only signed API references may declare another namespace. Authentication has already
+        // succeeded; capture authority in this transaction and retain it unchanged on replay.
+        const references: BusinessReference[] = [];
+        for (const ref of event.references) {
+          if (ref.sourceId !== undefined) {
+            const target = await tx.trackingSource.findFirst({ where: { id: ref.sourceId, ownerId: source.ownerId,
+              environment: source.environment, status: "ACTIVE" } });
+            if (source.provider !== "API" || !target || !handoffKinds[target.provider]?.includes(ref.kind))
+              fail("INVALID_HANDOFF_REFERENCE", 400, "Choose an active, owned source in the same environment that supports this reference kind.");
+            references.push({ kind: ref.kind, id: ref.id, sourceId: target.id, sourceGeneration: target.generation });
+          } else references.push(ref);
+        }
+        const uniqueReferences = new Map<string, BusinessReference>();
+        for (const ref of references) {
+          const key = JSON.stringify([ref.sourceId ?? source.id, ref.kind, ref.id]), prior = uniqueReferences.get(key);
+          if (!prior || ref.sourceGeneration !== undefined) uniqueReferences.set(key, ref);
+        }
         const occurredAt = new Date(timestamp(event.occurredAt));
         const reason = event.quarantineReason ?? (!(source.config as unknown as TrackingSourceConfig).allowedEvents.includes(event.type) ? "SOURCE_EVENT_DISABLED" :
           occurredAt.getTime() > this.now().getTime() + 300_000 ? "FUTURE_TIMESTAMP" : undefined);
         const eventId = await tx.trackingEvent.create({ data: { ownerId: source.ownerId, environment: source.environment,
           sourceId: source.id, sourceGeneration: source.generation, type: event.type, dedupeKey: event.dedupeKey, rawPayloadDigest,
-          envelope: jsonValue({ ...event, schemaVersion: 1, normalizationVersion: 1, dedupeKeyVersion: 1, provider: source.provider }), ingestionMode: mode, processingMode: mode,
+          envelope: jsonValue({ ...event, references: [...uniqueReferences.values()], schemaVersion: 1, normalizationVersion: 1, dedupeKeyVersion: 1, provider: source.provider }), ingestionMode: mode, processingMode: mode,
           occurredAt, receivedAt: this.now(), expiresAt: new Date(this.now().getTime() + 180 * DAY), visitorId,
           status: reason ? "QUARANTINED" : "QUEUED", reason } });
         receipts.push({ id: eventId.id, duplicate: false, conflict: false });
@@ -340,13 +360,21 @@ export class TrackingService {
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "BLOCKED", reason: "SOURCE_CHANGED", processedAt: this.now() } });
       const envelope = event.envelope as unknown as NormalizedTrackingEvent;
       const kind = envelope.subjectKind ?? (event.type.startsWith("booking.") ? "SALES" : event.type.startsWith("refund.") ? "PURCHASE" : "CONTACT");
-      const refs = [envelope.resource, ...envelope.references].filter(r => subjectReferences[kind].includes(r.kind));
+      const refs = [envelope.resource, ...envelope.references].filter(r => subjectReferences[kind].includes(r.kind))
+        .map((ref: BusinessReference) => ({ ...ref, sourceId: ref.sourceId ?? source.id }));
+      // Target authority is pinned at acceptance, including during history-only replay/manual matching.
+      for (const ref of envelope.references) if (ref.sourceId !== undefined) {
+        const target = await tx.trackingSource.findFirst({ where: { id: ref.sourceId, ownerId: event.ownerId,
+          environment: event.environment, status: "ACTIVE", generation: ref.sourceGeneration ?? -1 } });
+        if (source.provider !== "API" || !target || !handoffKinds[target.provider]?.includes(ref.kind))
+          return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "BLOCKED", reason: "REFERENCE_SOURCE_CHANGED", processedAt: this.now() } });
+      }
       for (const ref of refs) {
-        const deleted = await tx.trackingDeletion.findUnique({ where: { ownerId_sourceId_namespace_externalIdDigest: { ownerId: source.ownerId, sourceId: source.id, namespace: `SUBJECT:${ref.kind}`, externalIdDigest: sha256(ref.id) } } });
+        const deleted = await tx.trackingDeletion.findUnique({ where: { ownerId_sourceId_namespace_externalIdDigest: { ownerId: source.ownerId, sourceId: ref.sourceId, namespace: `SUBJECT:${ref.kind}`, externalIdDigest: sha256(ref.id) } } });
         if (deleted) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "REDACTED", envelope: {}, reason: "DELETED_SUBJECT", processedAt: this.now() } });
       }
-      const mappings = refs.length ? await tx.funnelSubjectReference.findMany({ where: { sourceId: source.id,
-        OR: refs.map(r => ({ kind: r.kind, externalId: r.id })) } }) : [];
+      const mappings = refs.length ? await tx.funnelSubjectReference.findMany({ where: { ownerId: source.ownerId,
+        OR: refs.map(r => ({ sourceId: r.sourceId, kind: r.kind, externalId: r.id })) } }) : [];
       const candidates = new Set(mappings.map(r => r.subjectId));
       let reason = "NO_VERIFIED_BUSINESS_REFERENCE";
       if (envelope.correlationToken) {
@@ -356,65 +384,90 @@ export class TrackingService {
       }
       const manualMatch = event.subjectId && event.processingMode === "REPLAY" && await tx.trackingAudit.findFirst({ where: { eventId: event.id, action: "MANUAL_MATCH" } });
       if (manualMatch) candidates.clear();
-      if (event.subjectId) candidates.add(event.subjectId); // Audited manual reconciliation takes precedence for this receipt only.
+      if (event.subjectId) candidates.add(event.subjectId); // An audited manual match affects this receipt, never another identity.
       if (candidates.size > 1) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "AMBIGUOUS_BUSINESS_REFERENCES", processedAt: this.now() } });
       let subject = candidates.size ? await tx.funnelSubject.findUnique({ where: { id: [...candidates][0] } }) : null;
-      if (subject && envelope.resource.kind === "ORDER" && !manualMatch) {
-        const otherOrder = await tx.funnelSubjectReference.findFirst({ where: { sourceId: source.id, subjectId: subject.id, kind: "ORDER", externalId: { not: envelope.resource.id } } });
-        if (otherOrder) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "ORDER_REFERENCE_CONFLICT", processedAt: this.now() } });
-      }
-      if (!subject && envelope.createsSubject && envelope.authority !== "BROWSER_OBSERVED") {
-        let contactId: string | undefined;
-        if (envelope.contactIdentity) {
-          const identity = envelope.contactIdentity;
-          const deleted = await tx.trackingDeletion.findUnique({ where: { ownerId_sourceId_namespace_externalIdDigest: {
-            ownerId: source.ownerId, sourceId: source.id, namespace: `CONTACT:${identity.kind}`, externalIdDigest: sha256(identity.id) } } });
-          if (deleted) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "REDACTED", envelope: {}, reason: "DELETED_CONTACT", processedAt: this.now() } });
-          const found = await tx.funnelIdentity.findUnique({ where: { ownerId_sourceId_namespace_externalId: {
-            ownerId: source.ownerId, sourceId: source.id, namespace: identity.kind, externalId: identity.id } } });
-          contactId = found?.contactId;
-        }
-        if (!contactId && (envelope.contactIdentity || envelope.contact?.email || envelope.contact?.name)) {
-          const contact = await tx.funnelContact.create({ data: { ownerId: source.ownerId, environment: source.environment,
-            email: envelope.contact?.email, name: envelope.contact?.name } }); contactId = contact.id;
-          if (envelope.contactIdentity) await tx.funnelIdentity.create({ data: { ownerId: source.ownerId, environment: source.environment,
-            sourceId: source.id, namespace: envelope.contactIdentity.kind, externalId: envelope.contactIdentity.id, contactId } });
-        }
-        subject = await tx.funnelSubject.create({ data: { ownerId: source.ownerId, environment: source.environment, kind: envelope.subjectKind ?? "CONTACT", contactId } });
-      }
       if (!subject && event.visitorId && envelope.authority === "BROWSER_OBSERVED") {
         const identified = await tx.trackingEvent.findMany({ where: { sourceId: source.id, visitorId: event.visitorId, type: "enquiry.accepted", status: "MATCHED" }, select: { subjectId: true }, take: 20 });
         const subjects = [...new Set(identified.map(e => e.subjectId).filter(Boolean))];
         if (subjects.length === 1) subject = await tx.funnelSubject.findUnique({ where: { id: subjects[0]! } });
         reason = subjects.length > 1 ? "AMBIGUOUS_ANONYMOUS_VISIT" : "ANONYMOUS_OBSERVATION";
       }
-      if (!subject) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason, processedAt: this.now() } });
-      if (subject.ownerId !== event.ownerId || subject.environment !== event.environment || subject.kind !== kind && envelope.authority !== "BROWSER_OBSERVED")
+      if (!subject && (!envelope.createsSubject || envelope.authority === "BROWSER_OBSERVED"))
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason, processedAt: this.now() } });
+      if (subject && (subject.ownerId !== event.ownerId || subject.environment !== event.environment || subject.kind !== kind && envelope.authority !== "BROWSER_OBSERVED"))
         return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "SUBJECT_BOUNDARY_MISMATCH", processedAt: this.now() } });
-      if (subject.contactId && (await tx.funnelContact.findUnique({ where: { id: subject.contactId } }))?.deletedAt)
-        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "REDACTED", envelope: {}, reason: "DELETED_CONTACT", processedAt: this.now() } });
-      if (envelope.authority !== "BROWSER_OBSERVED") for (const ref of refs) {
-        await tx.funnelSubjectReference.upsert({ where: { ownerId_sourceId_kind_externalId: { ownerId: source.ownerId, sourceId: source.id, kind: ref.kind, externalId: ref.id } },
-          create: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, subjectId: subject.id, kind: ref.kind, externalId: ref.id }, update: {} });
+      // Receipt-only manual choices cannot copy canonical money to a different business subject.
+      const selectedSubjectId = subject?.id;
+      if (selectedSubjectId && envelope.factKey && mappings.some(mapping => mapping.subjectId !== selectedSubjectId))
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "FINANCIAL_REFERENCE_CONFLICT", processedAt: this.now() } });
+      for (const ref of refs.filter(ref => ref.kind === "ORDER")) {
+        const multipleOrders = refs.some(other => other.kind === "ORDER" && other.sourceId === ref.sourceId && other.id !== ref.id);
+        const otherOrder = subject && await tx.funnelSubjectReference.findFirst({ where: { sourceId: ref.sourceId, subjectId: subject.id, kind: "ORDER", externalId: { not: ref.id } } });
+        const boundElsewhere = selectedSubjectId && mappings.some(mapping => mapping.sourceId === ref.sourceId && mapping.kind === "ORDER" && mapping.externalId === ref.id && mapping.subjectId !== selectedSubjectId);
+        if (multipleOrders || otherOrder || boundElsewhere) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "UNMATCHED", reason: "ORDER_REFERENCE_CONFLICT", processedAt: this.now() } });
       }
-      let factId: string | undefined;
-      if (envelope.factKey && envelope.authority !== "BROWSER_OBSERVED") {
-        const fact = await tx.trackingFact.upsert({ where: { ownerId_subjectId_key: { ownerId: source.ownerId, subjectId: subject.id, key: envelope.factKey } },
-          create: { ownerId: source.ownerId, environment: source.environment, subjectId: subject.id, key: envelope.factKey, type: event.type,
-            authority: envelope.authority, occurredAt: event.occurredAt, attributes: jsonValue(envelope.properties) }, update: {} });
-        factId = fact.id;
-        const oldMoney = fact.attributes as Record<string, unknown>;
+      // Resolve identity even when a business reference already found a subject. Never merge by email.
+      const incomingIdentity = envelope.contactIdentity;
+      let identity: { contactId: string } | null = null;
+      if (incomingIdentity) {
+        const deleted = await tx.trackingDeletion.findUnique({ where: { ownerId_sourceId_namespace_externalIdDigest: {
+          ownerId: source.ownerId, sourceId: source.id, namespace: `CONTACT:${incomingIdentity.kind}`, externalIdDigest: sha256(incomingIdentity.id) } } });
+        if (deleted) return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "REDACTED", envelope: {}, reason: "DELETED_CONTACT", processedAt: this.now() } });
+        identity = await tx.funnelIdentity.findUnique({ where: { ownerId_sourceId_namespace_externalId: {
+          ownerId: source.ownerId, sourceId: source.id, namespace: incomingIdentity.kind, externalId: incomingIdentity.id } } });
+      }
+      if (subject?.contactId && identity && subject.contactId !== identity.contactId)
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "CONTACT_IDENTITY_CONFLICT", processedAt: this.now() } });
+      let contactId = subject?.contactId ?? identity?.contactId ?? undefined;
+      const contact = contactId ? await tx.funnelContact.findUnique({ where: { id: contactId } }) : null;
+      if (contact?.deletedAt)
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "REDACTED", envelope: {}, reason: "DELETED_CONTACT", processedAt: this.now() } });
+      if (contact && (contact.ownerId !== event.ownerId || contact.environment !== event.environment))
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "CONTACT_BOUNDARY_MISMATCH", processedAt: this.now() } });
+      if (contact?.email && envelope.contact?.email && emailKey(contact.email) !== emailKey(envelope.contact.email))
+        return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "CONTACT_RECIPIENT_CONFLICT", processedAt: this.now() } });
+      const existingFact = subject && envelope.factKey && envelope.authority !== "BROWSER_OBSERVED" ?
+        await tx.trackingFact.findUnique({ where: { ownerId_subjectId_key: { ownerId: source.ownerId, subjectId: subject.id, key: envelope.factKey } } }) : null;
+      if (existingFact) {
+        const oldMoney = existingFact.attributes as Record<string, unknown>;
         const moneyChanged = ["amount", "currency", "presentmentAmount", "presentmentCurrency"].some(key =>
           oldMoney[key] !== undefined && envelope.properties[key] !== undefined && oldMoney[key] !== envelope.properties[key]);
         if (moneyChanged) {
           await tx.trackingAudit.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, eventId: event.id,
             action: "FINANCIAL_FACT_CONFLICT", reason: "Conflicting monetary evidence requires explicit reconciliation; existing canonical fact retained." } });
-          return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "FINANCIAL_FACT_CONFLICT", subjectId: subject.id, contactId: subject.contactId, processedAt: this.now() } });
+          return tx.trackingEvent.update({ where: { id: event.id }, data: { status: "QUARANTINED", reason: "FINANCIAL_FACT_CONFLICT", subjectId: subject!.id, contactId: subject!.contactId, processedAt: this.now() } });
         }
-        if (JSON.stringify(fact.attributes) !== JSON.stringify(jsonValue(envelope.properties))) {
+      }
+      // All conflict/deletion/generation checks precede new contact, identity or alias writes.
+      if (!contactId && (incomingIdentity || envelope.contact?.email || envelope.contact?.name)) {
+        const created = await tx.funnelContact.create({ data: { ownerId: source.ownerId, environment: source.environment,
+          email: envelope.contact?.email, name: envelope.contact?.name } }); contactId = created.id;
+      }
+      if (!subject) subject = await tx.funnelSubject.create({ data: { ownerId: source.ownerId, environment: source.environment, kind, contactId } });
+      else if (!subject.contactId && contactId) subject = await tx.funnelSubject.update({ where: { id: subject.id }, data: { contactId } });
+      if (incomingIdentity && !identity && contactId) {
+        await tx.funnelIdentity.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id,
+          namespace: incomingIdentity.kind, externalId: incomingIdentity.id, contactId } });
+        await tx.trackingAudit.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, eventId: event.id,
+          action: "IDENTITY_BOUND", reason: `Bound authenticated source identity; source=${source.id}; generation=${event.sourceGeneration}; kind=${incomingIdentity.kind}. No email-based merge.` } });
+      }
+      if (envelope.authority !== "BROWSER_OBSERVED") for (const ref of refs) {
+        const prior = mappings.find(mapping => mapping.sourceId === ref.sourceId && mapping.kind === ref.kind && mapping.externalId === ref.id);
+        await tx.funnelSubjectReference.upsert({ where: { ownerId_sourceId_kind_externalId: { ownerId: source.ownerId, sourceId: ref.sourceId, kind: ref.kind, externalId: ref.id } },
+          create: { ownerId: source.ownerId, environment: source.environment, sourceId: ref.sourceId, subjectId: subject.id, kind: ref.kind, externalId: ref.id }, update: {} });
+        if (ref.sourceGeneration !== undefined && (!prior || prior.subjectId === subject.id) && !await tx.trackingAudit.findFirst({ where: { eventId: event.id, action: "API_HANDOFF_REFERENCE", reason: `Server-asserted association; source=${ref.sourceId}; generation=${ref.sourceGeneration}; kind=${ref.kind}. Provider namespace is not payment or booking verification.` } }))
+          await tx.trackingAudit.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, eventId: event.id,
+            action: "API_HANDOFF_REFERENCE", reason: `Server-asserted association; source=${ref.sourceId}; generation=${ref.sourceGeneration}; kind=${ref.kind}. Provider namespace is not payment or booking verification.` } });
+      }
+      let factId: string | undefined;
+      if (envelope.factKey && envelope.authority !== "BROWSER_OBSERVED") {
+        const fact = existingFact ?? await tx.trackingFact.create({ data: { ownerId: source.ownerId, environment: source.environment, subjectId: subject.id, key: envelope.factKey,
+          type: event.type, authority: envelope.authority, occurredAt: event.occurredAt, attributes: jsonValue(envelope.properties) } });
+        factId = fact.id;
+        if (JSON.stringify(fact.attributes) !== JSON.stringify(jsonValue(envelope.properties)))
           await tx.trackingAudit.create({ data: { ownerId: source.ownerId, environment: source.environment, sourceId: source.id, eventId: event.id,
             action: "FACT_EVIDENCE_DIFFERENCE", reason: "Existing canonical fact retained; reconcile differing evidence before changing financial totals." } });
-        }
       }
       const late = !!subject.lastOccurredAt && event.occurredAt < subject.lastOccurredAt;
       if (!late) await tx.funnelSubject.update({ where: { id: subject.id }, data: { lastOccurredAt: event.occurredAt } });
@@ -524,13 +577,14 @@ export class TrackingService {
       const correlationKeys = new Set(correlations.map(c => JSON.stringify([c.sourceId, c.tokenHash])));
       let cursor: string | undefined;
       while (affectedSources.length) {
-        const unresolved = await tx.trackingEvent.findMany({ where: { ownerId: contact.ownerId, sourceId: { in: affectedSources },
+        // A signed handoff can arrive through an API source with no existing binding to this contact.
+        const unresolved = await tx.trackingEvent.findMany({ where: { ownerId: contact.ownerId, environment: contact.environment,
           ...(cursor ? { id: { gt: cursor } } : {}), status: { in: ["QUEUED", "UNMATCHED", "BLOCKED", "QUARANTINED"] } }, orderBy: { id: "asc" }, take: 250 });
         if (!unresolved.length) break;
         for (const pending of unresolved) {
           const e = pending.envelope as unknown as NormalizedTrackingEvent;
           const knownIdentity = e.contactIdentity && identityKeys.has(JSON.stringify([pending.sourceId, e.contactIdentity.kind, e.contactIdentity.id]));
-          const knownReference = [e.resource, ...e.references].some(ref => referenceKeys.has(JSON.stringify([pending.sourceId, ref.kind, ref.id])));
+          const knownReference = [e.resource, ...e.references].some(ref => referenceKeys.has(JSON.stringify([(ref as BusinessReference).sourceId ?? pending.sourceId, ref.kind, ref.id])));
           const knownCorrelation = e.correlationToken && correlationKeys.has(JSON.stringify([pending.sourceId, sha256(e.correlationToken)]));
           if (knownIdentity || knownReference || knownCorrelation) await tx.trackingEvent.update({ where: { id: pending.id },
             data: { status: "REDACTED", envelope: {}, reason: "CONTACT_DELETED", contactId: null } });

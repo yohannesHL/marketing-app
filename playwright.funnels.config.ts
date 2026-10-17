@@ -6,7 +6,7 @@ process.env.QA_FUNNEL_FIXTURE_INFO ??= join(tmpdir(), `launchpad-funnel-browser-
 process.env.QA_FUNNEL_PROVIDER_ORIGIN ??= "http://127.0.0.1:3168";
 const baseURL = process.env.BASE_URL ?? "http://127.0.0.1:3167";
 export default defineConfig({
-  testDir: "./tests/e2e", testMatch: ["funnel-builder.spec.ts", "email-workspace.spec.ts", "tracking-workspace.spec.ts"], fullyParallel: false,
+  testDir: "./tests/e2e", testMatch: ["funnel-builder.spec.ts", "funnel-results.spec.ts", "email-workspace.spec.ts", "tracking-workspace.spec.ts"], fullyParallel: false,
   forbidOnly: Boolean(process.env.CI), retries: 0, workers: 1, timeout: 180_000,
   expect: { timeout: 20_000 }, outputDir: "test-results/funnels",
   reporter: [["line"], ["html", { open: "never", outputFolder: "funnels-report" }], ["junit", { outputFile: "test-results/funnels/junit.xml" }]],

@@ -3,6 +3,8 @@ export type TrackingProvider = "NATIVE" | "API" | "CALENDLY" | "SHOPIFY";
 export type TrackingEnvironment = "TEST" | "LIVE";
 export type TrackingMode = "LIVE" | "BACKFILL" | "REPLAY";
 export type Reference = { kind: string; id: string };
+/** API business-reference handoff; generation is captured by receipt acceptance, never supplied by a caller. */
+export type BusinessReference = Reference & { sourceId?: string; sourceGeneration?: number };
 export type TrackingSourceConfig = {
   allowedOrigins: string[];
   allowedEvents: string[];
@@ -28,7 +30,7 @@ export type NormalizedTrackingEvent = {
   authority: "BROWSER_OBSERVED" | "SERVER_ASSERTED" | "PROVIDER_VERIFIED" | "USER_RECORDED";
   verification: string;
   resource: Reference;
-  references: Reference[];
+  references: BusinessReference[];
   subjectKind?: "CONTACT" | "SALES" | "PURCHASE";
   createsSubject?: boolean;
   contactIdentity?: Reference;

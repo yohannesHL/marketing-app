@@ -10,7 +10,7 @@ export type UiFunnel = { id: string; name: string; environment: Environment; sub
   draft: FunnelDefinition; draftRevision: number; publishedVersionId: string | null; versions?: UiVersion[];
   automationEnrolmentEnabled: boolean; automationDispatchEnabled: boolean; createdAt: string };
 export type UiJourney = { id: string; subjectId: string; versionId: string; cycle: number; currentStageKey: string;
-  status: string; startedAt: string; endedAt: string | null; revision: number };
+  status: string; startedAt: string; endedAt: string | null; revision: number; subject?: import("../../server/funnels/funnelReportingTypes").FunnelJourneySubjectSummary };
 export const inputClass = "input input-bordered w-full min-w-0 min-h-11";
 export const buttonClass = "btn btn-secondary min-h-11 normal-case whitespace-normal h-auto py-2";
 export const panelClass = "rounded-box border border-base-300 bg-base-100 p-4 sm:p-5 min-w-0";

@@ -1,17 +1,129 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
+import assert from "node:assert/strict";
 import { writeFile, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { join } from "node:path";
 import { createEmailFixture, EMAIL_FIXTURE_ORIGIN, type EmailFixture } from "./email-fixture";
 import { EMAIL_REQUIRED_EVENTS } from "../../apps/web/src/server/email/emailProvider";
 import type { FunnelDefinition } from "../../apps/web/src/server/funnels/funnelDefinition";
+import { FunnelReportingService } from "../../apps/web/src/server/funnels/funnelReportingService";
 
 export type FunnelBrowserCustomer = {
   email: string; password: string; connectionId: string; senderId: string; sourceId: string;
   campaignId: string; contactId: string; subjectIds: string[]; funnelId: string;
 };
-export type FunnelBrowserFixtureInfo = { customers: Record<string, FunnelBrowserCustomer> };
+export type FunnelBrowserReportCustomer = {
+  email: string; password: string; salesFunnelId: string; salesVersion1Id: string; salesVersion2Id: string;
+  salesSubjectIds: string[]; salesJourneyIds: string[]; purchaseFunnelId: string; purchaseVersionId: string;
+  boardFunnelId: string; boardVersionId: string; fromInclusive: string; toExclusive: string; allTo: string;
+};
+export type FunnelBrowserFixtureInfo = { customers: Record<string, FunnelBrowserCustomer>; reports: Record<string, FunnelBrowserReportCustomer> };
+
+async function reportingCustomer(f: EmailFixture, browser: string, wallTime: Date, signal: AbortSignal) {
+  const day = 86_400_000, midnight = Date.UTC(wallTime.getUTCFullYear(), wallTime.getUTCMonth(), wallTime.getUTCDate());
+  const at = (days: number, hour = 0) => new Date(midnight + days * day + hour * 3_600_000);
+  f.setNow(at(-3, 8));
+  const email = `reports-${browser}@example.test`, password = "Fixture-only-2026!";
+  await f.auth.provisionCustomer({ email, name: "Reporting browser fixture", password });
+  const login = await f.auth.login(email, password);
+  const principal = await f.auth.requireSession(new Request(EMAIL_FIXTURE_ORIGIN, { headers: { cookie: login.cookie.split(";")[0] } }));
+  const setup = await f.readyConnection(principal), published = await f.publishedCampaign({ principal, setup });
+  const secret = `reporting-fixture-${randomUUID()}`;
+  const { source } = await f.tracking.createSource(principal, { name: "Reporting CRM", provider: "API", environment: "TEST", externalAccountId: `reporting-${browser}`,
+    credentials: { signingSecret: secret }, config: { allowedEvents: ["enquiry.accepted"], propertyKeys: ["utm_campaign"] } });
+  async function drain() {
+    while (await f.tracking.processOnce()) signal.throwIfAborted();
+    while (await f.funnels.processOnce()) signal.throwIfAborted();
+  }
+  async function enquiry(id: string, contactId: string, tagged = false) {
+    const raw = JSON.stringify({ schemaVersion: 1, type: "enquiry.accepted", occurredAt: f.now().toISOString(), resource: { kind: "ENQUIRY", id }, subjectKind: "SALES",
+      contactIdentity: { kind: "CRM_CONTACT", id: contactId }, contact: { email: contactId === "maya" ? "maya@example.test" : `${contactId}@example.test`, name: contactId === "maya" ? "Maya" : contactId },
+      properties: tagged ? { utm_campaign: "consultation" } : {} });
+    const timestamp = String(f.now().getTime() / 1000), requestId = randomUUID();
+    const receipt = await f.tracking.collectApi(source.id, new Headers({ "x-launchpad-id": requestId, "x-launchpad-timestamp": timestamp,
+      "x-launchpad-signature": createHmac("sha256", secret).update(`${timestamp}.${requestId}.${raw}`).digest("hex") }), raw);
+    await drain(); const event = await f.db.trackingEvent.findUniqueOrThrow({ where: { id: receipt.receipts[0].id } });
+    assert.equal(event.status, "MATCHED"); assert.ok(event.subjectId); return event.subjectId;
+  }
+  const definition: FunnelDefinition = { schemaVersion: 1,
+    stages: [{ id: "lead", name: "Lead", goal: false, terminal: "NONE" },
+      // Qualified is a goal milestone, independent of a terminal successful exit.
+      { id: "qualified", name: "Discovery booked", goal: true, terminal: "NONE" },
+      { id: "won", name: "Client onboarded", goal: true, terminal: "SUCCESS" }],
+    entryStages: ["lead"], routes: [], campaignLinks: [{ id: "observed-campaign", stageId: "lead", campaignId: published.campaign.id, purpose: "ATTRIBUTION" }] };
+  const sales = await f.funnels.create(principal, { name: "Reporting consultation journey", environment: "TEST", subjectKind: "SALES", definition });
+  const v1 = await f.funnels.publish(principal, sales.id, { draftRevision: sales.draftRevision });
+  const move = (subjectId: string, stageId: string, newCycle = false) => f.funnels.move(principal, sales.id, { subjectId, stageId, newCycle,
+    reason: "Reporting fixture: customer-confirmed progress", commandKey: randomUUID() });
+  f.setNow(at(-3, 10)); const a = await enquiry("enquiry-a", "maya", true), b = await enquiry("enquiry-b", "maya");
+  await move(a, "lead"); await move(b, "lead");
+  f.setNow(at(-3, 11)); await move(a, "qualified");
+  f.setNow(at(-3, 12)); await move(a, "won");
+  f.setNow(at(-3, 13)); await move(a, "lead", true);
+  f.setNow(at(-3, 14)); await move(a, "qualified");
+  f.setNow(at(-2)); const c = await enquiry("enquiry-c", "boundary-contact"); await move(c, "lead");
+  f.setNow(at(-1));
+  const nextDefinition = { ...definition, stages: definition.stages.map(stage => stage.id === "lead" ? { ...stage, name: "New enquiry" } : stage) };
+  const updated = await f.funnels.updateDraft(principal, sales.id, { draftRevision: sales.draftRevision, definition: nextDefinition });
+  const v2 = await f.funnels.publish(principal, sales.id, { draftRevision: updated.draftRevision });
+  f.setNow(at(-1, 10)); const d = await enquiry("enquiry-d", "latest-contact"); await move(d, "lead");
+
+  const shop = await f.tracking.createSource(principal, { name: "Reporting test store", provider: "SHOPIFY", environment: "TEST", externalAccountId: "reporting-fixture.myshopify.com", credentials: { signingSecret: secret } });
+  const purchaseDefinition: FunnelDefinition = { schemaVersion: 1,
+    stages: [{ id: "paid", name: "Paid order", goal: true, terminal: "NONE" }, { id: "refunded", name: "Refund recorded", goal: false, terminal: "NONE" }], entryStages: ["paid"],
+    routes: [{ id: "paid-entry", from: null, trigger: { kind: "EVENT", sourceId: shop.source.id, type: "order.paid" }, branches: [{ id: "paid", to: "paid" }], fallback: { kind: "WAIT" } },
+      { id: "refund", from: "paid", trigger: { kind: "EVENT", sourceId: shop.source.id, type: "refund.succeeded" }, branches: [{ id: "refunded", to: "refunded" }], fallback: { kind: "WAIT" } }] };
+  const purchase = await f.funnels.create(principal, { name: "Reporting purchase journey", environment: "TEST", subjectKind: "PURCHASE", definition: purchaseDefinition });
+  const purchaseVersion = await f.funnels.publish(principal, purchase.id, { draftRevision: purchase.draftRevision });
+  async function hook(payload: unknown, topic: string) {
+    const raw = JSON.stringify(payload);
+    await f.tracking.collectHook(shop.ingressToken!, new Headers({ "X-Shopify-Hmac-SHA256": createHmac("sha256", secret).update(raw).digest("base64"),
+      "X-Shopify-Topic": topic, "X-Shopify-Shop-Domain": "reporting-fixture.myshopify.com", "X-Shopify-Webhook-Id": randomUUID(), "X-Shopify-API-Version": "2026-10" }), raw);
+    await drain();
+  }
+  f.setNow(at(-1, 11));
+  const order = (id: string, amount: string, currency: string) => ({ id, admin_graphql_api_id: `gid://shopify/Order/${id}`, financial_status: "paid", test: true,
+    updated_at: f.now().toISOString(), checkout_token: `reporting-checkout-${id}`, customer: { id: "550", admin_graphql_api_id: "gid://shopify/Customer/550", email: "buyer@example.test", first_name: "Buyer" },
+    total_price_set: { shop_money: { amount, currency_code: currency }, presentment_money: { amount, currency_code: currency } } });
+  const paid1 = order("101", "0.1", "GBP");
+  await hook(paid1, "orders/paid"); await hook(order("102", "0.2", "GBP"), "orders/paid"); await hook(order("103", "1.234567", "USD"), "orders/paid");
+  f.setNow(at(-1, 12));
+  const refund = { id: "301", order_id: "101", created_at: f.now().toISOString(), processed_at: f.now().toISOString(), transactions: [
+    { id: "401", order_id: "101", kind: "refund", status: "success", test: true, amount: "0.1", currency: "GBP", created_at: f.now().toISOString(), processed_at: f.now().toISOString() }] };
+  await hook(refund, "refunds/create"); await hook(paid1, "orders/paid"); await hook(refund, "refunds/create");
+
+  const board = await f.funnels.create(principal, { name: "Reporting full stage board", environment: "TEST", subjectKind: "SALES",
+    definition: { schemaVersion: 1, stages: [{ id: "waiting", name: "Waiting enquiries", goal: false, terminal: "NONE" }], entryStages: ["waiting"], routes: [] } });
+  const boardVersion = await f.funnels.publish(principal, board.id, { draftRevision: board.draftRevision });
+  f.setNow(at(-1, 13));
+  for (let index = 1; index <= 51; index++) {
+    signal.throwIfAborted(); const subjectId = await enquiry(`board-enquiry-${index}`, `board-person-${index}`);
+    await f.funnels.move(principal, board.id, { subjectId, stageId: "waiting", reason: "Reporting fixture: independently confirmed enquiry", commandKey: randomUUID() });
+  }
+  const salesJourneys = await f.db.funnelJourney.findMany({ where: { funnelId: sales.id } });
+  assert.equal(salesJourneys.length, 5);
+  assert.equal(salesJourneys.filter(journey => journey.versionId === v1.version.id).length, 4);
+  assert.equal(await f.db.funnelJourney.count({ where: { funnelId: purchase.id } }), 3);
+  assert.equal(await f.db.trackingFact.count({ where: { ownerId: principal.userId, type: "refund.succeeded" } }), 1);
+  assert.equal(await f.db.funnelJourney.count({ where: { funnelId: board.id } }), 51);
+  assert.equal(await f.db.campaignMembership.count({ where: { ownerId: principal.userId } }), 0);
+  assert.equal(await f.db.messageSend.count({ where: { ownerId: principal.userId } }), 0);
+  f.setNow(wallTime);
+  if (process.env.QA_FUNNEL_FIXTURE_CHECK === "1") {
+    const reports = new FunnelReportingService(f.db, f.auth);
+    const salesReport = await reports.report(principal, sales.id, { versionId: v1.version.id, from: at(-3).toISOString(), to: at(-2).toISOString() });
+    assert.equal(salesReport.totals.journeys, 3); assert.equal(salesReport.totals.goalJourneys, 2);
+    assert.equal(salesReport.attribution.unknownSubjects, 1); assert.equal(salesReport.attribution.partialSubjects, 1);
+    const purchaseReport = await reports.report(principal, purchase.id, { versionId: purchaseVersion.version.id, from: at(-3).toISOString(), to: wallTime.toISOString() });
+    assert.deepEqual(purchaseReport.money.currencies.map(currency => [currency.currency, currency.grossPaid.amount, currency.successfulRefunds.amount, currency.netObservedCash]),
+      [["GBP", "0.3", "0.1", "0.2"], ["USD", "1.234567", "0", "1.234567"]]);
+  }
+  const info: FunnelBrowserReportCustomer = { email, password, salesFunnelId: sales.id, salesVersion1Id: v1.version.id, salesVersion2Id: v2.version.id,
+    salesSubjectIds: [a, b, c, d], salesJourneyIds: salesJourneys.map(journey => journey.id), purchaseFunnelId: purchase.id, purchaseVersionId: purchaseVersion.version.id,
+    boardFunnelId: board.id, boardVersionId: boardVersion.version.id, fromInclusive: at(-3).toISOString(), toExclusive: at(-2).toISOString(), allTo: wallTime.toISOString() };
+  return { info, setup };
+}
 
 function loopback(value: string) {
   const url = new URL(value);
@@ -46,9 +158,9 @@ async function main() {
   try {
     starting = createEmailFixture(); fixture = await starting; controller.signal.throwIfAborted();
     const f = fixture;
-    f.setNow(new Date(Math.floor(Date.now() / 1_000) * 1_000));
+    const wallTime = new Date(Math.floor(Date.now() / 1_000) * 1_000); f.setNow(wallTime);
     const accounts = new Map<string, Awaited<ReturnType<EmailFixture["readyConnection"]>>>();
-    const info: FunnelBrowserFixtureInfo = { customers: {} };
+    const info: FunnelBrowserFixtureInfo = { customers: {}, reports: {} };
     for (const browser of ["chromium", "firefox", "webkit"]) for (const feature of ["funnels", "email", "tracking"]) {
       controller.signal.throwIfAborted();
       const key = `${feature}-${browser}`, email = `${key}@example.test`, password = "Fixture-only-2026!";
@@ -82,6 +194,11 @@ async function main() {
       }
     }
     while (await f.funnels.processOnce()) { controller.signal.throwIfAborted(); }
+    for (const browser of ["chromium", "firefox", "webkit"]) {
+      const report = await reportingCustomer(f, browser, wallTime, controller.signal);
+      info.reports[browser] = report.info; accounts.set(report.setup.apiKey, report.setup);
+    }
+    if (process.env.QA_FUNNEL_FIXTURE_CHECK === "1") { console.log("Reporting fixtures verified: 3 owners; each has 5 sales cycles, 3 purchase journeys, 51 board journeys and zero sends."); await cleanup(); return; }
     const accepted = new Map<string, { id: string; raw: string; accountId: string; record: Record<string, unknown> }>();
     const stats = { readinessReads: 0, sendRequests: 0, acceptedSends: 0, retrievalReads: 0 };
     server = createServer((request, response) => {
@@ -133,4 +250,8 @@ async function main() {
     child.once("error", () => { process.exitCode = 1; void cleanup(); });
   } catch (error) { await cleanup(); throw error; }
 }
-main().catch(() => { console.error("Isolated funnel browser setup stopped."); process.exitCode = 1; });
+main().catch(error => {
+  console.error("Isolated funnel browser setup stopped.");
+  if (process.env.QA_FUNNEL_FIXTURE_CHECK === "1") console.error({ name: error.name, code: error.code, message: error.message });
+  process.exitCode = 1;
+});

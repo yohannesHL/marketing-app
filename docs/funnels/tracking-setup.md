@@ -150,6 +150,48 @@ The timestamp must be within 180 seconds of server time. Request IDs are 8–128
 
 API and provider-hook endpoints expose no browser CORS. The source ID selects the owner/environment on the server; the caller cannot provide them. JSON source envelopes with extra authority, owner or contact-ID fields are rejected.
 
+## Authenticated handoff between sources
+
+A signing server can explicitly connect a business reference to another owned tracking source. Only entries in API `references[]` accept an optional `sourceId`; the primary `resource` and `contactIdentity` always belong to the authenticated ingress API source. Native/browser payloads cannot use this extension. The source ID is an association namespace, not proof that the provider observed the event.
+
+For example, after native form event `form-a` has matched, submit this signed API body to connect the CRM enquiry and stable customer identity to that existing enquiry:
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "enquiry.accepted",
+  "occurredAt": "2026-10-19T10:00:02Z",
+  "resource": {"kind": "ENQUIRY", "id": "crm-enquiry-a"},
+  "references": [
+    {"sourceId": "OWNED_NATIVE_SOURCE_ID", "kind": "ENQUIRY", "id": "form-a"}
+  ],
+  "subjectKind": "SALES",
+  "contactIdentity": {"kind": "CRM_CONTACT", "id": "crm-person-1"},
+  "contact": {"email": "maya@example.test"}
+}
+```
+
+Authenticate the exact serialized body using the signing procedure above, with a real occurrence time. A later `crm-enquiry-b` carrying the same ingress-scoped `CRM_CONTACT` identity creates a second enquiry for the same contact. The handoff does not overwrite the native contact's name/email. A prebound different contact or conflicting recipient stays quarantined; equal email addresses never merge records. Establish marketing consent separately through the audited email policy API before enabling enrolment.
+
+For commerce, submit a server-confirmed `checkout.observed` event with a stable API `CHECKOUT` resource, `subjectKind: "PURCHASE"`, and `references: [{sourceId: "OWNED_SHOPIFY_SOURCE_ID", kind: "CHECKOUT", id: "ACTUAL_CHECKOUT_TOKEN"}]`. Use the checkout token supplied by your trusted commerce integration, not an invented order or internal subject ID. The later signed Shopify paid-order payload must carry the same token to join that subject. A second checkout/order stays a different purchase even if its verified customer ID is the same. API checkout properties may retain campaign tags actually observed by that server; this is server-asserted attribution evidence. Anonymous browser product/checkout observations are not automatically joined to a purchase. Without an explicit supported association, leave them unknown rather than claiming an identified visit.
+
+The target must be active, owned by the same customer and in the same TEST/LIVE environment. Supported target namespaces are:
+
+| Target provider | Accepted business reference kinds |
+| --- | --- |
+| NATIVE | `ENQUIRY` |
+| API | `CONTACT`, `ENQUIRY`, `DEAL`, `BOOKING`, `ORDER`, `CHECKOUT`, `REFUND`, `REFUND_TRANSACTION`, subject to the chosen subject kind |
+| CALENDLY | `BOOKING`, using the canonical invitee URI |
+| SHOPIFY | `ORDER`, `CHECKOUT`, `REFUND`, `REFUND_TRANSACTION`; use canonical `gid://shopify/Order/…`, `gid://shopify/Refund/…` and `gid://shopify/OrderTransaction/…` for those resources; checkout tokens remain strings |
+
+Managed email sources cannot be handoff targets. All references in an event must be compatible with its subject kind; customer identity is separate from purchase references. A request allows at most ten references. Identical qualified references normalize to one binding. Authenticate before target lookup; invalid targets return a generic error without exposing another account. The server captures target generation inside the durable acceptance transaction. Clients cannot supply a generation, owner, environment, internal contact/subject ID or verification result.
+
+Matching and history-only replay recheck every captured target generation and active status. A rotated/disconnected target leaves the old event `BLOCKED` with `REFERENCE_SOURCE_CHANGED`; replay and identical retries retain the old fence. An operator must review the association and, if still valid, issue a genuinely new signed event with a new request ID. Retrying the old receipt does not renew authority. Source-qualified deletion tombstones prevent delayed/replayed references and stable identities from recreating deleted contacts, including pending handoffs received through another API source.
+
+All existing identity, recipient, order and canonical-money conflicts are checked before new identities or aliases are written. An audited manual match can resolve an ambiguous receipt, but cannot attach a second order from the same store to one purchase or move an already referenced financial fact to another subject. Such cases remain `ORDER_REFERENCE_CONFLICT` or `FINANCIAL_REFERENCE_CONFLICT`; correct the source evidence instead of repeatedly matching it. Conflicting monetary values remain `FINANCIAL_FACT_CONFLICT` with the original fact retained.
+
+Source audits distinguish `API_HANDOFF_REFERENCE` (server-asserted association, safe target source/generation/kind) and `IDENTITY_BOUND` (stable ingress identity binding). Neither label upgrades an API event from `SERVER_ASSERTED` to `PROVIDER_VERIFIED`. Only the actual provider adapter's verified receipt establishes the provider event. The [integrated release evidence](release-evidence.md) exercises both handoff paths without live provider accounts.
+
 ## Provider webhook setup
 
 Create one source per provider account and environment with `credentials.signingSecret` and optionally `credentials.apiToken` for read reconciliation. The returned `ingressToken` forms this URL:
