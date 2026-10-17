@@ -89,3 +89,40 @@ test("typed editor values preserve exact decimals and timestamps and never coerc
     { any: [{ field: { scope: "EVENT", key: "approved" }, type: "boolean", op: "eq", value: false }, { field: { scope: "EVENT", key: "approval" }, type: "string", op: "isMissing" }] }] };
   assert.deepEqual(validateCondition(condition), condition); assert.equal(conditionNodes(condition), 5);
 });
+
+test("inserting on a path preserves conditions, siblings and actions and waits for a later event", async () => {
+  const { insertStageOnEdge } = await import("../../apps/web/src/components/funnels/funnelGraph");
+  const source = definition(), before = structuredClone(source);
+  const next = insertStageOnEdge(source, { edgeId: "route:qualify:branch:valuable", stage: { id: "review", name: "Review proposal" }, routeId: "reviewed", sourceId: "crm", type: "custom.reviewed" });
+  assert.deepEqual(source, before);
+  assert.deepEqual(next.routes[1].branches[0], { ...source.routes[1].branches[0], to: "review" });
+  assert.deepEqual(next.routes[1].branches[1], source.routes[1].branches[1]);
+  assert.deepEqual(next.stageActions, source.stageActions); assert.deepEqual(next.campaignLinks, source.campaignLinks);
+  const input = { currentStage: "enquiry", event: { sourceId: "crm", type: "custom.qualified", occurredAt: "2026-10-19T10:00:00Z", properties: { amount: "1500" } }, properties: {}, changedFields: [] };
+  assert.equal(evaluateFunnel(next, input).to, "review");
+  assert.equal(evaluateFunnel(next, { ...input, currentStage: "review" }).outcome, "WAIT");
+  assert.equal(evaluateFunnel(next, { ...input, currentStage: "review", event: { ...input.event, type: "custom.reviewed" } }).to, "qualified");
+  const entry = insertStageOnEdge(source, { edgeId: "route:entry:fallback", stage: { id: "consent", name: "Consent recorded" }, routeId: "consented", sourceId: "crm", type: "custom.consented" });
+  assert.ok(entry.entryStages.includes("consent"));
+  assert.deepEqual(entry.routes[0].fallback, { kind: "MOVE", to: "consent" });
+  assert.throws(() => insertStageOnEdge(source, { edgeId: "route:entry:fallback", stage: { id: "consent", name: "Consent" }, routeId: "consented", sourceId: "", type: "" }), /source and event/);
+  assert.throws(() => insertStageOnEdge(source, { edgeId: "missing", stage: { id: "x", name: "x" }, routeId: "x", sourceId: "crm", type: "custom.x" }), /no longer exists/);
+});
+
+test("forks are ordered conditional alternatives, preserving the original otherwise path and cycle checks", async () => {
+  const { forkRoute } = await import("../../apps/web/src/components/funnels/funnelGraph");
+  const source = addStage(definition(), { id: "low", name: "Low intent" });
+  const when: Condition = { field: { scope: "EVENT", key: "amount" }, type: "decimal", op: "lt", value: "500" };
+  const next = forkRoute(source, { routeId: "qualify", branchId: "low-value", to: "low", when, beforeBranchId: "valuable" });
+  assert.deepEqual(next.routes[1].branches.map(branch => branch.id), ["low-value", "valuable", "otherwise"]);
+  assert.deepEqual(next.routes[1].fallback, source.routes[1].fallback);
+  const input = { currentStage: "enquiry", event: { sourceId: "crm", type: "custom.qualified", occurredAt: "2026-10-19T10:00:00Z", properties: { amount: "100" } }, properties: {}, changedFields: [] };
+  assert.equal(evaluateFunnel(next, input).to, "low");
+  assert.equal(evaluateFunnel(next, { ...input, event: { ...input.event, properties: { amount: "1500" } } }).to, "qualified");
+  assert.equal(evaluateFunnel(next, { ...input, event: { ...input.event, properties: { amount: "750" } } }).to, "won");
+  assert.equal(evaluateFunnel(next, { ...input, event: { ...input.event, properties: {} } }).outcome, "UNKNOWN");
+  assert.throws(() => forkRoute(source, { routeId: "close", branchId: "loop", to: "enquiry", when }), /cycle/);
+  assert.throws(() => forkRoute(source, { routeId: "qualify", branchId: "x", to: "low", when, beforeBranchId: "missing" }), /no longer exists/);
+  const beforeAlways = forkRoute(source, { routeId: "qualify", branchId: "low-value", to: "low", when });
+  assert.deepEqual(beforeAlways.routes[1].branches.map(branch => branch.id), ["valuable", "low-value", "otherwise"]);
+});

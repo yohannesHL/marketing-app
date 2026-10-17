@@ -1,29 +1,50 @@
 "use client";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Background, Controls, Handle, MarkerType, Position, ReactFlow, applyNodeChanges, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Background, BaseEdge, ConnectionLineType, Controls, EdgeLabelRenderer, Handle, Position, ReactFlow, applyNodeChanges, getSmoothStepPath,
+  type Edge, type EdgeProps, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import type { FunnelDefinition } from "../../server/funnels/funnelDefinition";
+import type { CanvasConnectionRequest } from "./CanvasConnectionDialog";
 import { connectionIssue, funnelEdges } from "./funnelGraph";
 import type { UiSource } from "./funnelUi";
 
 type StageNode = Node<{ name: string; order: number; entry: boolean; goal: boolean; terminal: string; events: string[]; campaigns: number; actions: number; sourceNames: string[] }, "stage">;
 type EntryNode = Node<{ name: string }, "entry">;
 type CanvasNode = StageNode | EntryNode;
-
-const StageCard = memo(function StageCard({ data, selected, isConnectable }: NodeProps<StageNode>) {
+type JourneyEdge = Edge<{ title: string; detail: string; from: string | null; disabled: boolean; onAdd: (request: CanvasConnectionRequest) => void }, "journey">;
+const Actions = createContext<{ disabled: boolean; onAdd: (request: CanvasConnectionRequest) => void; onEdit: (id: string) => void }>({ disabled: true, onAdd: () => {}, onEdit: () => {} });
+function Plus() { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>; }
+const StageCard = memo(function StageCard({ id, data, selected, isConnectable }: NodeProps<StageNode>) {
+  const actions = useContext(Actions);
   return <div className={`funnel-stage-card ${selected ? "is-selected" : ""} ${data.goal ? "is-goal" : ""}`}>
     <Handle type="target" position={Position.Top} isConnectable={isConnectable} aria-label={`Connect into ${data.name}`} />
     <div className="funnel-stage-card-top"><span className="funnel-stage-number">{String(data.order).padStart(2, "0")}</span><span className="funnel-stage-kind">{data.goal ? "Conversion goal" : data.entry ? "Entry stage" : "Journey stage"}</span>{data.terminal !== "NONE" && <span className="funnel-node-badge">{data.terminal === "SUCCESS" ? "Success exit" : "Exit"}</span>}</div>
     <strong className="funnel-stage-title">{data.name || "Unnamed stage"}</strong>
     <div className="funnel-stage-signal"><span className="funnel-signal-dot" aria-hidden="true" /><span>{data.events[0] ?? "Manual movement"}{data.events.length > 1 ? ` +${data.events.length - 1}` : ""}</span></div>
-    {data.sourceNames.length > 0 && <p className="funnel-stage-source">{data.sourceNames.join(" · ")}</p>}
-    <div className="funnel-stage-card-bottom"><span>{data.campaigns} campaign {data.campaigns === 1 ? "link" : "links"}</span><span className={data.actions ? "funnel-action-present" : ""}>{data.actions ? `${data.actions} optional ${data.actions === 1 ? "action" : "actions"}` : "Tracking only"}</span></div>
-    <Handle type="source" position={Position.Bottom} isConnectable={isConnectable && data.terminal === "NONE"} aria-label={`Connect from ${data.name}`} />
+    <div className="funnel-stage-summary">{data.campaigns ? `${data.campaigns} campaign links` : "No campaign linked"} · {data.actions ? `${data.actions} actions` : "Tracking only"}</div>
+    <div className="funnel-stage-card-bottom nodrag nopan">
+      <button type="button" disabled={actions.disabled} onClick={event => { event.stopPropagation(); actions.onEdit(id); }} aria-label={`Edit ${data.name}`}>Edit stage</button>
+      {data.terminal === "NONE" && <button type="button" className="funnel-add-button" disabled={actions.disabled} onClick={event => { event.stopPropagation(); actions.onAdd({ from: id }); }} aria-label={`Add after ${data.name}`} title="Add stage, connection or fork"><Plus /></button>}
+    </div>
+    {data.terminal === "NONE" && <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} aria-label={`Connect from ${data.name}`} />}
   </div>;
 });
 const JourneyEntry = memo(function JourneyEntry({ isConnectable }: NodeProps<EntryNode>) {
-  return <div className="funnel-entry-node"><span className="funnel-entry-symbol" aria-hidden="true">↳</span><div><strong>New journey</strong><span>Starts with qualifying evidence</span></div><Handle type="source" position={Position.Bottom} isConnectable={isConnectable} aria-label="Connect a journey entry" /></div>;
+  const actions = useContext(Actions);
+  return <div className="funnel-entry-node"><div><strong>New journey</strong><span>Starts with qualifying evidence</span></div>
+    <button type="button" className="funnel-add-button nodrag nopan" disabled={actions.disabled} onClick={() => actions.onAdd({ from: null })} aria-label="Add from new journey" title="Add an entry connection"><Plus /></button>
+    <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} aria-label="Connect a journey entry" /></div>;
 });
-const nodeTypes = { stage: StageCard, entry: JourneyEntry };
+const PathConnector = memo(function PathConnector(props: EdgeProps<JourneyEdge>) {
+  const [path] = getSmoothStepPath({ ...props, borderRadius: 3 });
+  const data = props.data;
+  return <><BaseEdge id={props.id} path={path} style={{ stroke: "var(--funnel-connector)", strokeWidth: 2 }} />
+    {data && <EdgeLabelRenderer><div className="funnel-path-control nodrag nopan" style={{ transform: `translate(-50%, -50%) translate(${props.targetX}px,${props.targetY - 66}px)` }}>
+      <button type="button" className="funnel-add-button" disabled={data.disabled} title={data.detail} aria-label={`Add on ${data.detail}`} onClick={() => data.onAdd({ from: data.from, edgeId: props.id })}><Plus /></button>
+      <span className="funnel-path-label" title={data.detail}>{data.title}</span>
+    </div></EdgeLabelRenderer>}
+  </>;
+});
+const nodeTypes = { stage: StageCard, entry: JourneyEntry }, edgeTypes = { journey: PathConnector };
 function entryNode(definition: FunnelDefinition) { let id = "__launchpad_canvas_entry__"; while (definition.stages.some(stage => stage.id === id)) id += "_"; return id; }
 function arrange(definition: FunnelDefinition, sources: UiSource[]): CanvasNode[] {
   const depth = new Map(definition.stages.map(stage => [stage.id, 1])), links = funnelEdges(definition);
@@ -35,7 +56,7 @@ function arrange(definition: FunnelDefinition, sources: UiSource[]): CanvasNode[
   return [{ id: entryNode(definition), position: { x: 0, y: 0 }, data: { name: "New journey" }, type: "entry", deletable: false, width: 270, ariaLabel: "New journey, connect qualifying evidence to an entry stage" }, ...definition.stages.map((stage, index): StageNode => {
     const level = depth.get(stage.id) ?? 1, column = rows.get(level) ?? 0; rows.set(level, column + 1);
     const incoming = definition.routes.filter(route => route.branches.some(branch => branch.to === stage.id) || route.fallback.kind === "MOVE" && route.fallback.to === stage.id);
-    return { id: stage.id, position: { x: (column - ((rowSizes.get(level) ?? 1) - 1) / 2) * 340, y: level * 270 - 90 }, type: "stage", deletable: false, width: 270,
+    return { id: stage.id, position: { x: (column - ((rowSizes.get(level) ?? 1) - 1) / 2) * 380, y: level * 340 - 120 }, type: "stage", deletable: false, width: 270,
       ariaLabel: `${stage.name || "Unnamed stage"}${stage.goal ? ", goal" : ""}. Select to edit stage settings.`,
       data: { name: stage.name, order: index + 1, goal: stage.goal, terminal: stage.terminal, entry: definition.entryStages.includes(stage.id),
         events: [...new Set(incoming.map(route => route.trigger.type))], sourceNames: [...new Set(incoming.map(route => sources.find(source => source.id === route.trigger.sourceId)?.name ?? "Unavailable source"))],
@@ -44,49 +65,54 @@ function arrange(definition: FunnelDefinition, sources: UiSource[]): CanvasNode[
   })];
 }
 
-export default function FunnelCanvas({ definition, sources, selectedStageId, onSelectStage, onConnect, disabled = false }: {
+export default function FunnelCanvas({ definition, sources, selectedStageId, onSelectStage, onConnect, onAdd, disabled = false, settingsOpen, onToggleSettings }: {
   definition: FunnelDefinition; sources: UiSource[]; selectedStageId: string | null; onSelectStage: (id: string) => void;
-  onConnect: (from: string | null, to: string) => void; disabled?: boolean;
+  onConnect: (from: string | null, to: string) => void; onAdd: (request: CanvasConnectionRequest) => void; disabled?: boolean; settingsOpen: boolean; onToggleSettings: () => void;
 }) {
   const ENTRY = entryNode(definition);
-  const [nodes, setNodes] = useState<CanvasNode[]>(() => arrange(definition, sources)), [flow, setFlow] = useState<ReactFlowInstance<CanvasNode> | null>(null);
+  const [nodes, setNodes] = useState<CanvasNode[]>(() => arrange(definition, sources)), [flow, setFlow] = useState<ReactFlowInstance<CanvasNode, JourneyEdge> | null>(null);
+  const topology = JSON.stringify([definition.stages.map(stage => stage.id), funnelEdges(definition).map(edge => [edge.id, edge.from, edge.to])]), previousTopology = useRef(topology);
+  const fit = useCallback(() => { requestAnimationFrame(() => requestAnimationFrame(() => { void flow?.fitView({ padding: .18, maxZoom: 1, duration: 0 }); })); }, [flow]);
   useEffect(() => {
-    if (!flow) return;
-    let frame = 0;
-    const fitOnResize = () => {
-      cancelAnimationFrame(frame);
-      // Let React Flow finish measuring its new viewport before fitting nodes.
-      frame = requestAnimationFrame(() => { frame = requestAnimationFrame(() => { void flow.fitView({ padding: .25, maxZoom: .95, duration: 0 }); }); });
-    };
-    window.addEventListener("resize", fitOnResize);
-    return () => { window.removeEventListener("resize", fitOnResize); cancelAnimationFrame(frame); };
-  }, [flow]);
-  useEffect(() => { setNodes(old => arrange(definition, sources).map(node => {
-    const previous = old.find(prior => prior.id === node.id);
-    // Keep React Flow's measurements so selection and typing do not hide nodes
-    // while their handles are measured again.
-    return { ...previous, ...node, position: previous?.position ?? node.position, selected: node.id === selectedStageId };
-  })); }, [definition, sources, selectedStageId]);
-  const edges = useMemo(() => funnelEdges(definition).map(edge => ({ id: edge.id, source: edge.from ?? ENTRY, target: edge.to,
-    label: edge.label, type: "smoothstep", deletable: false, markerEnd: { type: MarkerType.ArrowClosed, color: "oklch(var(--bc) / .45)" },
-    style: { stroke: "oklch(var(--bc) / .4)", strokeWidth: 1.5 }, labelStyle: { fill: "oklch(var(--bc))", fontSize: 11 }, labelBgStyle: { fill: "oklch(var(--b1))" }, labelBgPadding: [8, 5] as [number, number], labelBgBorderRadius: 5 })), [definition, ENTRY]);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [fit]);
+  useEffect(() => { fit(); }, [settingsOpen, fit]);
+  useEffect(() => {
+    const changed = previousTopology.current !== topology; previousTopology.current = topology;
+    setNodes(old => arrange(definition, sources).map(node => {
+      const previous = old.find(prior => prior.id === node.id);
+      return { ...previous, ...node, position: changed ? node.position : previous?.position ?? node.position, selected: node.id === selectedStageId };
+    }));
+    if (changed) fit();
+  }, [definition, sources, selectedStageId, topology, fit]);
+  const edges = useMemo<JourneyEdge[]>(() => funnelEdges(definition).map(edge => {
+    const route = definition.routes.find(item => item.id === edge.routeId)!;
+    const from = definition.stages.find(stage => stage.id === edge.from)?.name ?? "New journey", to = definition.stages.find(stage => stage.id === edge.to)?.name ?? "stage";
+    const branch = route.branches.find(item => item.id === edge.branchId);
+    const title = edge.kind === "FALLBACK" ? route.branches.length ? "Otherwise" : route.trigger.type : branch?.when ? `If condition · Path ${route.branches.indexOf(branch) + 1}` : "Always";
+    return { id: edge.id, source: edge.from ?? ENTRY, target: edge.to, type: "journey", deletable: false,
+      data: { title, detail: `${from} to ${to} · ${edge.label}`, from: edge.from, disabled, onAdd } };
+  }), [definition, ENTRY, disabled, onAdd]);
   const changes = useCallback((items: NodeChange<CanvasNode>[]) => {
     const selection = items.find(item => item.type === "select" && item.selected && item.id !== ENTRY);
     if (!disabled && selection?.type === "select" && selection.id !== selectedStageId) onSelectStage(selection.id);
     setNodes(old => applyNodeChanges(items.filter(item => item.type !== "remove"), old));
   }, [ENTRY, disabled, onSelectStage, selectedStageId]);
   return <section data-funnel-canvas aria-label="Funnel canvas" className="funnel-canvas-shell">
-    <div className="funnel-canvas-toolbar"><div><strong>Journey canvas</strong><p>{definition.stages.length} stages <span aria-hidden="true">·</span> {definition.routes.length} event rules</p></div>
-      <button className="btn btn-ghost min-h-11 normal-case" type="button" disabled={disabled} onClick={() => { const arranged = arrange(definition, sources); setNodes(old => old.map(node => ({ ...node, position: arranged.find(item => item.id === node.id)?.position ?? node.position }))); requestAnimationFrame(() => flow?.fitView({ padding: .25, duration: 0 })); }}>Arrange stages</button></div>
-    <div className="funnel-canvas-viewport" data-testid="funnel-canvas"><ReactFlow<CanvasNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={changes} onInit={setFlow}
+    <div className="funnel-canvas-toolbar"><div><strong>Journey canvas</strong><p>Use + to add a stage or split a path</p></div><div className="flex flex-wrap gap-1">
+      <button className="btn btn-ghost min-h-11 normal-case" type="button" disabled={disabled} onClick={() => { const arranged = arrange(definition, sources); setNodes(old => old.map(node => ({ ...node, position: arranged.find(item => item.id === node.id)?.position ?? node.position }))); fit(); }}>Arrange stages</button>
+      <button className="btn btn-ghost min-h-11 normal-case" type="button" aria-expanded={settingsOpen} disabled={disabled} onClick={onToggleSettings}>{settingsOpen ? "Hide settings" : "Show settings"}</button></div></div>
+    <div className="funnel-canvas-viewport" data-testid="funnel-canvas"><Actions.Provider value={{ disabled, onAdd, onEdit: onSelectStage }}><ReactFlow<CanvasNode, JourneyEdge> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={changes} onInit={setFlow}
       onNodeClick={(_, node) => { if (!disabled && node.id !== ENTRY) onSelectStage(node.id); }}
       onConnect={connection => { if (!disabled && connection.source && connection.target) onConnect(connection.source === ENTRY ? null : connection.source, connection.target); }}
       isValidConnection={connection => Boolean(connection.source && connection.target && !connectionIssue(definition, connection.source === ENTRY ? null : connection.source, connection.target))}
       nodesConnectable={!disabled} nodesDraggable={!disabled} nodesFocusable={!disabled} elementsSelectable={!disabled} edgesFocusable={false} edgesReconnectable={false} deleteKeyCode={null}
-      fitView fitViewOptions={{ padding: .25, maxZoom: .95 }} minZoom={.2} maxZoom={1.6} snapToGrid snapGrid={[20, 20]}
+      connectionLineType={ConnectionLineType.SmoothStep} connectionLineStyle={{ stroke: "var(--funnel-connector)", strokeWidth: 2 }} proOptions={{ hideAttribution: true }}
+      fitView fitViewOptions={{ padding: .18, maxZoom: 1 }} minZoom={.15} maxZoom={1.6} snapToGrid snapGrid={[20, 20]}
       ariaLabelConfig={{ "controls.zoomIn.ariaLabel": "Zoom in on funnel", "controls.zoomOut.ariaLabel": "Zoom out of funnel", "controls.fitView.ariaLabel": "Fit all funnel stages" }}>
-      <Background gap={22} size={1} color="oklch(var(--bc) / .12)" /><Controls showInteractive={false} />
-    </ReactFlow></div>
-    <div className="funnel-canvas-caption">Select a stage to configure it. Connect the dots to add an event rule.<span>Layout is kept for this visit. Rules are saved with your draft.</span></div>
+      <Background gap={22} size={1} color="oklch(var(--bc) / .18)" /><Controls showInteractive={false} />
+    </ReactFlow></Actions.Provider></div>
+    <div className="funnel-canvas-caption">Add with + or draw between the green connection points. Select Edit stage for details.<span>Connections follow saved event rules. Dragging only changes this visit’s layout.</span></div>
   </section>;
 }

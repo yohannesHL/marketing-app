@@ -73,3 +73,35 @@ Before adding the funnel schema, the database was backed up and all 47 existing
 tables were compared before and after: every existing record was identical and
 the foreign-key check passed. Local provider fixtures are still local fixtures;
 this verification does not claim a production deployment or live delivery proof.
+
+## Canvas connection controls
+
+The journey canvas now uses orthogonal connectors with a plus button on every
+path, plus an add button on each open stage and the journey entry. Users can:
+
+- Add a new stage with an explicit source/event connection.
+- Connect an existing stage without dragging, or draw between the green handles.
+- Insert a stage on one selected path. The original incoming condition and rule
+  priority stay intact; the user chooses the later event for the onward path.
+- Fork an existing event rule with a required condition. Its existing destinations
+  and fallback remain intact. The fork is inserted before the selected branch,
+  or before an unconditional branch / fallback when adding from a stage.
+- Hide settings to give the canvas the full available width, and reopen them with
+  Edit stage. Layout remains local to the visit; rules use the existing saved draft.
+
+Connection setup uses a native modal dialog with keyboard focus containment,
+Escape/cancel and return focus. Cancelling changes no draft data. Invalid source,
+cycle, exit-stage and condition rules still apply. No action enables automation.
+React Flow attribution is hidden through its supported `proOptions` setting;
+the installed MIT license and copyright notice remain unchanged.
+
+Validation for this update: TypeScript and production build passed; 12 focused
+rule/inspector integration tests passed. Nine browser journeys passed across
+Chromium, Firefox and WebKit, covering drawn connections, plus-button creation,
+conditional forks, insertion, existing destinations, persisted reloads, keyboard
+access, mobile dialogs, draft conflicts and no provider side effects.
+
+The local workspace contains a separate unpublished TEST draft named
+“Lead journey · builder review” and a “Local funnel review” TEST source for visual
+verification. No events are sent, no provider is connected, and automation is off.
+The existing Fluxsoft subscriptions draft and original campaigns are unchanged.
