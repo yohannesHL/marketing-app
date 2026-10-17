@@ -1,0 +1,69 @@
+{
+  "testedAt": "2026-10-17T01:16:11.625Z",
+  "provider": "llm-gw",
+  "model": "codex/fast",
+  "syntheticInput": true,
+  "brief": "Campaign objective\nDrive visits to the Clayroom Studio website by introducing the studio and its makers through behind-the-scenes pottery content.\n\nAudience\nLocal adults interested in pottery, ceramics and handmade objects.\n\nCore message\nDiscover Clayroom Studio through practical, warm glimpses of the making process, including shaping clay on a wheel and glazing. Encourage people to explore the website for studio information and learn more about the makers.\n\nTone and language\nWarm, practical and specific, using British English. Use the brand colour #365B43 where relevant to creative direction.\n\nSelected channels\nYouTube, Facebook, Instagram, TikTok, LinkedIn and X. Each channel should receive distinct content suited to its format and audience.\n\nDesired action\nVisit the Clayroom Studio website: https://example.test/clayroom\n\nSupported facts and boundaries\nClayroom Studio is a ceramics studio. The campaign may show or describe shaping clay on a wheel, glazing and behind-the-scenes pottery making. Do not claim prices, discounts, booking availability, certifications or environmental benefits. No event date, price or booking offer has been provided.\n\nQuestions to resolve\nWhich makers, studio location or specific studio details should be named? What website page should the campaign send people to? Are there approved photos or video clips of wheel-throwing, glazing and the makers? Should the copy include a local area name? Are there any accessibility requirements or preferred wording for visiting the studio?",
+  "briefDurationMs": 6123,
+  "creatives": [
+    {
+      "platform": "YOUTUBE",
+      "format": "SHORT_VIDEO",
+      "title": "Meet the makers at Clayroom Studio",
+      "body": "Step inside Clayroom Studio for a practical, behind-the-scenes look at pottery making. See clay shaped on the wheel, watch glazing bring pieces to life, and learn more about the makers behind the work.\n\nExplore the studio: https://example.test/clayroom",
+      "cta": "Visit the Clayroom Studio website",
+      "script": "Hook: “What goes into making a handmade ceramic piece?”\n\nShot 1: Close-up of hands preparing clay. On-screen text: “Meet the makers at Clayroom Studio.”\nShot 2: Clay being shaped on a pottery wheel. Voiceover: “The making process starts with a simple lump of clay.”\nShot 3: Detail of the maker’s hands refining the form.\nShot 4: Glaze being applied to a ceramic piece. Voiceover: “Then glazing adds colour and character.”\nShot 5: Finished pieces and a wider studio view. Voiceover: “Discover more about Clayroom Studio and its makers.”\nEnd card: https://example.test/clayroom",
+      "visualBrief": "Vertical, tactile close-ups of wheel-throwing and glazing, with warm studio light and natural process sounds. Use #365B43 for title cards and end-card accents. Add clear captions."
+    },
+    {
+      "platform": "FACEBOOK",
+      "format": "IMAGE",
+      "title": "A glimpse inside Clayroom Studio",
+      "body": "What does pottery making look like behind the scenes?\n\nAt Clayroom Studio, makers shape clay on the wheel, refine each form and apply glaze by hand. These practical, detailed stages are part of the story behind every ceramic piece.\n\nTake a closer look at the studio and learn more about the makers:\nhttps://example.test/clayroom",
+      "cta": "Explore the studio and its makers",
+      "script": "",
+      "visualBrief": "Use a warm, documentary-style image showing a maker shaping clay on a wheel or glazing a piece. Keep the setting recognisably studio-based. Use #365B43 subtly in a border or graphic accent. Include descriptive alt text."
+    },
+    {
+      "platform": "INSTAGRAM",
+      "format": "SHORT_VIDEO",
+      "title": "From clay to glaze",
+      "body": "A closer look at the making process at Clayroom Studio 🤲\n\nClay shaped on the wheel. Forms refined by hand. Glaze added with care.\n\nMeet the makers and discover more about the studio via the link: https://example.test/clayroom\n\n#ClayroomStudio #PotteryMaking #Ceramics #HandmadeObjects #BehindTheScenes",
+      "cta": "Visit the link to discover Clayroom Studio",
+      "script": "Hook: “From clay to glaze…”\n\nShot 1: Hands centre a lump of clay on the wheel.\nShot 2: The form rises as the wheel turns.\nShot 3: Close-up of the maker refining the rim.\nShot 4: Brush or tool applying glaze.\nShot 5: Finished piece beside the maker’s tools.\n\nOn-screen text: “Meet the makers at Clayroom Studio.”\nFinal frame: “Discover more: https://example.test/clayroom”",
+      "visualBrief": "Shoot in vertical format with intimate macro details, gentle camera movement and authentic studio audio. Use warm neutrals with #365B43 for on-screen text. Add burned-in captions and keep key text clear of interface areas."
+    },
+    {
+      "platform": "TIKTOK",
+      "format": "SHORT_VIDEO",
+      "title": "What happens in a ceramics studio?",
+      "body": "Clay, a spinning wheel and a careful glaze — here’s a glimpse inside Clayroom Studio. Meet the makers and explore the process: https://example.test/clayroom\n\n#PotteryTok #Ceramics #ClayroomStudio #BehindTheScenes",
+      "cta": "Explore Clayroom Studio",
+      "script": "Hook: “POV: you’re watching a piece take shape.”\n\nBeat 1: Fast close-up of clay landing on the wheel.\nBeat 2: Cut to the wheel spinning as the maker centres the clay.\nBeat 3: Quick detail of the form being shaped.\nBeat 4: Match cut to glaze being brushed on.\nBeat 5: Reveal the finished piece.\n\nVoiceover: “At Clayroom Studio, the making process moves from wheel to glaze. Discover the makers and the studio at the link in this video.”\nEnd text: “https://example.test/clayroom”",
+      "visualBrief": "Fast but clear vertical edits, alternating wide studio context with satisfying close-ups. Use natural wheel and brush sounds, simple captions and #365B43 as a recurring text accent."
+    },
+    {
+      "platform": "LINKEDIN",
+      "format": "TEXT",
+      "title": "Behind the making at Clayroom Studio",
+      "body": "The making process is central to the story of Clayroom Studio.\n\nFrom shaping clay on a wheel to refining forms and applying glaze, the studio offers a practical glimpse into how handmade ceramics take shape. It is also an opportunity to learn more about the makers behind the work.\n\nExplore Clayroom Studio: https://example.test/clayroom",
+      "cta": "Learn more about Clayroom Studio",
+      "script": "",
+      "visualBrief": ""
+    },
+    {
+      "platform": "X",
+      "format": "TEXT",
+      "title": "Meet the makers at Clayroom Studio",
+      "body": "From shaping clay on the wheel to applying glaze, take a practical look behind the scenes at Clayroom Studio and learn more about its makers: https://example.test/clayroom",
+      "cta": "Visit the Clayroom Studio website",
+      "script": "",
+      "visualBrief": ""
+    }
+  ],
+  "creativesDurationMs": 16148,
+  "savedAndReloaded": true,
+  "socialPosts": 0,
+  "socialDeliveries": 0,
+  "quotaRequests": 2
+}

@@ -1,85 +1,13 @@
 "use client";
-
 import Link from "next/link";
-
-import {
-  Alert,
-  Badge,
-  Card,
-  Container,
-  Grid,
-  Inline,
-  Stack,
-  Typography,
-} from "@launchpad/ui";
-
+import { WorkspaceIcon } from "../workspace/WorkspaceIcon";
 export function MarketingHomePage() {
-  return (
-    <main className="py-16" data-testid="marketing-home">
-      <Container>
-        <Stack gap={8}>
-          <section data-testid="marketing-hero">
-            <Stack gap={5}>
-              <Inline>
-                <Badge tone="primary">Official homepage</Badge>
-                <Badge tone="success">Campaign creation</Badge>
-              </Inline>
-              <Typography as="span" variant="overline">
-                Launchpad
-              </Typography>
-              <Typography as="h1" variant="heading-1">
-                Launch campaigns with confidence.
-              </Typography>
-              <Typography className="max-w-3xl" tone="muted">
-                Go from campaign intent to launch-ready creative with guided planning, transparent estimates, and a final review that keeps every choice visible before you publish.
-              </Typography>
-              <div data-testid="marketing-cta">
-                <Inline>
-                  <Link className="btn normal-case shadow-soft btn-primary" href="/campaigns/create">
-                    Open campaign wizard
-                  </Link>
-                  <Link className="btn normal-case shadow-soft btn-secondary" href="/connections">
-                    Manage connections
-                  </Link>
-                  <Link className="btn normal-case shadow-soft btn-secondary" href="/social/create">
-                    Create social post
-                  </Link>
-                  <Link className="btn normal-case shadow-soft btn-ghost" href="/sign-in">
-                    Sign in
-                  </Link>
-                  <Link className="btn normal-case shadow-soft btn-secondary" href="#homepage-highlights">
-                    See how it works
-                  </Link>
-                </Inline>
-              </div>
-            </Stack>
-          </section>
-
-          <section data-testid="homepage-highlights" id="homepage-highlights">
-            <Grid minItemWidth="18rem">
-              <Card title="Goal-first planning" eyebrow="Step 1">
-                <Typography tone="muted">
-                  Start with the campaign objective and get strategy guidance before you move into targeting and budget decisions.
-                </Typography>
-              </Card>
-              <Card title="Audience clarity" eyebrow="Steps 2-3">
-                <Typography tone="muted">
-                  Shape audience targeting, upload custom audiences, and review stable size and reach estimates as the plan changes.
-                </Typography>
-              </Card>
-              <Card title="Launch review" eyebrow="Steps 4-6">
-                <Typography tone="muted">
-                  Generate editable creative, compare platforms, and confirm the full campaign summary before launch submission.
-                </Typography>
-              </Card>
-            </Grid>
-          </section>
-
-          <Alert title="Primary path to campaign creation" tone="info">
-            The homepage now directs users to the multi-step campaign wizard so the main product workflow starts immediately.
-          </Alert>
-        </Stack>
-      </Container>
-    </main>
-  );
+  return <div className="marketing-site"><a className="skip-link" href="#marketing-content">Skip to content</a>
+    <header className="marketing-header"><Link href="/" className="workspace-brand"><span className="brand-symbol">l<span>p</span></span><span>launchpad<span className="brand-period">.</span></span></Link><nav aria-label="Product navigation"><a href="#how-it-works">How it works</a><a href="#channels">Channels</a><Link href="/sign-in">Sign in</Link><Link href="/dashboard" className="button button-primary">Open workspace <WorkspaceIcon name="arrow"/></Link></nav></header>
+    <main id="marketing-content" data-testid="marketing-home"><section className="marketing-hero" data-testid="marketing-hero"><div className="marketing-hero-copy"><p className="eyebrow"><span className="status-dot"/>One workspace. Every campaign.</p><h1>Your next idea.<br/>Your next<br/><em>great campaign.</em></h1><p className="marketing-intro">Turn a website and a brief into a campaign you can shape, approve, and put to work. Your channels, content, and publishing schedule—finally together.</p><div className="marketing-hero-actions" data-testid="marketing-cta"><Link href="/dashboard" className="button button-primary">Enter your workspace <WorkspaceIcon name="arrow"/></Link><a href="#how-it-works" className="marketing-text-link">Explore Launchpad</a></div><p className="marketing-footnote">Start with a brief. Review with confidence. Publish on your terms.</p></div>
+      <div className="product-preview" aria-label="Illustrative campaign planning preview"><div className="preview-top"><span className="preview-mark">lp</span><span>Campaign workspace</span><span className="preview-demo">Product preview</span></div><div className="preview-content"><div className="preview-heading"><span className="eyebrow">From brief to launch</span><h2>The next chapter<br/>starts here.</h2><span className="preview-status">Draft · Ready for your ideas</span></div><div className="preview-brief"><span className="preview-number">01</span><div><strong>A clear starting point</strong><p>Your website. Your audience. Your story.</p></div><WorkspaceIcon name="campaigns"/></div><div className="preview-track"><span/><span/><span/><span/></div><div className="preview-assets"><div className="preview-asset"><span className="eyebrow">Social</span><div className="preview-poster"><span>Make room<br/>for what’s<br/><em>next.</em></span><span className="preview-poster-line"/></div><span>Platform-specific creative</span></div><div className="preview-plan"><span className="eyebrow">Your plan</span><div><span>Mon</span><strong>Introduce the idea</strong><small>Image + caption</small></div><div><span>Wed</span><strong>Tell the story</strong><small>Short video</small></div><div><span>Fri</span><strong>Start a conversation</strong><small>Social post</small></div></div></div><div className="preview-approval"><span className="status-dot"/><span>You approve the plan. Launchpad handles delivery.</span></div></div></div>
+    </section><section className="marketing-channel-strip" id="channels"><p>Build a plan around the channels that matter.</p><div><span>Google Ads</span><span>Meta</span><span>YouTube</span><span>TikTok</span><span>LinkedIn</span><span>X</span></div><small>Channel availability depends on your connected accounts and provider permissions.</small></section>
+    <section className="marketing-process" id="how-it-works" data-testid="homepage-highlights"><div><span className="eyebrow">Less switching. More doing.</span><h2>From a first thought<br/>to a full campaign.</h2><p>Keep the strategy connected to the work. Every brief, asset, and scheduled post has a place.</p><Link href="/campaigns" className="marketing-text-link">Explore your campaign workspace <WorkspaceIcon name="arrow"/></Link></div><ol><li><span>01</span><div><h3>Give your campaign a direction</h3><p>Add your website and brief. Choose a campaign type, audience, and channels before shaping the creative.</p></div></li><li><span>02</span><div><h3>Make it right for each channel</h3><p>Build channel-specific content, edit the details, and keep reusable assets in Content Studio.</p></div></li><li><span>03</span><div><h3>Review once. Keep moving.</h3><p>Approve your social content and schedule, then follow automated delivery in the calendar. Prepare paid campaign plans and check your connected ad accounts.</p></div></li></ol></section>
+    <section className="marketing-bottom"><span className="eyebrow">Your work, in one place</span><h2>A little more clarity.<br/>A lot more possibility.</h2><Link href="/dashboard" className="button button-primary">Open Launchpad <WorkspaceIcon name="arrow"/></Link></section></main><footer className="marketing-footer"><span>launchpad.</span><p>Campaign planning, creative, and publishing.</p><nav aria-label="Service information"><Link href="/privacy">Privacy</Link>{" · "}<Link href="/terms">Terms</Link>{" · "}<Link href="/data-deletion">Data deletion</Link></nav><Link href="/sign-in">Sign in to your workspace <WorkspaceIcon name="arrow"/></Link></footer>
+  </div>;
 }

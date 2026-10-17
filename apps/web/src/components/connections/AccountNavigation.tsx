@@ -1,26 +1,13 @@
 "use client";
-
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@launchpad/ui";
 import { connectionRequest } from "./connectionUi";
-
-export function AccountNavigation({ signedIn, busy = false, onError }: {
-  signedIn: boolean; busy?: boolean; onError?: (error: unknown) => void;
-}) {
+export function AccountNavigation({ signedIn, busy = false, onError }: { signedIn: boolean; busy?: boolean; onError?: (error: unknown) => void }) {
   const [signingOut, setSigningOut] = useState(false);
   async function signOut() {
     setSigningOut(true);
-    try {
-      await connectionRequest("/api/auth/session", "DELETE");
-      window.location.assign("/sign-in");
-    } catch (error) { onError?.(error); setSigningOut(false); }
+    try { await connectionRequest("/api/auth/session", "DELETE"); window.location.assign("/sign-in"); }
+    catch (error) { onError?.(error); setSigningOut(false); }
   }
-  return <nav aria-label="Account navigation" className="flex flex-wrap items-center gap-3">
-    <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/">Launchpad home</Link>
-    <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/campaigns/create">Paid advertising · Create campaign</Link>
-    <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/social">Social publishing</Link>
-    {signedIn ? <Button className="min-h-11" variant="secondary" disabled={busy} loading={signingOut} onClick={signOut}>Sign out</Button>
-      : <Link prefetch={false} className="btn btn-secondary min-h-11 normal-case" href="/sign-in?returnTo=%2Fconnections">Sign in</Link>}
-  </nav>;
+  return <nav aria-label="Account navigation" className="public-account-nav"><Link className="workspace-brand" href="/"><span className="brand-symbol">l<span>p</span></span><span>launchpad.</span></Link><div>{signedIn ? <><Link href="/dashboard" className="button">Open workspace</Link><button type="button" className="button button-quiet" disabled={busy || signingOut} onClick={signOut}>{signingOut ? "Signing out…" : "Sign out"}</button></> : <Link href="/" className="button button-quiet">Back to home</Link>}</div></nav>;
 }

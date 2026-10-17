@@ -1,13 +1,14 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { AppShell } from "../components/workspace/AppShell";
+import "./workspace.css";
 import { LaunchpadProvider } from "@launchpad/ui";
 
-const inter = Inter({ subsets: ["latin"] });
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Launchpad",
-  description: "Marketing app to consolidate ad and campaign creation and management.",
+  description: "Plan campaigns, create channel-specific content, and manage publishing in one marketing workspace.",
 };
 
 export default function RootLayout({
@@ -17,8 +18,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <LaunchpadProvider>{children}</LaunchpadProvider>
+      <body>
+        <LaunchpadProvider><AppShell mockMode={process.env.CONNECTION_MODE === "mock"}>{children}</AppShell></LaunchpadProvider>
       </body>
     </html>
   );

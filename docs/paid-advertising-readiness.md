@@ -12,7 +12,7 @@ This is the integration handoff for [#8](https://github.com/yohannesHL/marketing
 | Customer sign-in/settings, explicit selection, separate Ads/Publishing grants, independent account routing | [Settings guide](customer-connection-settings.md), [PR #22](https://github.com/yohannesHL/marketing-app/pull/22) |
 | Repeatable CI, restored wizard validation and opt-in read-only pilot/rollback | [Controlled rollout](paid-ads-rollout.md), [PR #23](https://github.com/yohannesHL/marketing-app/pull/23) |
 
-The first requested batch contains issues #4–#8. Review comments and passing exact-commit checks accompany the individual PRs; merge them in dependency order. Code delivery does not establish platform approval or publication readiness.
+The connection batch and handoff were merged in PRs #19–#24. The [17 October completion audit](implementation-completion-audit.md) separates completed engineering from optional live rollout. Code delivery does not establish platform approval or publication readiness.
 
 ## Verified fixture evidence
 
@@ -34,10 +34,10 @@ The server derives ownership from the customer session, validates every supplied
 | Production database/keyring/credential secret-store handoff, backup/restore and legacy provenance cleanup | Not validated in a deployment | Operator installs references and rehearses maintenance while access is disabled |
 | Dedicated Google/Meta pilot customer destinations and permissions | Not supplied | Owner provides approved accounts and Google access paths/Meta tasks |
 | Actual consent/discovery/read/reconnect/disconnect evidence for each provider | Not performed | Explicitly authorized operator pilot after configuration; record each provider separately |
-| Passing GitHub CI for the final release commit and reviewed merge batch | In progress at packet creation | Engineering records the run URL and exact merged revision |
+| Passing GitHub CI for the connection release and reviewed merge batch | Complete; PRs #19–#24 merged | Merged connection handoff `597ef390db07542fb34dd98815c58530f61c9c08` |
 | Live campaign/asset write enablement and paused probe/cleanup/idempotency validation | Unavailable and unperformed | Separate supported implementation and validation; no write flag enables it here |
 
-The user chose Mockoon validation instead of providing live staging credentials. That permits deterministic engineering checks and leaves the live/platform items visibly open. Keep the release tracker open for those external gates; do not substitute mock receipts for real account evidence.
+The user chose Mockoon validation instead of providing live staging credentials. That permits deterministic engineering checks and leaves the live/platform items visibly open. Per the owner’s 17 October instruction, these external tasks do not block engineering issue closure. They remain prerequisites for a future live rollout; mock receipts are never real account evidence.
 
 ## Deployment and stopping access
 

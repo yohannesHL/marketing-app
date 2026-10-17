@@ -24,7 +24,7 @@ async function main() {
   const tokenKey = randomBytes(32).toString("base64");
   const connections = new CustomerConnections(db, auth, new CredentialVault({ test: tokenKey }, "test"));
   for (const project of ["chromium", "firefox", "webkit"]) {
-    for (const prefix of ["e2e", "other", "connections", "social", "youtube", "meta-social", "tiktok", "linkedin", "x"])
+    for (const prefix of ["e2e", "other", "wizard", "connections", "social", "youtube", "meta-social", "tiktok", "linkedin", "x"])
       await auth.provisionCustomer({
         email: `${prefix}-${project}@example.test`,
         name: "Test customer",

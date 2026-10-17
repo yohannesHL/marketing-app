@@ -1,0 +1,63 @@
+.builder { max-width: 76rem; margin: 0 auto; padding: 2.5rem; color: #292e2b; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 2rem; }
+.eyebrow { font-size: .75rem; font-weight: 600; color: #64716a; margin: 0 0 .5rem; }
+.header h1 { font-size: clamp(1.8rem, 3vw, 2.35rem); line-height: 1.15; letter-spacing: -.055em; font-weight: 600; margin: 0 0 .6rem; }
+.muted { color: #6b746e; font-size: .875rem; line-height: 1.6; max-width: 62ch; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.button, .secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.65rem; padding: .65rem 1.05rem; border-radius: .45rem; font-size: .825rem; font-weight: 600; cursor: pointer; transition: background .18s, transform .18s; }
+.button { background: #315e4a; color: #fff; border: 1px solid #315e4a; }
+.button:hover { background: #264b3a; }
+.secondary { background: #fff; color: #354039; border: 1px solid #d8ded9; }
+.secondary:hover { background: #f0f3ef; }
+.button:active, .secondary:active { transform: translateY(1px); }
+.button:disabled, .secondary:disabled { opacity: .5; cursor: not-allowed; }
+.button:focus-visible, .secondary:focus-visible, .choice:focus-within { outline: 2px solid #50795e; outline-offset: 3px; }
+.textLink { color: #315e4a; font-size: .85rem; text-decoration: underline; text-underline-offset: 3px; }
+.steps { display: flex; list-style: none; padding: 0; margin: 0 0 2rem; gap: .6rem; overflow-x: auto; }
+.steps li { flex: 1; min-width: 5.8rem; border-top: 2px solid #dde3dd; padding-top: .65rem; color: #7b847e; font-size: .75rem; }
+.steps li[aria-current="step"] { border-color: #315e4a; color: #244432; font-weight: 600; }
+.steps button { text-align: left; width: 100%; }
+.steps button:disabled { cursor: default; }
+.stepNumber { font-variant-numeric: tabular-nums; margin-right: .4rem; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 2rem; align-items: start; }
+.panel { background: #fff; border: 1px solid #e1e5df; border-radius: .75rem; padding: 2rem; min-width: 0; }
+.panel h2 { font-size: 1.45rem; font-weight: 600; line-height: 1.25; letter-spacing: -.035em; margin: 0 0 .6rem; }
+.panel h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+.fields { display: grid; gap: 1.5rem; margin-top: 2rem; }
+.field { display: grid; gap: .5rem; font-size: .825rem; font-weight: 500; }
+.field small { color: #6b746e; font-weight: 400; font-size: .75rem; line-height: 1.5; }
+.input { width: 100%; background: #fff; color: #292e2b; border: 1px solid #cfd7cf; border-radius: .4rem; min-height: 2.65rem; padding: .65rem .8rem; font-size: .875rem; font-weight: 400; transition: border-color .18s; }
+.input:focus { outline: 2px solid #d8e8dc; border-color: #52765e; outline-offset: 1px; }
+textarea.input { resize: vertical; line-height: 1.65; }
+.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1.25rem; }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin-top: 1.5rem; }
+.choice { display: flex; position: relative; align-items: flex-start; gap: .8rem; padding: 1.15rem; border: 1px solid #dce2da; border-radius: .55rem; background: #fff; cursor: pointer; transition: background .18s, border-color .18s; }
+.choice:hover { background: #f7f8f5; border-color: #a9bcae; }
+.choice[data-selected="true"] { background: #f0f5ee; border-color: #72987d; }
+.choice input { accent-color: #315e4a; margin-top: .2rem; }
+.choice strong { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .35rem; }
+.choice span { display: block; font-size: .775rem; line-height: 1.5; color: #6b746e; }
+.aside { padding: 1.2rem 0; }
+.aside h2 { font-weight: 600; font-size: .85rem; margin: 0 0 1.5rem; }
+.aside dl { display: grid; gap: 1.35rem; }
+.aside dt { font-size: .7rem; color: #7b847e; margin-bottom: .35rem; }
+.aside dd { font-size: .825rem; line-height: 1.5; overflow-wrap: anywhere; }
+.note { font-size: .8rem; line-height: 1.6; color: #59675d; padding: 1rem; background: #f3f5f0; border-radius: .4rem; }
+.error { margin: 1rem 0; padding: .85rem 1rem; border-left: 3px solid #b85d4b; color: #813b2e; background: #fdf4f0; font-size: .85rem; }
+.footer { border-top: 1px solid #e5e9e2; padding-top: 1.4rem; margin-top: 2rem; display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+.saveStatus { font-size: .75rem; color: #6b746e; }
+.creative { border-top: 1px solid #e5e9e2; padding-top: 1.5rem; }
+.creative:first-child { border-top: 0; padding-top: 0; }
+.creativeHeader { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: 1.2rem; }
+.format { font-size: .7rem; font-weight: 500; color: #5b6d60; background: #f0f4ed; padding: .3rem .5rem; border-radius: .25rem; }
+.review { display: grid; gap: 1.5rem; margin-top: 2rem; }
+.review section { border-bottom: 1px solid #e5e9e2; padding-bottom: 1.3rem; }
+.review p { font-size: .875rem; color: #59655d; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; margin-top: .5rem; }
+.preview { background: #f3f6f0; border: 1px solid #cddccf; border-radius: .5rem; padding: 1.2rem; }
+.preview pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: .85rem; line-height: 1.6; margin: 1rem 0; }
+.preview h4 { font-size: .85rem; font-weight: 600; margin-top: 1.3rem; }
+.loading { height: 22rem; border-radius: .75rem; background: #eef1eb; animation: loading 1.5s ease-in-out infinite; }
+@keyframes loading { 50% { opacity: .45; } }
+@media(prefers-reduced-motion: reduce) { .loading { animation: none; } .button,.secondary,.choice { transition: none; } }
+@media(max-width: 1050px) { .layout { grid-template-columns: minmax(0, 1fr); } .aside { display: none; } }
+@media(max-width: 640px) { .builder { padding: 1.5rem 1rem 6rem; } .header { flex-direction: column; gap: 1rem; } .panel { padding: 1.2rem; } .choices,.twoColumns { grid-template-columns: 1fr; } .steps { margin-bottom: 1.3rem; } .footer { align-items: flex-start; } }

@@ -1,0 +1,43 @@
+# Implementation completion audit — 17 October 2026
+
+The owner requested review and closure of completed issues, implementation of remaining gaps, and explicitly excluded live verification and API keys from completion. This audit uses implemented behavior, merged pull requests, automated tests and Mockoon evidence. It does not claim provider approval, production credentials, real publication or live API billing verification. Existing runtime permission, review and cost gates remain enforced.
+
+All ten reviewed issues (#2, #8, #9, #12–#18) were closed as completed with issue-specific evidence comments. A final GitHub query returned zero open issues. Epic dependency checklists were synchronized with verified closed child issues.
+
+## Open-issue review
+
+| Issue | Implemented evidence | Completion decision |
+| --- | --- | --- |
+| #2 — Google/Meta owner setup | `docs/customer-ad-account-setup.md`, configuration example, implemented OAuth/lifecycle callbacks, README links; PRs #19–#24. Added missing public privacy, terms and deletion-information pages in this audit. | Engineering complete. Exact business origins, contact/retention approval and live credentials remain operator inputs. Policy pages honestly identify missing details and remain review drafts. |
+| #8 — Google/Meta connections epic | PRs #19–#24: customer sessions, encrypted tokens, Google manager/advertiser and Meta identity/role checks, selected-account reads, reconnect/disconnect, signed deletion, isolation and controlled-rollout docs. | Complete for the specified connection/read scope. Live ad creation, activation and asset writes are outside this epic and remain disabled. |
+| #9 — Social owner setup | PRs #25/#34; `docs/social-publishing-setup.md`, provider guides and release packet enumerate callbacks, secret names, product/role distinctions, review instructions, costs, operational shutdown and cleanup. | Documentation complete. Actual provider review submissions, keys, credits and pilot recordings are separate owner rollout tasks. |
+| #12 — YouTube Shorts | PR #28; `server/social/providers/youtube.ts`, separate OAuth/channel discovery, offline renewal, Shorts validation, resumable upload checkpoints, confirmed processing and app-side scheduling. `youtube-social-provider.test.ts` and all-platform fixture suite. | Complete under fixture acceptance. No native provider schedule needs remote rescheduling; YouTube classification/reach is not guaranteed. |
+| #13 — Facebook/Instagram | PR #29; separate publishing consent, Page tokens, role/linkage checks, Facebook text/image/Reels and Instagram image/Reels, asynchronous status and receipt recovery. `meta-social-provider.test.ts`, all-platform tests and the 17 October UI-to-worker test. | Complete under fixture acceptance. Ads-only grants cannot publish. |
+| #14 — TikTok | PR #30; creator refresh/version checks, explicit privacy/interactions/disclosures/consent, audited/private restrictions, verified media prefix, Direct Post initialization/status and durable rotating renewal. `tiktok-social-provider.test.ts` and all-platform tests. | Complete under fixture acceptance. Actual audit eligibility remains a rollout prerequisite; inbox upload is not counted as publication. |
+| #15 — LinkedIn | PR #31; separate member/organization identities and permissions, fresh organic-role checks, image/video processing, Posts API readback and recoverable expiry/uncertainty. `linkedin-social-provider.test.ts` and all-platform tests. | Complete for both actors under fixture acceptance; product/read permissions remain enforced. |
+| #16 — X | PR #32; user OAuth/PKCE, text/image/video, durable refresh, weighted text validation, actual upload/status receipts, per-owner/day/delivery operation allocations, local estimate and explicit cost/disclosure controls. `x-social-provider.test.ts`, budget/renewal tests and all-platform tests. | Complete under fixture acceptance. Conservative allocations are not actual bills; credits and configured rates are required for live use. |
+| #17 — All-platform QA | PR #33; all seven destination kinds (including both LinkedIn actors), actual SDK-to-Mockoon calls, isolation, DST, cancellation, revision fencing, partial recovery, unknown outcomes, expiry, worker restart/SQLite contention and provider counters. Dedicated Chromium/Firefox/WebKit journeys were merged with passing CI. | Complete under fixture acceptance. The latest local backend suite and targeted UI checks are listed below separately from historical CI. |
+| #18 — Social epic | Provider integrations above, PR #26 durable delivery, PR #27 composer/calendar and PR #34 integrated owner handoff. All seven required checks on PR #34 passed before merge at `802050e96242ae443c95f857ca5d244f1f7dac17`. | Engineering complete; external rollout checklist remains in the readiness tracker. |
+
+## Gaps corrected in the current workspace
+
+- Campaign-to-post handoff now preserves each supported platform creative format and caption. Unsupported formats fall back to a valid destination format; attachment selection and publishing consent are never inferred from AI output.
+- A submitted revision shows a neutral delivery-status message instead of another scheduling form, a misleading blocked notice or a past-date warning. Stored approval remains visibly checked after reopening the review.
+- Enqueue availability considers deliveries of the current revision. Historical successful/cancelled/replaced deliveries no longer prevent review and scheduling of a new revision; old receipts remain visible.
+- Added unauthenticated `/privacy`, `/terms` and `/data-deletion` pages and landing-page links. The copy accurately distinguishes disconnection, signed Meta connection-scoped deletion, whole-workspace requests, backups and external published-post removal. Operator fields are configurable and never invented.
+- Readiness documents now distinguish engineering completion from live rollout, and record the already-merged handoff instead of requiring completed issues to remain open indefinitely.
+
+These follow-up corrections are local changes on `codex/workspace-redesign`, alongside the existing redesign/AI work. The merged provider implementations are identified above; this audit does not imply these new local corrections have been merged or deployed to production.
+
+## Verification
+
+- Full backend/security/Mockoon suite: 440 passed, zero failures or skips on the audited implementation. This includes the actual seven-destination matrix and continuous worker tests.
+- New campaign variant regressions: 2 passed across every supported destination/format, including unsupported-format fallback, shared-caption inheritance and separation of publishing consent from generated content.
+- Final TypeScript check and production build passed, including all three public policy routes. Build retains existing non-failing hook-dependency and image-optimization warnings. `git diff --check` passed.
+- Final UI checks verified Facebook Image and Instagram Short video handoff; a neutral submitted-state message and persisted checked approval; published revision 2 retained while revision 3 could be approved and offered scheduling; and landing-page navigation to all three policy pages. The new audit revision was left approved but unscheduled. The original two published test deliveries were preserved. Screenshots: `evidence/campaign-ai/ui-format-handoff-fixed.png`, `ui-published-review-fixed.png`, `ui-new-revision-schedule-fixed.png`, and `ui-data-deletion-page.png`.
+- Previous real-AI UI journey: Facebook image and Instagram Reel reviewed and scheduled for 03:34 Europe/London on 17 October. Both published to Mockoon once with one worker attempt; pre-due counters remained zero. See `evidence/campaign-ai/ui-publishing-flow.json` and its screenshots. Media were fixtures; AI generated text and production directions.
+- PR #34's merged checks were read from GitHub during this audit: migration/security plus app journeys and Mockoon delivery in Chromium, Firefox and WebKit all succeeded. This historical merged-head evidence is separate from current local changes.
+
+## Remaining external tasks
+
+Optional future live rollout still requires actual business origins/contact/retention approval, developer projects/apps, secrets, appropriate provider products/scopes/roles, TikTok audit eligibility, X credit/rate/budget configuration and authorized live tests with cleanup. These are documented owner tasks, not unfinished engineering in these ten issues under the revised acceptance boundary. No live publishing switch or permission restriction was weakened to close issues.

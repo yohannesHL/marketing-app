@@ -154,7 +154,7 @@ test("social sign-in return routes reject external, query, fragment, and separat
     "/social/posts/\\evil",
     "https://evil.example",
   ]) {
-    expect(safeReturnTo(path)).toBe("/connections");
+    expect(safeReturnTo(path)).toBe("/dashboard");
   }
 });
 
@@ -369,12 +369,8 @@ test("customer saves and reviews social revisions without pretending disabled pu
   await page
     .getByLabel("Draft title")
     .fill(`Preserved ${testInfo.project.name}`);
-  await page
-    .getByRole("link", {
-      name: "Paid advertising · Create campaign",
-      exact: true,
-    })
-    .click();
+  await page.getByRole("navigation", { name: "Mobile navigation", exact: true })
+    .getByRole("link", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns\/create$/);
   expect((await readPost(page, id)).title).toBe(
     `Preserved ${testInfo.project.name}`,

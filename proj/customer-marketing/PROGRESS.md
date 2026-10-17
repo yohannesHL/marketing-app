@@ -1,6 +1,6 @@
 # Customer marketing progress
 
-Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff #9 ready, durable delivery #10 and social UI #11 in progress.
+Status as of 17 October 2026: all connection/social implementation batches through PR #34 are merged. The owner excludes API keys and live verification from issue completion. See [current completion audit](../../docs/implementation-completion-audit.md); the dated progress entries below are historical.
 
 | Issue | Outcome | Status | PR |
 | --- | --- | --- | --- |
@@ -9,17 +9,18 @@ Status: first five-issue batch #4–#8 reviewed and merged; social owner handoff
 | [5](https://github.com/yohannesHL/marketing-app/issues/5) | feat: Connect real Meta ad accounts through reviewed customer authorization | Merged; 60 exact-snapshot tests/build pass | [#21](https://github.com/yohannesHL/marketing-app/pull/21) |
 | [6](https://github.com/yohannesHL/marketing-app/issues/6) | feat: Add Google and Meta connection settings and route requests to selected accounts | Merged; 82 exact-snapshot provider/security tests/build/browser review pass | [#22](https://github.com/yohannesHL/marketing-app/pull/22) |
 | [7](https://github.com/yohannesHL/marketing-app/issues/7) | test: Verify Google and Meta connections and document a controlled pilot rollout | Merged; 88 backend tests and 27 app-browser cases pass; live checks unavailable | [#23](https://github.com/yohannesHL/marketing-app/pull/23) |
-| [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Handoff merged; public/live gates remain open | [#24](https://github.com/yohannesHL/marketing-app/pull/24) |
-| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Independent review and exact CI pass; owner review/recording/live gates tracked separately | [#25](https://github.com/yohannesHL/marketing-app/pull/25) |
-| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | 135 backend checks pass; independent findings fixed, exact review/CI underway | [#26](https://github.com/yohannesHL/marketing-app/pull/26) |
-| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | Implemented; three-browser journeys pass; independent review pending | Pending |
-| [12](https://github.com/yohannesHL/marketing-app/issues/12) | feat: Connect YouTube channels and publish scheduled Shorts | Planned | — |
-| [13](https://github.com/yohannesHL/marketing-app/issues/13) | feat: Publish scheduled Facebook Page posts and Instagram content | Planned | — |
-| [14](https://github.com/yohannesHL/marketing-app/issues/14) | feat: Connect TikTok creators and schedule approved Direct Post videos | Planned | — |
-| [15](https://github.com/yohannesHL/marketing-app/issues/15) | feat: Publish scheduled LinkedIn member and organization posts | Planned | — |
-| [16](https://github.com/yohannesHL/marketing-app/issues/16) | feat: Publish scheduled X posts with API cost and quota handling | Planned | — |
-| [17](https://github.com/yohannesHL/marketing-app/issues/17) | test: Verify all social destinations and separation from paid advertising | Planned | — |
-| [18](https://github.com/yohannesHL/marketing-app/issues/18) | epic: Add automated social publishing alongside paid advertising | Planned | — |
+| [8](https://github.com/yohannesHL/marketing-app/issues/8) | epic: Enable real customer ad account connections for Google and Meta | Complete connection/read scope; external rollout separate | [#24](https://github.com/yohannesHL/marketing-app/pull/24) |
+| [9](https://github.com/yohannesHL/marketing-app/issues/9) | docs: Document owner setup and approvals for all social publishing platforms | Complete owner setup guide and public policy previews | [#25](https://github.com/yohannesHL/marketing-app/pull/25) |
+| [10](https://github.com/yohannesHL/marketing-app/issues/10) | feat: Add social publishing records and durable scheduled delivery | Merged durable scheduler; all-platform regressions pass | [#26](https://github.com/yohannesHL/marketing-app/pull/26) |
+| [11](https://github.com/yohannesHL/marketing-app/issues/11) | feat: Distinguish Paid advertising and Social publishing throughout the UI | Merged composer/calendar; review-state follow-up fixed locally | [#27](https://github.com/yohannesHL/marketing-app/pull/27) |
+| [12](https://github.com/yohannesHL/marketing-app/issues/12) | feat: Connect YouTube channels and publish scheduled Shorts | Merged; Shorts upload/status/recovery covered by Mockoon | [#28](https://github.com/yohannesHL/marketing-app/pull/28) |
+| [13](https://github.com/yohannesHL/marketing-app/issues/13) | feat: Publish scheduled Facebook Page posts and Instagram content | Merged; all formats covered; Facebook/Instagram UI worker test passes | [#29](https://github.com/yohannesHL/marketing-app/pull/29) |
+| [14](https://github.com/yohannesHL/marketing-app/issues/14) | feat: Connect TikTok creators and schedule approved Direct Post videos | Merged; creator consent, Direct Post and recovery covered | [#30](https://github.com/yohannesHL/marketing-app/pull/30) |
+| [15](https://github.com/yohannesHL/marketing-app/issues/15) | feat: Publish scheduled LinkedIn member and organization posts | Merged; member and organization publishing covered | [#31](https://github.com/yohannesHL/marketing-app/pull/31) |
+| [16](https://github.com/yohannesHL/marketing-app/issues/16) | feat: Publish scheduled X posts with API cost and quota handling | Merged; publishing, renewal and explicit cost limits covered | [#32](https://github.com/yohannesHL/marketing-app/pull/32) |
+| [17](https://github.com/yohannesHL/marketing-app/issues/17) | test: Verify all social destinations and separation from paid advertising | Merged; seven-destination QA and three-browser CI passed | [#33](https://github.com/yohannesHL/marketing-app/pull/33) |
+| [18](https://github.com/yohannesHL/marketing-app/issues/18) | epic: Add automated social publishing alongside paid advertising | Merged handoff; all seven CI checks passed; external rollout separate | [#34](https://github.com/yohannesHL/marketing-app/pull/34) |
+
 
 ## Decisions
 

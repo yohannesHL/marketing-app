@@ -29,12 +29,12 @@ import {
   type SocialList,
   type SocialPost,
 } from "./socialUi";
-export function SocialCalendar() {
+export function SocialCalendar({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<SocialList | null>(null),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
-    [view, setView] = useState("list"),
+    [view, setView] = useState(embedded ? "calendar" : "list"),
     [filter, setFilter] = useState("ALL"),
     [zone, setZone] = useState(initialTimeZone),
     [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -143,6 +143,7 @@ export function SocialCalendar() {
   );
   return (
     <SocialLayout
+      embedded={embedded}
       title="Publishing calendar"
       description="Plan social content and follow each delivery. Paid campaign plans remain in the advertising workflow."
       mode={data?.mode}

@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Alert, Badge, Container, Stack, Typography } from "@launchpad/ui";
-import { AccountNavigation } from "../connections/AccountNavigation";
+import { usePathname } from "next/navigation";
+import { Alert, Container, Stack, Typography } from "@launchpad/ui";
+import { useWorkspaceNavigationGuard } from "../workspace/AppShell";
 export function SocialLayout({
+  embedded = false,
   title,
   description,
   mode,
@@ -15,6 +17,7 @@ export function SocialLayout({
   onNavigate,
   children,
 }: {
+  embedded?: boolean;
   title: string;
   description: string;
   mode?: string;
@@ -26,13 +29,15 @@ export function SocialLayout({
   onNavigate?: (href: string) => void;
   children: ReactNode;
 }) {
+  useWorkspaceNavigationGuard(onNavigate);
+  const pathname = usePathname();
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
   return (
-    <main
-      className="py-8 sm:py-12"
+    <section
+      className={embedded ? "social-workspace social-workspace-embedded" : "workspace-page social-workspace"}
       data-testid="social-page"
       onClickCapture={(event) => {
         if (
@@ -54,37 +59,32 @@ export function SocialLayout({
     >
       <Container>
         <Stack gap={6}>
-          <AccountNavigation
-            signedIn={Boolean(mode)}
-            busy={busy}
-            onError={onError}
-          />
           <nav
             aria-label="Social publishing navigation"
-            className="flex flex-wrap gap-3"
+            className="module-tabs"
           >
             <Link
               href="/social"
-              className="btn btn-secondary min-h-11 normal-case"
+              aria-current={pathname === "/social" ? "page" : undefined}
             >
               Publishing calendar
             </Link>
             <Link
               href="/social/create"
-              className="btn btn-secondary min-h-11 normal-case"
+              aria-current={pathname === "/social/create" ? "page" : undefined}
             >
               Create social post
             </Link>
             <Link
               href="/connections"
-              className="btn btn-ghost min-h-11 normal-case"
+              className="module-tab-settings"
             >
               Social connections
             </Link>
           </nav>
           <div>
-            <Badge tone="primary">Social publishing</Badge>
-            <Typography as="h1" variant="heading-1" className="mt-3">
+            <span className="eyebrow">Social marketing</span>
+            <Typography as={embedded ? "h2" : "h1"} variant={embedded ? "heading-2" : "heading-1"} className="mt-2">
               {title}
             </Typography>
             <Typography tone="muted" className="mt-2 max-w-3xl">
@@ -135,6 +135,6 @@ export function SocialLayout({
           ) : null}
         </Stack>
       </Container>
-    </main>
+    </section>
   );
 }

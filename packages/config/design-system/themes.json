@@ -1,21 +1,21 @@
 {
   "light": {
     "name": "Light",
-    "background": "#f6f8fc",
-    "backgroundMuted": "#eef2fb",
+    "background": "#f8f9f6",
+    "backgroundMuted": "#f0f2ec",
     "surface": "#ffffff",
-    "surfaceRaised": "#ffffff",
+    "surfaceRaised": "#f8f9f6",
     "surfaceOverlay": "rgba(255, 255, 255, 0.94)",
-    "text": "#11182c",
-    "textMuted": "#5b6785",
-    "border": "#d9dfef",
-    "borderStrong": "#bac5df",
-    "success": "#0f9d66",
-    "warning": "#b77709",
-    "danger": "#cf3752",
-    "info": "#2563eb",
+    "text": "#272e28",
+    "textMuted": "#677064",
+    "border": "#e0e5dc",
+    "borderStrong": "#b9c4b6",
+    "success": "#365c43",
+    "warning": "#916c27",
+    "danger": "#a13f39",
+    "info": "#4c6559",
     "overlay": "rgba(17, 24, 39, 0.56)",
-    "shadow": "rgba(15, 23, 42, 0.14)"
+    "shadow": "rgba(39, 46, 40, 0.08)"
   },
   "dark": {
     "name": "Dark",

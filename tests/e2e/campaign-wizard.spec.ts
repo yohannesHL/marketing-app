@@ -1,296 +1,193 @@
-import type { Page, Route } from "@playwright/test";
-
+import { randomUUID } from "node:crypto";
+import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
+import { CampaignWizardPage } from "../support/page-objects/campaign-wizard-page";
 import { signInTestCustomer } from "../support/helpers/customer-session";
-import { waitForNoPageErrors } from "../support/helpers/network";
+import { resolveBaseUrl } from "../support/helpers/env";
+import type { CampaignDTO } from "../../apps/web/src/server/workspace/types";
 
-async function completeAudienceStep(page: Page): Promise<void> {
-  await expect(page.getByTestId("audience-estimate")).toContainText("Estimated Reach");
-  await expect(page.getByTestId("audience-estimate")).toContainText(/people estimated in a/);
-  await page.getByRole("button", { name: "Continue" }).click();
+const brief = "Introduce our autumn collection to returning customers and invite them to explore the range.";
+async function readCampaign(request: APIRequestContext, id: string): Promise<CampaignDTO> {
+  const response = await request.get(`/api/workspace/campaigns/${id}`);
+  expect(response.ok()).toBe(true);
+  return (await response.json()).campaign;
+}
+async function seedCampaign(request: APIRequestContext, overrides: Record<string, unknown> = {}): Promise<CampaignDTO> {
+  const response = await request.post("/api/workspace/campaigns", { headers: { Origin: resolveBaseUrl() }, data: {
+    type: "SOCIAL", name: `Campaign ${randomUUID()}`, websiteUrl: "https://example.test/collection", brief,
+    goal: "traffic", audience: "Returning customers in London", platforms: ["LINKEDIN"],
+    plan: { cadence: "3", timeZone: "Europe/London" }, creatives: [{ platform: "LINKEDIN", title: "Original title", body: "Original authored caption.", cta: "Explore", format: "TEXT" }], ...overrides,
+  } });
+  expect(response.status()).toBe(201);
+  return (await response.json()).campaign;
+}
+async function toChannels(wizard: CampaignWizardPage, type: "Social campaign" | "Paid advertising" | "Email campaign" | "Content / blog", name: string) {
+  await wizard.visit(); await wizard.chooseType(type); await wizard.continueToNextStep();
+  await wizard.fillBrief(name, brief); await wizard.continueToNextStep();
+  await wizard.fillAudience(); await wizard.continueToNextStep();
+  await expect(wizard.stepTitle).toHaveText("Choose your channels");
+}
+async function applyGenerated(wizard: CampaignWizardPage) {
+  await wizard.generateCreatives();
+  await expect(wizard.page.getByRole("region", { name: "Generated drafts preview" })).toBeVisible();
+  await wizard.page.getByRole("button", { name: "Apply generated drafts", exact: true }).click();
 }
 
-async function completeBudgetStep(page: Page): Promise<void> {
-  await expect(page.getByTestId("budget-insights")).toContainText("Recommended");
-  await expect(page.getByTestId("budget-insights")).toContainText("Est. Reach");
-  await page.getByRole("button", { name: "Continue" }).click();
-}
+test.describe("durable campaign builder", () => {
+  test.beforeEach(async ({ request, context }, testInfo) => { await signInTestCustomer(request, testInfo.project.name, context, "wizard"); });
 
-async function completeCreativeStep(page: Page): Promise<void> {
-  await expect(page.getByTestId("creative-workspace")).toContainText("AD PREVIEW");
-  await page.getByRole("button", { name: "Continue" }).click();
-}
-
-async function completePlatformStep(page: Page): Promise<void> {
-  await expect(page.getByTestId("platform-estimates")).toContainText("Estimated traffic");
-  await expect(page.getByTestId("platform-estimates")).toContainText("visits");
-  await page.getByRole("button", { name: "Continue" }).click();
-}
-
-test.describe("campaign creation wizard", () => {
-  test.beforeEach(async ({ request, context }, testInfo) => {
-    await signInTestCustomer(request, testInfo.project.name, context);
-  });
-  test("Given a marketer completes the guided workflow when launching a campaign then strategy guidance, estimates, editable creative, and launch confirmation are shown", async ({
-    page,
-    campaignWizardPage,
-    campaignWizardSeed,
-    factoryTracker,
-  }, testInfo) => {
-    await test.step("Given the marketer opens the campaign creation wizard", async () => {
-      expect(factoryTracker.snapshot()).toHaveLength(1);
-      await campaignWizardPage.visit();
-      await expect(campaignWizardPage.root).toBeVisible();
-      await expect(campaignWizardPage.stepTitle).toContainText("Campaign Goal");
-      await page.getByLabel("Campaign Name").fill(campaignWizardSeed.campaignName);
-    });
-
-    await test.step("When the marketer selects a goal and reviews strategy guidance", async () => {
-      await campaignWizardPage.chooseGoal(campaignWizardSeed.goal);
-      await expect(campaignWizardPage.goalGuidance).toContainText("Strategy guidance");
-      await expect(campaignWizardPage.goalGuidance).toContainText(campaignWizardSeed.goal);
-      await expect(campaignWizardPage.goalGuidance).toContainText("Recommended objective:");
-      await campaignWizardPage.continueToNextStep();
-    });
-
-    await test.step("And the marketer defines audience targeting", async () => {
-      await campaignWizardPage.fillAudience(campaignWizardSeed);
-      await campaignWizardPage.uploadCustomAudience(
-        campaignWizardSeed.customAudienceFileName,
-        campaignWizardSeed.customAudienceContents,
-        "text/csv",
-      );
-      await expect(campaignWizardPage.root).toContainText(campaignWizardSeed.customAudienceFileName);
-      await completeAudienceStep(page);
-    });
-
-    await test.step("And the marketer sets a budget plan", async () => {
-      await campaignWizardPage.fillBudget(campaignWizardSeed);
-      await completeBudgetStep(page);
-    });
-
-    await test.step("And the marketer generates and edits creatives", async () => {
-      await campaignWizardPage.generateCreatives();
-      await expect(page.getByPlaceholder("Enter headline", { exact: true }).first()).not.toHaveValue("");
-      await campaignWizardPage.editGeneratedCreative(campaignWizardSeed);
-      await expect(campaignWizardPage.creativeWorkspace).toContainText(campaignWizardSeed.editedHeadline);
-      await expect(campaignWizardPage.creativeWorkspace).toContainText(campaignWizardSeed.editedDescription);
-      await completeCreativeStep(page);
-    });
-
-    await test.step("And the marketer selects launch platforms", async () => {
-      for (const platform of campaignWizardSeed.selectedPlatforms) {
-        await campaignWizardPage.setPlatformSelection(platform, true);
-      }
-
-      await completePlatformStep(page);
-    });
-
-    await test.step("Then the final review and launch receipt reflect the configured campaign", async () => {
-      await waitForNoPageErrors(page);
-      await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.location);
-      await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.editedHeadline);
-      await expect(campaignWizardPage.reviewSummary).toContainText("Google");
-      await expect(campaignWizardPage.reviewSummary).toContainText("Meta");
-      const reviewScreenshot = testInfo.outputPath("wizard-review.png");
-      await page.screenshot({ path: reviewScreenshot, fullPage: true });
-      await testInfo.attach("wizard-review", {
-        path: reviewScreenshot,
-        contentType: "image/png",
-      });
-      const launchRequest = page.waitForRequest((request) =>
-        new URL(request.url()).pathname === "/api/ads/createCampaign" && request.method() === "POST",
-      );
-      await page.getByRole("button", { name: "Launch Campaign" }).click();
-      expect((await launchRequest).postDataJSON()).toMatchObject({
-        payload: {
-          campaignName: campaignWizardSeed.campaignName,
-          goal: campaignWizardSeed.goal,
-          targeting: {
-            locations: [campaignWizardSeed.location],
-            ageRange: [25, 34],
-            interests: campaignWizardSeed.interests,
-          },
-          budget: { dailyBudget: 250, durationInDays: 14, totalBudget: 3500 },
-          status: "PAUSED",
-        },
-        platforms: ["GOOGLE", "META", "TIKTOK"],
-      });
-      await expect(campaignWizardPage.launchResult).toContainText("Campaign demo saved");
-      await expect(campaignWizardPage.launchResult).toContainText("Uniform payload: confirmed");
-      const receiptScreenshot = testInfo.outputPath("wizard-launch-receipt.png");
-      await page.screenshot({ path: receiptScreenshot, fullPage: true });
-      await testInfo.attach("wizard-launch-receipt", {
-        path: receiptScreenshot,
-        contentType: "image/png",
-      });
-    });
+  test("social planning preserves original copy until preview approval, reloads the current step and saves a real campaign", async ({ page, request, campaignWizardPage: wizard }) => {
+    test.setTimeout(120000);
+    const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+    const name = `Autumn social ${randomUUID()}`;
+    await wizard.visit(); await wizard.continueToNextStep(); await wizard.fillBrief(name, brief);
+    await page.getByRole("button", { name: "Enhance brief", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Brief enhancement preview" })).toContainText(brief);
+    await expect(page.getByLabel("Campaign brief")).toHaveValue(brief);
+    await page.getByRole("button", { name: "Keep original", exact: true }).click();
+    await expect(page.getByLabel("Campaign brief")).toHaveValue(brief);
+    await page.getByRole("button", { name: "Enhance brief", exact: true }).click();
+    await page.getByRole("button", { name: "Apply enhanced brief", exact: true }).click();
+    const enhanced = await page.getByLabel("Campaign brief").inputValue();
+    expect(enhanced).toContain(brief); expect(enhanced).not.toBe(brief);
+    await wizard.continueToNextStep();
+    const id = wizard.campaignId();
+    await page.reload();
+    await expect(wizard.stepTitle).toHaveText("Who should this reach?");
+    expect(new URL(page.url()).searchParams.get("step")).toBe("2");
+    await wizard.fillAudience(); await wizard.continueToNextStep();
+    await wizard.chooseChannel("YouTube Shorts"); await wizard.chooseChannel("LinkedIn");
+    await expect(wizard.root.getByRole("checkbox", { name: /^Google Ads/ })).toHaveCount(0);
+    await wizard.continueToNextStep();
+    await page.getByLabel("Planned posts per week").fill("4"); await wizard.continueToNextStep();
+    const caption = page.getByLabel("Caption and video direction");
+    await caption.fill("My original video caption.");
+    await wizard.generateCreatives();
+    await expect(page.getByRole("region", { name: "Generated drafts preview" })).toContainText("Demo");
+    await expect(caption).toHaveValue("My original video caption.");
+    await page.getByRole("button", { name: "Keep original drafts", exact: true }).click();
+    await expect(caption).toHaveValue("My original video caption.");
+    await applyGenerated(wizard);
+    await expect(caption).not.toHaveValue("My original video caption.");
+    await wizard.continueToNextStep();
+    await expect(wizard.stepTitle).toHaveText("Review your campaign");
+    await expect(wizard.root).toContainText("4 planned posts per week");
+    await page.getByRole("button", { name: "Save campaign", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/campaigns/${id}$`));
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    const saved = await readCampaign(request, id);
+    expect(saved).toMatchObject({ name, type: "SOCIAL", status: "READY", brief: enhanced, platforms: ["YOUTUBE", "LINKEDIN"], plan: { cadence: "4" } });
+    expect(saved.creatives).toHaveLength(2); expect(saved.linkedPosts).toEqual([]);
+    await page.getByRole("link", { name: /Prepare social post/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/social/create\\?campaignId=${id}$`));
+    await expect(page.getByLabel(/^Draft title/)).toHaveValue(name);
+    expect(errors).toEqual([]);
   });
 
-  test("Given validation-sensitive wizard steps when required data is incomplete or changed then progression is gated and prior entries remain intact", async ({
-    campaignWizardPage,
-    campaignWizardSeed,
-  }, testInfo) => {
-    await test.step("Given the marketer opens the wizard with no selections yet", async () => {
-      await campaignWizardPage.visit();
-      await expect(campaignWizardPage.continueButton).toBeDisabled();
-
-    });
-
-    await test.step("When the marketer provides a goal and incomplete audience data", async () => {
-      await campaignWizardPage.chooseGoal(campaignWizardSeed.goal);
-      await campaignWizardPage.continueToNextStep();
-      await expect(campaignWizardPage.stepTitle).toContainText("Audience Targeting");
-      await expect(campaignWizardPage.continueButton).toBeDisabled();
-
-      await campaignWizardPage.fillAudience(campaignWizardSeed);
-      await expect(campaignWizardPage.continueButton).toBeEnabled();
-
-      await campaignWizardPage.uploadCustomAudience(
-        campaignWizardSeed.invalidAudienceFileName,
-        campaignWizardSeed.invalidAudienceContents,
-        "application/pdf",
-      );
-
-      await expect(campaignWizardPage.root).toContainText("Upload a CSV or TXT audience file under 5 MB.");
-      await expect(campaignWizardPage.continueButton).toBeDisabled();
-      await expect(campaignWizardPage.audienceEstimate).toContainText("Replace the rejected file");
-      await expect(campaignWizardPage.audienceEstimate).not.toContainText("Calculating audience estimate");
-      const uploadScreenshot = testInfo.outputPath("invalid-audience-upload.png");
-      await campaignWizardPage.page.screenshot({ path: uploadScreenshot, fullPage: true });
-      await testInfo.attach("invalid-audience-upload", {
-        path: uploadScreenshot,
-        contentType: "image/png",
-      });
-    });
-
-    await test.step("And the marketer completes audience fields and adjusts the budget in different orders", async () => {
-      await campaignWizardPage.fillAudience(campaignWizardSeed);
-      await campaignWizardPage.uploadCustomAudience(
-        campaignWizardSeed.customAudienceFileName,
-        campaignWizardSeed.customAudienceContents,
-        "text/csv",
-      );
-      await completeAudienceStep(campaignWizardPage.page);
-
-      await campaignWizardPage.fillBudget({
-        dailyBudget: "100",
-        durationInDays: "10",
-        totalBudget: "1000",
-      });
-
-      await expect(campaignWizardPage.page.getByLabel("Total budget")).toHaveValue("1000");
-      await campaignWizardPage.page.getByLabel("Total budget").fill("1500");
-      await expect(campaignWizardPage.page.getByLabel("Daily budget")).toHaveValue("150");
-      await campaignWizardPage.page.getByLabel("Duration (days)").fill("5");
-      await expect(campaignWizardPage.page.getByLabel("Daily budget")).toHaveValue("300");
-    });
-
-    await test.step("Then returning to the previous step preserves the earlier audience data", async () => {
-      await campaignWizardPage.goBack();
-      await expect(campaignWizardPage.stepTitle).toContainText("Audience Targeting");
-      await expect(campaignWizardPage.page.getByLabel("Location")).toHaveValue(campaignWizardSeed.location);
-      await expect(campaignWizardPage.page.getByLabel("Industry")).toHaveValue(campaignWizardSeed.industry);
-    });
+  test("paid campaigns offer Google and Meta before budget and remain saved plans without enabled ad writes", async ({ page, request, campaignWizardPage: wizard }) => {
+    const writes: string[] = [];
+    page.on("request", request => { if (/\/api\/ads\/(create|update|delete|launch)/.test(new URL(request.url()).pathname)) writes.push(request.url()); });
+    await toChannels(wizard, "Paid advertising", `Paid plan ${randomUUID()}`);
+    await wizard.chooseChannel("Google Ads"); await wizard.chooseChannel("Meta Ads");
+    await expect(wizard.root.getByRole("checkbox", { name: /TikTok|YouTube/ })).toHaveCount(0);
+    await wizard.continueToNextStep();
+    await expect(wizard.stepTitle).toHaveText("Set your budget and timing");
+    await page.getByLabel("Total planned budget").fill("1275.50");
+    await page.getByLabel("Currency", { exact: true }).selectOption("GBP");
+    await wizard.continueToNextStep(); await applyGenerated(wizard); await wizard.continueToNextStep();
+    await expect(wizard.root).toContainText("Campaign creation and ad spending are currently disabled");
+    await expect(page.getByRole("button", { name: "Check connected ad accounts" })).toBeDisabled();
+    const id = wizard.campaignId();
+    await page.getByRole("button", { name: "Save campaign", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/campaigns/${id}$`));
+    expect(await readCampaign(request, id)).toMatchObject({ type: "ADS", status: "READY", platforms: ["GOOGLE", "META"], plan: { totalBudget: "1275.50", currency: "GBP" }, execution: { mode: "ADS_API" } });
+    expect(writes).toEqual([]);
   });
 
-  test("Given creative generation fails when the marketer requests AI assistance then the error is explicit and earlier campaign data is preserved", async ({
-    page,
-    campaignWizardPage,
-    campaignWizardSeed,
-  }) => {
-    await test.step("Given the marketer has completed goal, audience, and budget setup", async () => {
-      await campaignWizardPage.visit();
-      await page.getByLabel("Campaign Name").fill(campaignWizardSeed.campaignName);
-      await campaignWizardPage.chooseGoal(campaignWizardSeed.goal);
-      await campaignWizardPage.continueToNextStep();
-      await campaignWizardPage.fillAudience(campaignWizardSeed);
-      await completeAudienceStep(page);
-      await campaignWizardPage.fillBudget(campaignWizardSeed);
-      await completeBudgetStep(page);
+  for (const branch of [{ type: "EMAIL", label: "Email campaign", titleLabel: "Subject line" }, { type: "BLOG", label: "Content / blog", titleLabel: "Article title" }] as const) {
+    test(`${branch.type.toLowerCase()} campaigns create durable content drafts with truthful delivery limits`, async ({ page, request, campaignWizardPage: wizard }) => {
+      await toChannels(wizard, branch.label, `${branch.type} campaign ${randomUUID()}`);
+      await expect(wizard.root).toContainText("This campaign supports drafting.");
+      await wizard.continueToNextStep(); await wizard.continueToNextStep();
+      await expect(page.getByLabel(branch.titleLabel, { exact: true })).toBeVisible();
+      await applyGenerated(wizard); await wizard.continueToNextStep();
+      await expect(wizard.root).toContainText(branch.type === "EMAIL" ? "Email delivery is not connected yet" : "Website publication is not connected yet");
+      const id = wizard.campaignId(); await page.getByRole("button", { name: "Save campaign", exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/campaigns/${id}$`));
+      const saved = await readCampaign(request, id);
+      expect(saved).toMatchObject({ type: branch.type, platforms: [branch.type], execution: { mode: "DRAFT_ONLY" }, status: "READY" });
+      expect(saved.creatives[0].body).toBeTruthy();
     });
+  }
 
-    await test.step("When creative generation returns an error", async () => {
-      await page.route("**/api/campaign-wizard/creative-suggestions", async (route: Route) => {
-        await route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "Creative generation is temporarily unavailable." }),
-        });
-      });
-
-      await campaignWizardPage.generateCreatives();
-    });
-
-    await test.step("Then the failure is surfaced without losing prior campaign inputs", async () => {
-      await expect(campaignWizardPage.root).toContainText("Creative generation is temporarily unavailable.");
-      await campaignWizardPage.goBack();
-      await expect(campaignWizardPage.page.getByLabel("Daily budget")).toHaveValue(campaignWizardSeed.dailyBudget);
-      await campaignWizardPage.goBack();
-      await expect(campaignWizardPage.page.getByLabel("Location")).toHaveValue(campaignWizardSeed.location);
-    });
+  test("brief and channel validation block incomplete progress and preserve saved context", async ({ page, campaignWizardPage: wizard }) => {
+    await wizard.visit(); await wizard.continueToNextStep();
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("Give your campaign a name");
+    await wizard.fillBrief(`Validation ${randomUUID()}`, "Too short");
+    await page.getByLabel("Website or product URL").fill("javascript:alert(1)");
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("https:// or http://");
+    await page.getByLabel("Website or product URL").fill("https://example.test");
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("at least 20 characters");
+    await page.getByLabel("Campaign brief").fill(brief); await wizard.continueToNextStep();
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("Describe who");
+    await wizard.fillAudience(); await wizard.continueToNextStep();
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("Choose at least one channel");
+    await wizard.goBack(); await expect(page.getByLabel("Audience description")).toHaveValue("Returning customers in London who enjoy independent design.");
   });
 
-  test("Given launch submission fails once when the marketer is ready to publish then the review state stays visible and retry succeeds safely", async ({
-    page,
-    campaignWizardPage,
-    campaignWizardSeed,
-  }) => {
-    let launchAttempts = 0;
-    const submittedDrafts: unknown[] = [];
-
-    await test.step("Given the marketer reaches the review step with a launch-ready draft", async () => {
-      await campaignWizardPage.visit();
-      await page.getByLabel("Campaign Name").fill(campaignWizardSeed.campaignName);
-      await campaignWizardPage.chooseGoal(campaignWizardSeed.goal);
-      await campaignWizardPage.continueToNextStep();
-      await campaignWizardPage.fillAudience(campaignWizardSeed);
-      await completeAudienceStep(page);
-      await campaignWizardPage.fillBudget(campaignWizardSeed);
-      await completeBudgetStep(page);
-      await campaignWizardPage.generateCreatives();
-      await campaignWizardPage.editGeneratedCreative(campaignWizardSeed);
-      await completeCreativeStep(page);
-
-      for (const platform of campaignWizardSeed.selectedPlatforms) {
-        await campaignWizardPage.setPlatformSelection(platform, true);
-      }
-
-      await completePlatformStep(page);
-      await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.editedHeadline);
+  test("assistant failure leaves authored content intact and draft saves can retry safely", async ({ page, request, campaignWizardPage: wizard }) => {
+    const campaign = await seedCampaign(request);
+    await wizard.visit(`?id=${campaign.id}&step=5`);
+    await page.route("**/api/workspace/assist", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Suggestions are temporarily unavailable." }) }));
+    await wizard.generateCreatives();
+    await expect(wizard.root.getByRole("alert")).toContainText("Suggestions are temporarily unavailable.");
+    await expect(page.getByLabel(/^Copy \/ caption/)).toHaveValue("Original authored caption.");
+    let attempts = 0; const submitted: unknown[] = [];
+    await page.route(`**/api/workspace/campaigns/${campaign.id}`, async route => {
+      if (route.request().method() !== "PATCH") return route.continue();
+      attempts++; submitted.push(route.request().postDataJSON());
+      if (attempts === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Draft storage is temporarily unavailable." }) });
+      await route.continue();
     });
+    await page.getByLabel(/^Copy \/ caption/).fill("My edited caption stays intact.");
+    await wizard.continueButton.click(); await expect(wizard.root.getByRole("alert")).toContainText("Draft storage is temporarily unavailable.");
+    await expect(page.getByLabel(/^Copy \/ caption/)).toHaveValue("My edited caption stays intact.");
+    await wizard.continueToNextStep(); expect(attempts).toBe(2); expect(submitted[1]).toEqual(submitted[0]);
+    expect((await readCampaign(request, campaign.id)).creatives[0].body).toBe("My edited caption stays intact.");
+  });
 
-    await test.step("When the first launch attempt fails and the marketer retries", async () => {
-      await page.route("**/api/ads/createCampaign", async (route: Route) => {
-        launchAttempts += 1;
-        submittedDrafts.push(route.request().postDataJSON());
+  test("sidebar navigation saves edits, a fresh create action resets the editor, and stale revisions cannot overwrite newer work", async ({ page, request, campaignWizardPage: wizard }) => {
+    const campaign = await seedCampaign(request);
+    await wizard.visit(`?id=${campaign.id}&step=1`);
+    const newName = `Saved when leaving ${randomUUID()}`;
+    await page.getByLabel("Campaign name", { exact: true }).fill(newName);
+    await page.getByRole("navigation", { name: "Global navigation", exact: true }).getByRole("link", { name: "Campaigns", exact: true }).click();
+    await expect(page).toHaveURL(/\/campaigns$/);
+    expect((await readCampaign(request, campaign.id)).name).toBe(newName);
+    await wizard.visit(`?id=${campaign.id}&step=1`);
+    await page.locator(".topbar-create").click();
+    await expect(page).toHaveURL(/\/campaigns\/create$/);
+    await expect(wizard.stepTitle).toHaveText("What are we creating?");
+    await wizard.continueToNextStep(); await expect(page.getByLabel("Campaign name", { exact: true })).toHaveValue("");
+    await wizard.visit(`?id=${campaign.id}&step=1`);
+    await page.getByLabel("Campaign name", { exact: true }).fill("Local unsaved name");
+    const latest = await readCampaign(request, campaign.id);
+    const changed = await request.patch(`/api/workspace/campaigns/${campaign.id}`, { headers: { Origin: resolveBaseUrl() }, data: { version: latest.version, name: "Newer server version" } }); expect(changed.ok()).toBe(true);
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(wizard.root.getByRole("alert")).toContainText("changed in another window");
+    await expect(page.getByLabel("Campaign name", { exact: true })).toHaveValue("Local unsaved name");
+    expect((await readCampaign(request, campaign.id)).name).toBe("Newer server version");
+  });
 
-        if (launchAttempts === 1) {
-          await route.fulfill({
-            status: 500,
-            contentType: "application/json",
-            body: JSON.stringify({ message: "Launch submission failed. Please review the campaign and retry." }),
-          });
-          return;
-        }
-
-        await route.continue();
-      });
-
-      await page.getByRole("button", { name: "Launch Campaign" }).click();
-      await expect(campaignWizardPage.root).toContainText("Launch submission failed. Please review the campaign and retry.");
-      await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.location);
-      await expect(campaignWizardPage.reviewSummary).toContainText(campaignWizardSeed.editedHeadline);
-      await expect(campaignWizardPage.launchResult).not.toBeVisible();
-      await expect(page.getByRole("button", { name: "Launch Campaign" })).toBeEnabled();
-      await page.getByRole("button", { name: "Launch Campaign" }).click();
-    });
-
-    await test.step("Then the retry succeeds without losing the review context", async () => {
-      await expect(campaignWizardPage.launchResult).toContainText("Campaign demo saved");
-      await expect(campaignWizardPage.launchResult).toContainText("Uniform payload: confirmed");
-      expect(launchAttempts).toBe(2);
-      expect(submittedDrafts[1]).toEqual(submittedDrafts[0]);
-    });
+  test("customer draft APIs reject another customer's reads, writes and cross-site mutations", async ({ request, playwright }, testInfo) => {
+    const campaign = await seedCampaign(request);
+    const other = await playwright.request.newContext({ baseURL: resolveBaseUrl() });
+    try {
+      await signInTestCustomer(other, testInfo.project.name, undefined, "other");
+      expect((await other.get(`/api/workspace/campaigns/${campaign.id}`)).status()).toBe(404);
+      expect((await other.patch(`/api/workspace/campaigns/${campaign.id}`, { headers: { Origin: resolveBaseUrl() }, data: { version: campaign.version, name: "Foreign edit" } })).status()).toBe(404);
+      expect((await request.patch(`/api/workspace/campaigns/${campaign.id}`, { headers: { Origin: "https://other.example" }, data: { version: campaign.version, name: "Cross-site edit" } })).status()).toBe(403);
+      expect((await readCampaign(request, campaign.id)).name).toBe(campaign.name);
+    } finally { await other.dispose(); }
   });
 });

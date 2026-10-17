@@ -86,8 +86,19 @@ export async function connectionRequest<T>(path: string, method = "GET", body?: 
   return data as T;
 }
 export function safeReturnTo(value: string | null) {
-  return value && (["/", "/connections", "/campaigns/create", "/social", "/social/create"].includes(value)
-    || /^\/social\/posts\/[A-Za-z0-9_-]{1,128}$/.test(value)) ? value : "/connections";
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/dashboard";
+  try {
+    const url = new URL(value, "https://workspace.invalid");
+    const allowed = ["/", "/dashboard", "/connections", "/campaigns", "/campaigns/create", "/campaigns/audiences", "/studio", "/studio/brand", "/social", "/social/create"].includes(url.pathname)
+      || /^\/(social\/posts|campaigns)\/[A-Za-z0-9_-]{1,128}$/.test(url.pathname);
+    if (url.origin !== "https://workspace.invalid" || !allowed) return "/dashboard";
+    const query = new URLSearchParams();
+    for (const key of ["id", "campaignId", "assetId", "step"]) {
+      const item = url.searchParams.get(key);
+      if (item && /^[A-Za-z0-9_-]{1,128}$/.test(item)) query.set(key, item);
+    }
+    return url.pathname + (query.size ? `?${query}` : "");
+  } catch { return "/dashboard"; }
 }
 export function providerLabel(provider: string) {
   return ({ GOOGLE: "Google Ads", META: "Meta Ads", YOUTUBE: "YouTube", TIKTOK: "TikTok", LINKEDIN: "LinkedIn", X: "X" } as Record<string, string>)[provider] ?? provider;
