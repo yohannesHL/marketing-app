@@ -1,6 +1,6 @@
 # Funnel implementation progress
 
-Status: #36–#40 implementation merged; #41 builder in progress. User authorized sequential PR creation and merges for #36–#42.
+Status: #36–#42 implementation complete and locally validated. PR merge/check history is recorded in the linked GitHub issues; actual provider/pilot verification remains pending. User authorized sequential PR creation and merges for #36–#42.
 
 | Issue | State | Evidence |
 | --- | --- | --- |
@@ -9,8 +9,8 @@ Status: #36–#40 implementation merged; #41 builder in progress. User authorize
 | #38 | Merged | [PR #45](https://github.com/yohannesHL/marketing-app/pull/45), commit `293c91c`; all 14 CI jobs passed; 490 security tests pass |
 | #39 | Implementation merged; live evidence pending | [PR #46](https://github.com/yohannesHL/marketing-app/pull/46), commit `e0b6d7d`; all 14 CI jobs and 550 local tests passed |
 | #40 | Merged | [PR #47](https://github.com/yohannesHL/marketing-app/pull/47), commit `68f0425`; all 14 CI jobs passed, 616 local regressions plus 26 tests for the final simulator correction |
-| #41 | In progress | Custom canvas/list builder, tracking inspector, email workspace, no-send simulation and pinned journey history |
-| #42 | Not started | Reporting and integrated validation |
+| #41 | Merged | [PR #48](https://github.com/yohannesHL/marketing-app/pull/48), commit `3ed307b`; all 14 CI jobs passed, 634 backend tests and nine browser scenarios per engine |
+| #42 | Implementation complete; live evidence pending | Version/cohort reporting, stage board, explicit source handoffs; 653 backend tests and 36 production browser scenarios pass |
 
 ## Decisions and evidence, 17 October 2026
 
@@ -87,3 +87,14 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - The corrected head passed all nine browser scenarios in Chromium, Firefox and WebKit CI. One parallel CI security run exposed an intermittent existing social/OAuth stress failure (all seven deliveries succeeded, one LinkedIn operation returned INTERNAL_ERROR). The same stress passed focused and full local runs. Added test-only bounded/sanitized API/native SQLite boundary diagnostics, without changing storage execution or adding retries; full regression passed 634/634 and final focused storage tests passed 12/12. A separate first-read-under-exclusive-lock probe reproduces SQLITE_BUSY before authorizer classification, but is not evidence of the exact CI exception; no speculative prepare retry was added.
 
 - Diagnostic-head CI passed both security runs, Chromium and Firefox. WebKit then reproduced interrupted Next.js RSC prefetch exceptions on quick funnel-list navigation. The narrow correction disables speculative loading for the demonstrated FunnelLayout/FunnelList links; AccountNavigation already had that policy. A real-network regression failed on the old bundle and passes after the change, with the global browser-exception assertion preserved. Fresh production WebKit passes all nine scenarios; app/spec TypeScript and whitespace checks pass.
+
+- PR #48 merged at `3ed307b` after every final-head CI job passed, including Chromium/Firefox/WebKit. Issue #42 starts from that merged baseline.
+
+## Issue #42 implementation evidence
+
+- Results select one immutable published version and UTC entry cohort; current occupancy, unique reach, repeat cycles, goals, known exits and operational timing remain distinct. Financial facts deduplicate across cycles, retain exact decimal strings per currency and distinguish won value, paid cash and successful refunds. Unknown/partial/multiple attribution stays visible; configured campaign links remain separate from actual pinned memberships and explicitly attributed sends.
+- A bounded read transaction returns a complete aggregate or an explicit limit error. The independent stage-board endpoint validates version/cohort/cursor scope, returns full totals and pages 50 cards with safe owned contact summaries. Historical journey links request their exact pinned version.
+- Signed API references support explicit owned source handoffs, captured target generations, identity binding without email merging, deletion fences and conflict checks before new aliases. Manual matching cannot collapse same-store orders or copy canonical monetary evidence to another subject. Two integrated protocol proofs cover native form → two enquiries → independent nurture/reminder cancellation → recorded sale, and server checkout → verified paid order → repeated delivery → repeat purchase → successful refund.
+- Independent service/UI/handoff review completed. Full regression passes 653/653; production browser suite passes 36/36 across Chromium/Firefox/WebKit, including 320px and light/dark views. Application and focused strict test TypeScript checks pass. Reporting reads leave provider counters and application state unchanged.
+- Full regression exposed a pre-existing probabilistic Meta test: random Base64 ciphertext happened to contain a short numeric provider ID. The test now verifies the authenticated envelope, decryption, credential-free progress and wrong-context rejection; all 13 focused provider tests pass without changing production social code.
+- [Reporting guide](../../docs/funnels/reporting-guide.md) supplies definitions, API contracts, diagrams and operating procedures. [Release evidence](../../docs/funnels/release-evidence.md) records controlled evidence and the still-pending real Calendly, Shopify and Resend pilot. Issues #37/#39/#42 retain those live requirements.

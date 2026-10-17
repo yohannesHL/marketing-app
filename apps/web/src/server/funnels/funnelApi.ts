@@ -33,7 +33,8 @@ export function createFunnelApi(auth: CustomerAuth, service: FunnelService) {
         if (operation === "controls" && request.method === "PATCH")
           return privateJson(await service.controls(principal, id, await definitionBody(request)));
         if (operation === "journeys" && request.method === "GET")
-          return privateJson(await service.journeys(principal, id, url.searchParams.get("cursor") ?? undefined));
+          return privateJson(await service.journeys(principal, id, url.searchParams.get("cursor") ?? undefined, { versionId: url.searchParams.get("versionId") ?? undefined,
+            from: url.searchParams.get("from") ?? undefined, to: url.searchParams.get("to") ?? undefined }));
         if (operation === "move" && request.method === "POST")
           return privateJson(await service.move(principal, id, await definitionBody(request)));
         if (operation === "simulate" && request.method === "POST")

@@ -6,6 +6,8 @@ import { evaluateFunnel, fieldKey, validateDefinition, type FunnelDefinition, ty
 import type { NormalizedTrackingEvent } from "./trackingTypes";
 import { captureStageActions, stageActionTiming } from "./stageActionPlan";
 import { endObsoleteStageReasons, settleReasonlessMemberships } from "../email/emailPolicy";
+import { reportRange } from "./funnelReportRange";
+import type { FunnelJourneyBoardQuery } from "./funnelReportingTypes";
 
 type Tx = Prisma.TransactionClient;
 const jsonValue = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -127,10 +129,25 @@ export class FunnelService {
     return this.db.$transaction(async tx => { await this.session(tx, principal); await this.owned(tx, principal, id);
       return tx.funnel.update({ where: { id }, data: { status } }); });
   }
-  async journeys(principal: CustomerPrincipal, id: string, cursor?: string) {
-    await this.auth.assertSession(principal); await this.owned(this.db, principal, id);
-    const journeys = await this.db.funnelJourney.findMany({ where: { funnelId: id, ownerId: principal.userId, ...(cursor ? { id: { gt: text(cursor) } } : {}) }, orderBy: { id: "asc" }, take: 50 });
-    return { journeys, nextCursor: journeys.length === 50 ? journeys.at(-1)!.id : null };
+  async journeys(principal: CustomerPrincipal, id: string, cursor?: string, options: FunnelJourneyBoardQuery = {}) {
+    await this.auth.assertSession(principal);
+    return this.db.$transaction(async tx => {
+      await this.session(tx, principal); const funnel = await this.owned(tx, principal, id), asOf = this.now();
+      const versionId = options.versionId === undefined ? undefined : text(options.versionId, 128);
+      if (versionId && !await tx.funnelVersion.findFirst({ where: { id: versionId, funnelId: id, ownerId: principal.userId, environment: funnel.environment } }))
+        fail("NOT_FOUND", 404, "Published funnel version not found.");
+      const range = options.from !== undefined || options.to !== undefined ? reportRange(options.from, options.to, asOf) : null;
+      const where = { funnelId: id, ownerId: principal.userId, environment: funnel.environment, ...(versionId ? { versionId } : {}),
+        ...(range ? { startedAt: { gte: range.from, lt: range.to } } : {}) };
+      const after = cursor === undefined ? undefined : text(cursor, 128);
+      if (after && !await tx.funnelJourney.findFirst({ where: { ...where, id: after }, select: { id: true } })) fail("NOT_FOUND", 404, "Journey page cursor not found in this selection.");
+      const rows = await tx.funnelJourney.findMany({ where: { ...where, ...(after ? { id: { gt: after } } : {}) }, orderBy: { id: "asc" }, take: 51,
+        include: { subject: { select: { id: true, kind: true, contact: { select: { id: true, name: true, email: true, deletedAt: true } } } } } });
+      const journeys = rows.slice(0, 50).map(row => ({ ...row, subject: { id: row.subject.id, kind: row.subject.kind,
+        contact: row.subject.contact && !row.subject.contact.deletedAt ? { id: row.subject.contact.id, name: row.subject.contact.name, email: row.subject.contact.email } : null } }));
+      return { journeys, total: await tx.funnelJourney.count({ where }), nextCursor: rows.length > 50 ? journeys.at(-1)!.id : null,
+        versionId: versionId ?? null, cohort: range ? { from: range.from.toISOString(), to: range.to.toISOString() } : null };
+    });
   }
   async controls(principal: CustomerPrincipal, id: string, value: unknown) {
     await this.auth.assertSession(principal); const input = object(value);

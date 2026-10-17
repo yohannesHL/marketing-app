@@ -5,7 +5,7 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: ["**/social-all-destinations.spec.ts", "**/funnel-builder.spec.ts", "**/email-workspace.spec.ts", "**/tracking-workspace.spec.ts"],
+  testIgnore: ["**/social-all-destinations.spec.ts", "**/funnel-builder.spec.ts", "**/funnel-results.spec.ts", "**/email-workspace.spec.ts", "**/tracking-workspace.spec.ts"],
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,

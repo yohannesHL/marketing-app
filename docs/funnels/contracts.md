@@ -70,6 +70,16 @@ Anonymous browser IDs are random, source/owner scoped and distinct from contact 
 
 An ambiguous event remains `UNMATCHED` with candidate references and a sanitized reason. A manual match is audited and can repair reporting; it defaults to history-only evaluation. Contact merges are explicit, owner-scoped, reversible by audit where possible, and must retain external references/history without replaying old automation. Full merge UI is deferred; silent merging is prohibited.
 
+### Signed API source handoff (implemented in #42)
+
+Only signed API `references[]` may include an optional `sourceId`. `resource` and `contactIdentity` remain in the ingress API namespace. Authenticate the timestamp/request ID/exact body before target lookup, then require an active same-owner/same-environment compatible source. Capture its generation internally at acceptance and retain it on duplicate receipt and replay. Every match checks that captured target generation and status again; a later reconnect cannot renew authority for old evidence. Public callers cannot set generation, owner, environment, subject/contact IDs or verification.
+
+Targets support NATIVE ENQUIRY; API compatible business references; CALENDLY BOOKING; and SHOPIFY ORDER/CHECKOUT/REFUND/REFUND_TRANSACTION. Managed RESEND is excluded. Identical qualified references deduplicate. Source qualification controls lookup, alias writes, order conflicts, deletion tombstones and pending-envelope erasure. API association is `SERVER_ASSERTED`, including when its target is a provider namespace; it does not establish a verified booking/payment. Record `API_HANDOFF_REFERENCE` and `IDENTITY_BOUND` audits with safe source/generation/kind provenance.
+
+Resolve stable contact identity even if a business reference already selects a subject. An unbound ingress identity can bind to that subject's contact; a previously bound different contact, conflicting recipient or deletion tombstone blocks the event. Preserve known PII, never merge by email. Verified provider customer identity follows the same rule when a checkout already exists, while separate orders remain separate purchase subjects. Complete generation, recipient/identity, order and existing canonical-money conflict checks before writing any new contact/identity/alias. Manual receipt selection cannot bypass same-store order uniqueness or copy a referenced financial fact to a different subject.
+
+See [handoff payloads and recovery](tracking-setup.md#authenticated-handoff-between-sources). Anonymous browser checkout observations without a supported explicit purchase association remain unknown; do not invent a pre-purchase link.
+
 ### Required examples
 
 - Maya's enquiries `enquiry_A` and `enquiry_B` have distinct SALES subjects and journeys, even if they share a contact. Booking A must not stop B's follow-up.
