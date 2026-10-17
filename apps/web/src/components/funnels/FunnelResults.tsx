@@ -47,13 +47,13 @@ export function FunnelResults({ funnel, initialVersionId }: { funnel: UiFunnel; 
     <header><h2 className="text-2xl font-semibold">Funnel results</h2><p className="mt-2">Recorded outcomes for one published version. Count journeys and business objects separately; inspect the evidence behind each result.</p></header>
     {!funnel.publishedVersionId && !initialVersionId ? <p className={panelClass}>Publish a funnel to report its recorded journeys. A draft or simulation does not create conversion evidence.</p> : <>
       <form className={`${panelClass} space-y-4`} aria-label="Result filters" onSubmit={event => { event.preventDefault(); apply(); }}>
-        <div className="grid gap-4 md:grid-cols-3">
-          <label>Published version<select className="select select-bordered w-full min-h-11" value={versionId} onChange={event => setVersionId(event.target.value)}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <label className="block min-w-0">Published version<select className="select select-bordered w-full min-w-0 min-h-11" value={versionId} onChange={event => setVersionId(event.target.value)}>
             {extraVersion && <option value={versionId}>{report?.version.id === versionId ? `Version ${report.version.number}` : "Version from journey history"}</option>}
             {knownVersions.map(version => <option key={version.id} value={version.id}>Version {version.number}{version.id === funnel.publishedVersionId ? " · current" : ""}</option>)}
           </select></label>
-          <label>Entered from (UTC)<input className={inputClass} type="datetime-local" step="1" required value={window.from} onChange={event => setWindow(old => ({ ...old, from: event.target.value }))} /></label>
-          <label>Entered before (UTC)<input className={inputClass} type="datetime-local" step="1" required value={window.to} onChange={event => setWindow(old => ({ ...old, to: event.target.value }))} /></label>
+          <label className="block min-w-0">Entered from (UTC)<input className={inputClass} type="datetime-local" step="1" required value={window.from} onChange={event => setWindow(old => ({ ...old, from: event.target.value }))} /></label>
+          <label className="block min-w-0">Entered before (UTC)<input className={inputClass} type="datetime-local" step="1" required value={window.to} onChange={event => setWindow(old => ({ ...old, to: event.target.value }))} /></label>
         </div>
         <p className="text-sm">Includes the start; excludes the end. Entry at any configured stage counts. Later outcomes are observed through the current snapshot.</p>
         <div className="flex flex-wrap gap-3"><button className="btn btn-primary min-h-11 normal-case" disabled={loading}>Apply filters</button><button type="button" className={buttonClass} disabled={loading} onClick={() => { const next = reportWindow(); setWindow(next); apply(next); }}>Last 30 days</button></div>

@@ -48,8 +48,32 @@ async function view(page: Page, name: "Overview" | "Campaign results" | "Stage b
   await page.getByRole("button", { name, exact: true }).click();
 }
 async function noOverflow(page: Page) {
-  const widths = await page.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }));
-  expect(widths.content).toBeLessThanOrEqual(widths.viewport);
+  const measure = () => page.evaluate(() => {
+    const describe = (element: HTMLElement) => {
+      const rect = element.getBoundingClientRect(), style = getComputedStyle(element), parent = element.parentElement?.getBoundingClientRect();
+      return { tag: element.tagName, type: element instanceof HTMLInputElement ? element.type : undefined,
+        classes: element.className.slice(0, 180), right: rect.right, left: rect.left, width: rect.width,
+        clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, parentWidth: parent?.width,
+        minWidth: style.minWidth, maxWidth: style.maxWidth, overflowX: style.overflowX, display: style.display,
+        font: style.font, boxSizing: style.boxSizing };
+    };
+    return { viewport: innerWidth, content: document.documentElement.scrollWidth, locale: navigator.language,
+      overflow: [...document.querySelectorAll<HTMLElement>("main *")].filter(element => {
+        const rect = element.getBoundingClientRect(); return rect.height > 0 && (rect.right > innerWidth || rect.left < 0);
+      }).slice(-35).map(describe),
+      filterControls: [...document.querySelectorAll<HTMLElement>('form[aria-label="Result filters"] input, form[aria-label="Result filters"] select')].map(describe) };
+  });
+  const widths = await measure();
+  expect(widths.content, JSON.stringify(widths)).toBeLessThanOrEqual(widths.viewport);
+  // Native date controls vary by OS. Exercise modest text enlargement to expose intrinsic grid sizing locally too.
+  const enlargedText = await page.addStyleTag({ content: 'form[aria-label="Result filters"] input, form[aria-label="Result filters"] select { font-size: 20px; }' });
+  try {
+    const enlarged = await measure();
+    expect(enlarged.content, `Enlarged filter text: ${JSON.stringify(enlarged)}`).toBeLessThanOrEqual(enlarged.viewport);
+    const from = page.getByLabel("Entered from (UTC)", { exact: true }), value = await from.inputValue();
+    await from.focus(); await expect(from).toBeFocused(); await from.press("ArrowRight");
+    await expect(from).toBeFocused(); await expect(from).toHaveValue(value);
+  } finally { await enlargedText.evaluate(element => { element.parentNode?.removeChild(element); }); }
 }
 function metric(scope: Page | Locator, label: string) {
   return scope.getByText(label, { exact: true }).locator("..").locator("dd").first();
