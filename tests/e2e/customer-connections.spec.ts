@@ -71,7 +71,8 @@ test("customer signs in with a keyboard and manages isolated advertising permiss
     try {
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/dashboard$/);
-      await page.getByRole("link", { name: "Integrations / channels", exact: true }).click();
+      await page.getByRole("button", { name: "More", exact: true }).click();
+      await page.getByRole("navigation", { name: "More workspace navigation", exact: true }).getByRole("link", { name: "Integrations / channels", exact: true }).click();
       await expect(page).toHaveURL(/\/connections$/);
       await expect(page.getByTestId("connections-page").getByRole("status")).toContainText("Loading your connections");
     } finally { releaseLoading(); }
