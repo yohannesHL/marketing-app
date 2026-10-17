@@ -1,12 +1,12 @@
 # Funnel implementation progress
 
-Status: #36 merged; #37 ingestion and matching implementation under review. User authorized sequential PR creation and merges for #36–#42.
+Status: #36 and #37 implementation merged; #38 rules and journey history under review. User authorized sequential PR creation and merges for #36–#42.
 
 | Issue | State | Evidence |
 | --- | --- | --- |
 | #36 | Merged | [PR #43](https://github.com/yohannesHL/marketing-app/pull/43), commit `cfabf9d`; all required CI passed |
-| #37 | Implementation review | Owned storage, real receipt routes/SDK, signed provider adapters, matching/recovery worker; 438 security tests passed; live provider proof still pending |
-| #38 | Not started | Depends on #36/#37 |
+| #37 | Implementation merged; live evidence pending | [PR #44](https://github.com/yohannesHL/marketing-app/pull/44), commit `c9b1649`; all required CI passed; actual provider/pilot evidence remains open |
+| #38 | Implementation review | Immutable custom definitions, durable evaluator receipts, property rules, history, internal outbox, templates and no-send simulator; 480 security tests passed before final focused regression additions |
 | #39 | Not started | Depends on #36; scheduled after #38 for sequential delivery |
 | #40 | Not started | Depends on #38/#39 |
 | #41 | Not started | Depends on runtime slices for production behaviour |
@@ -30,3 +30,13 @@ Live provider setup, approved test resources and pilot outcomes have not been es
 - Public SDK has no load-time collection; consent gates measurement and native forms can be submitted independently without a visitor token.
 - Receipt matching is an independent durable worker. No funnel evaluation or external campaign execution is claimed in this slice.
 - Remaining rollout evidence: actual Calendly/Shopify setup, real received/matched provider events and authorized integrated pilots. Matched-history retention must become lifecycle-aware when journeys/jobs are introduced.
+
+## Issue #38 implementation evidence
+
+- Custom declarative definitions support ordered event/property-change routing, all/any conditions, explicit unknown values, precise decimal comparisons and bounded DAG validation. Goals and terminal exits are separate.
+- Draft CAS and immutable versions protect active journeys. New entry is future-only; manual new cycles require an explicit command and reason.
+- Tracking MATCHED commits and evaluation receipts are atomic. Receipt consumption, snapshot, evidence effect, transition and internal stage-entry outbox also commit together. Canonical event and new property-observation causes remain distinct.
+- Concurrent SQLite clients, publication boundaries, pinned versions, independent enquiries/orders, duplicate payment facts, manual corrections, source generation changes, deletion and retention are covered by integration tests.
+- All action plans captured in this slice are empty and tracking-only. Installing later automation cannot activate old stage entries. Real email delivery belongs to #39/#40.
+- Blank, sales, ecommerce, event and subscription examples are editable configurations using the same evaluator. The API simulator never calls providers.
+- Independent schema/service review identified and resolved generation corroboration, property-change deduplication and anonymous-backlog transaction sizing before PR creation.

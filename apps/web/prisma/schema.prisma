@@ -76,6 +76,15 @@ model User {
   trackingAudits      TrackingAudit[]
   trackingRateLimits  TrackingRateLimit[]
   trackingDeletions   TrackingDeletion[]
+  funnels             Funnel[]
+  funnelVersions      FunnelVersion[]
+  funnelStages        FunnelStage[]
+  funnelJourneys      FunnelJourney[]
+  funnelStageTransitions FunnelStageTransition[]
+  funnelPropertySnapshots FunnelPropertySnapshot[]
+  funnelEvaluationReceipts FunnelEvaluationReceipt[]
+  funnelEvidenceEffects FunnelEvidenceEffect[]
+  funnelActionOutbox  FunnelActionOutbox[]
 }
 
 model Asset {
@@ -780,6 +789,7 @@ model TrackingSource {
   audits               TrackingAudit[]
   rateLimits           TrackingRateLimit[]
   deletions            TrackingDeletion[]
+  propertySnapshots    FunnelPropertySnapshot[]
 
   @@unique([id, ownerId, environment])
   @@unique([ownerId, environment, provider, externalAccountId])
@@ -833,6 +843,10 @@ model FunnelSubject {
   correlations   TrackingCorrelation[]
   events         TrackingEvent[]
   facts          TrackingFact[]
+  journeys       FunnelJourney[]
+  propertySnapshots FunnelPropertySnapshot[]
+  evaluationReceipts FunnelEvaluationReceipt[]
+  evidenceEffects FunnelEvidenceEffect[]
 
   @@unique([id, ownerId, environment])
   @@index([ownerId, environment, kind, contactId])
@@ -912,6 +926,7 @@ model TrackingEvent {
   expiresAt        DateTime
   duplicateCount   Int @default(0)
   conflictCount    Int @default(0)
+  matchRevision    Int @default(0)
   late             Boolean @default(false)
   owner            User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   source           TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
@@ -920,6 +935,8 @@ model TrackingEvent {
   visitor          TrackingVisitor? @relation(fields: [visitorId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
   fact             TrackingFact? @relation(fields: [factId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
   audits           TrackingAudit[]
+  evaluationReceipts FunnelEvaluationReceipt[]
+  stageTransitions FunnelStageTransition[]
 
   @@unique([id, ownerId, environment])
   @@unique([ownerId, sourceId, type, dedupeKey])
@@ -992,4 +1009,227 @@ model TrackingDeletion {
   source           TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
 
   @@unique([ownerId, sourceId, namespace, externalIdDigest])
+}
+
+// Funnel definitions are editable drafts; published versions and stages are immutable.
+// Migration-only constraints enforce environment isolation, active journey uniqueness,
+// append-only history, and command/evidence tombstones independently of the service.
+model Funnel {
+  id                 String @id @default(cuid())
+  ownerId            String
+  environment        String
+  name               String
+  subjectKind        String
+  draft              Json
+  draftRevision      Int @default(1)
+  publishedVersionId String?
+  status             String @default("ACTIVE")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  owner              User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  versions           FunnelVersion[] @relation("FunnelVersions")
+  publishedVersion   FunnelVersion? @relation("FunnelPublication", fields: [publishedVersionId, id, ownerId, environment], references: [id, funnelId, ownerId, environment], onDelete: NoAction)
+  journeys           FunnelJourney[]
+  evidenceEffects    FunnelEvidenceEffect[]
+
+  @@unique([id, ownerId, environment])
+  @@index([ownerId, environment, status])
+}
+
+model FunnelVersion {
+  id            String @id @default(cuid())
+  ownerId       String
+  environment   String
+  funnelId      String
+  number        Int
+  schemaVersion Int @default(1)
+  definition    Json
+  digest        String
+  publishedAt   DateTime
+  owner         User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  funnel        Funnel @relation("FunnelVersions", fields: [funnelId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  publications  Funnel[] @relation("FunnelPublication")
+  stages        FunnelStage[]
+  journeys      FunnelJourney[]
+  evidenceEffects FunnelEvidenceEffect[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([id, funnelId, ownerId, environment])
+  @@unique([funnelId, number])
+}
+
+model FunnelStage {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  versionId   String
+  key         String
+  name        String
+  goal        Boolean @default(false)
+  terminal    String @default("NONE")
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  version     FunnelVersion @relation(fields: [versionId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  journeys    FunnelJourney[]
+  transitionsFrom FunnelStageTransition[] @relation("FunnelTransitionFrom")
+  transitionsTo FunnelStageTransition[] @relation("FunnelTransitionTo")
+
+  @@unique([versionId, key])
+  @@unique([key, versionId, ownerId, environment])
+}
+
+model FunnelJourney {
+  id                       String @id @default(cuid())
+  ownerId                  String
+  environment              String
+  funnelId                 String
+  versionId                String
+  subjectId                String
+  cycle                    Int @default(1)
+  currentStageKey          String
+  status                   String @default("ACTIVE")
+  revision                 Int @default(1)
+  startedAt                DateTime @default(now())
+  endedAt                  DateTime?
+  lastTransitionOccurredAt DateTime?
+  owner                    User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  funnel                   Funnel @relation(fields: [funnelId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  version                  FunnelVersion @relation(fields: [versionId, funnelId, ownerId, environment], references: [id, funnelId, ownerId, environment], onDelete: NoAction)
+  subject                  FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  currentStage             FunnelStage @relation(fields: [currentStageKey, versionId, ownerId, environment], references: [key, versionId, ownerId, environment], onDelete: NoAction)
+  transitions              FunnelStageTransition[]
+  evidenceEffects          FunnelEvidenceEffect[]
+  outbox                   FunnelActionOutbox[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([id, versionId, ownerId, environment])
+  @@unique([id, funnelId, versionId, subjectId, cycle, ownerId, environment], map: "FunnelJourney_evidence_binding_key")
+  @@unique([funnelId, subjectId, cycle])
+  @@index([ownerId, environment, subjectId, status])
+  @@index([funnelId, status])
+}
+
+model FunnelStageTransition {
+  id              String @id @default(cuid())
+  ownerId         String
+  environment     String
+  journeyId       String
+  versionId       String
+  sequence        Int
+  fromStageKey    String?
+  toStageKey      String
+  ruleId          String?
+  eventId         String?
+  receiptId       String?
+  actorId         String?
+  triggerKind     String
+  mode            String
+  reasonCode      String
+  note            String?
+  evaluationTrace Json
+  occurredAt      DateTime
+  recordedAt      DateTime @default(now())
+  commandKey      String?
+  commandDigest   String?
+  redactedAt      DateTime?
+  owner           User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  journey         FunnelJourney @relation(fields: [journeyId, versionId, ownerId, environment], references: [id, versionId, ownerId, environment], onDelete: Cascade)
+  fromStage       FunnelStage? @relation("FunnelTransitionFrom", fields: [fromStageKey, versionId, ownerId, environment], references: [key, versionId, ownerId, environment], onDelete: NoAction)
+  toStage         FunnelStage @relation("FunnelTransitionTo", fields: [toStageKey, versionId, ownerId, environment], references: [key, versionId, ownerId, environment], onDelete: NoAction)
+  event           TrackingEvent? @relation(fields: [eventId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  receipt         FunnelEvaluationReceipt? @relation(fields: [receiptId, eventId, ownerId, environment], references: [id, eventId, ownerId, environment], onDelete: NoAction)
+  outbox          FunnelActionOutbox[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([id, journeyId, ownerId, environment])
+  @@unique([journeyId, sequence])
+  @@unique([ownerId, commandKey])
+  @@index([ownerId, environment, recordedAt])
+  @@index([eventId])
+}
+
+model FunnelPropertySnapshot {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  subjectId   String
+  sourceId    String
+  eventType   String
+  fields      Json
+  revision    Int @default(1)
+  updatedAt   DateTime @updatedAt
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  source      TrackingSource @relation(fields: [sourceId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+
+  @@unique([subjectId, sourceId, eventType])
+  @@index([ownerId, environment, subjectId])
+}
+
+model FunnelEvaluationReceipt {
+  id            String @id @default(cuid())
+  ownerId       String
+  environment   String
+  eventId       String
+  matchRevision Int
+  subjectId     String
+  mode          String
+  status        String @default("PENDING")
+  reason        String?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+  owner         User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  event         TrackingEvent @relation(fields: [eventId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  subject       FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  transitions   FunnelStageTransition[]
+
+  @@unique([id, ownerId, environment])
+  @@unique([id, eventId, ownerId, environment])
+  @@unique([eventId, matchRevision])
+  @@index([status, createdAt])
+  @@index([ownerId, environment, subjectId, status])
+}
+
+model FunnelEvidenceEffect {
+  id          String @id @default(cuid())
+  ownerId     String
+  environment String
+  funnelId    String
+  versionId   String
+  subjectId   String
+  cycle       Int @default(1)
+  journeyId   String?
+  evidenceKey String
+  outcome     String
+  ruleId      String?
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  funnel      Funnel @relation(fields: [funnelId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  version     FunnelVersion @relation(fields: [versionId, funnelId, ownerId, environment], references: [id, funnelId, ownerId, environment], onDelete: NoAction)
+  subject     FunnelSubject @relation(fields: [subjectId, ownerId, environment], references: [id, ownerId, environment], onDelete: NoAction)
+  journey     FunnelJourney? @relation(fields: [journeyId, funnelId, versionId, subjectId, cycle, ownerId, environment], references: [id, funnelId, versionId, subjectId, cycle, ownerId, environment], onDelete: NoAction)
+
+  @@unique([funnelId, subjectId, cycle, evidenceKey])
+  @@index([ownerId, environment, subjectId])
+}
+
+model FunnelActionOutbox {
+  id                String @id @default(cuid())
+  ownerId           String
+  environment       String
+  journeyId         String
+  transitionId      String
+  kind              String
+  actionKey         String
+  payload           Json
+  mode              String
+  effectEligibility String @default("TRACKING_ONLY")
+  status            String @default("RECORDED")
+  createdAt         DateTime @default(now())
+  completedAt       DateTime?
+  owner             User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  journey           FunnelJourney @relation(fields: [journeyId, ownerId, environment], references: [id, ownerId, environment], onDelete: Cascade)
+  transition        FunnelStageTransition @relation(fields: [transitionId, journeyId, ownerId, environment], references: [id, journeyId, ownerId, environment], onDelete: NoAction)
+
+  @@unique([transitionId, kind, actionKey])
+  @@index([ownerId, environment, status, createdAt])
 }
