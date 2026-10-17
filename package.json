@@ -21,7 +21,8 @@
     "mock:linkedin": "mockoon-cli start --data tests/mockoon/linkedin.json --port 3915 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "mock:x": "mockoon-cli start --data tests/mockoon/x.json --port 3916 --hostname 127.0.0.1 --disable-admin-api --disable-log-to-file",
     "test:e2e:delivery": "playwright test --config=playwright.social-delivery.config.ts",
-    "test:e2e:delivery-app": "tsx tests/support/start-social-delivery-app.ts"
+    "test:e2e:delivery-app": "tsx tests/support/start-social-delivery-app.ts",
+    "tracking:worker": "tsx apps/web/scripts/tracking-worker.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
