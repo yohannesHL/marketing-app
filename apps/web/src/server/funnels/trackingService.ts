@@ -5,6 +5,7 @@ import { CredentialVault } from "../security/credentialVault";
 import { fail } from "../security/errors";
 import { verifyProviderReceipt, reconcileProviderResource } from "./providerTracking";
 import type { AdapterSource, NormalizedTrackingEvent, ReconcileResource, SourceCredentials, TrackingMode, TrackingSourceConfig } from "./trackingTypes";
+import { enqueueFunnelEvaluation, eraseFunnelSubjects } from "./funnelLifecycle";
 import { email, emailKey, equalSecret, fields, json, object, properties, sha256, strings, text, timestamp } from "./trackingValidation";
 
 type Tx = Prisma.TransactionClient;
@@ -379,10 +380,12 @@ export class TrackingService {
       if (!late) await tx.funnelSubject.update({ where: { id: subject.id }, data: { lastOccurredAt: event.occurredAt } });
       const result = await tx.trackingEvent.update({ where: { id: event.id }, data: { status: "MATCHED", reason: null,
         subjectId: subject.id, contactId: subject.contactId, factId, late, processedAt: this.now() } });
+      await enqueueFunnelEvaluation(tx, result, this.now());
       if (event.visitorId && event.type === "enquiry.accepted") {
         // Only earlier anonymous observations are linked. Recovery is measurement-only.
+        // Persist a bounded-query repair queue; the matcher commits each page and receipt separately.
         await tx.trackingEvent.updateMany({ where: { sourceId: source.id, visitorId: event.visitorId, status: "UNMATCHED", type: { in: browserTypes }, occurredAt: { lte: event.occurredAt } },
-          data: { subjectId: subject.id, contactId: subject.contactId, status: "MATCHED", reason: "IDENTIFIED_BY_ACCEPTED_FORM", processingMode: "REPLAY", processedAt: this.now() } });
+          data: { subjectId: subject.id, contactId: subject.contactId, status: "QUEUED", reason: "IDENTIFIED_BY_ACCEPTED_FORM", processingMode: "REPLAY" } });
       }
       return result;
     });
@@ -439,8 +442,16 @@ export class TrackingService {
       const result = await tx.trackingEvent.updateMany({ where: { expiresAt: { lt: this.now() }, status: { in: ["UNMATCHED", "QUARANTINED", "BLOCKED"] } },
         data: { envelope: {}, status: "REDACTED", reason: "RETENTION_EXPIRED" } });
       await tx.trackingCorrelation.deleteMany({ where: { expiresAt: { lt: this.now() } } });
-      // Matched evidence may be pinned by journeys/jobs; their lifecycle owns pruning after #38–#40.
-      return { redacted: result.count };
+      // Keep event/digest tombstones. A queued evaluator or active journey still pins its evidence.
+      const eligible = await tx.trackingEvent.findMany({ where: { expiresAt: { lt: this.now() }, status: "MATCHED",
+        evaluationReceipts: { none: { status: { in: ["PENDING", "FAILED"] } } },
+        OR: [{ subjectId: null }, { subject: { journeys: { none: { status: "ACTIVE" } } } }] }, select: { id: true }, take: 250 });
+      let matchedRedacted = 0;
+      for (const event of eligible) {
+        await tx.trackingEvent.update({ where: { id: event.id }, data: { envelope: {}, status: "REDACTED", reason: "RETENTION_EXPIRED" } });
+        matchedRedacted++;
+      }
+      return { redacted: result.count + matchedRedacted };
     });
   }
   async deleteContact(principal: CustomerPrincipal, contactId: string) {
@@ -456,6 +467,7 @@ export class TrackingService {
       await tx.funnelIdentity.deleteMany({ where: { contactId } });
       const subjects = await tx.funnelSubject.findMany({ where: { contactId }, select: { id: true } });
       const subjectIds = subjects.map(s => s.id);
+      await eraseFunnelSubjects(tx, subjectIds, this.now());
       const references = await tx.funnelSubjectReference.findMany({ where: { subjectId: { in: subjectIds } } });
       for (const ref of references) await tx.trackingDeletion.upsert({ where: { ownerId_sourceId_namespace_externalIdDigest: {
         ownerId: contact.ownerId, sourceId: ref.sourceId, namespace: `SUBJECT:${ref.kind}`, externalIdDigest: sha256(ref.externalId) } },
