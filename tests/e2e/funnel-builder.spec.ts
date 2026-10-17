@@ -195,7 +195,27 @@ test("custom funnel forms keep branch order, retain conflicting edits, publish t
 });
 
 test("two enquiries retain separate pinned histories and manual correction affects only the selected journey", async ({ page }, info) => {
+  const speculativeWorkspaceRequests: string[] = [];
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (request.headers()["next-router-prefetch"] === "1" && /^(?:\/funnels(?:\/[^/]+)?|\/tracking|\/email)$/.test(path)) {
+      speculativeWorkspaceRequests.push(path);
+    }
+  });
   const customer = await signIn(page, info), before = await providerStats(page);
+  const savedFunnel = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Consultation journey", exact: true }) });
+  await expect(savedFunnel).toBeVisible();
+  for (const name of ["Funnels", "Tracking sources", "Email campaigns"]) {
+    await page.getByRole("navigation", { name: "Journey workspace", exact: true }).getByRole("link", { name, exact: true }).hover();
+  }
+  await page.getByRole("link", { name: "Create funnel", exact: true }).hover();
+  await savedFunnel.getByRole("link", { name: "Consultation journey", exact: true }).hover();
+  await savedFunnel.getByRole("link", { name: "Open funnel", exact: true }).hover();
+  // Observe the complete list-to-editor lifecycle, including hover, without intercepting requests.
+  await savedFunnel.getByRole("link", { name: "Open funnel", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/funnels/${customer.funnelId}$`));
+  await expect(page.getByRole("navigation", { name: "Stage list", exact: true })).toBeVisible();
+  expect(speculativeWorkspaceRequests, "Workspace links should load on navigation, without speculative RSC requests").toEqual([]);
   await page.goto(`/funnels/${customer.funnelId}?view=journeys`);
   await expect(page.getByRole("heading", { name: "People and business journeys", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "maya@example.test", exact: true })).toHaveCount(2);

@@ -21,9 +21,9 @@ export function FunnelLayout({ title, description, environment, children, loadin
     <a href="#funnel-content" className="sr-only focus:not-sr-only focus:btn">Skip to workspace</a>
     <AccountNavigation signedIn={!error?.includes("session ended")} busy={busy || dirty} onError={onError} />
     <nav aria-label="Journey workspace" className="flex flex-wrap gap-2">
-      <Link className="btn btn-ghost min-h-11 normal-case" href="/funnels">Funnels</Link>
-      <Link className="btn btn-ghost min-h-11 normal-case" href={`/tracking${environment ? `?environment=${environment}` : ""}`}>Tracking sources</Link>
-      <Link className="btn btn-ghost min-h-11 normal-case" href={`/email${environment ? `?environment=${environment}` : ""}`}>Email campaigns</Link>
+      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href="/funnels">Funnels</Link>
+      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href={`/tracking${environment ? `?environment=${environment}` : ""}`}>Tracking sources</Link>
+      <Link prefetch={false} className="btn btn-ghost min-h-11 normal-case" href={`/email${environment ? `?environment=${environment}` : ""}`}>Email campaigns</Link>
     </nav>
     <header className="space-y-2 min-w-0"><div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight break-words min-w-0">{title}</h1>
       {environment && <span className="badge badge-outline">{environment}</span>}</div>
